@@ -1,0 +1,60 @@
+/* --- src/OldSystem.css --- */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Sarabun', sans-serif !important;
+  background-color: #f4f7f6 !important;
+}
+
+/* ส่วนของ Sidebar สีม่วงเข้มแบบระบบเดิม */
+.ant-layout-sider {
+  background-color: #2a1a4a !important; /* สีม่วงเข้ม */
+}
+
+.ant-menu-dark {
+  background-color: #2a1a4a !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background-color: #ef8157 !important; /* สีส้มเวลาเลือกเมนู */
+  color: white !important;
+}
+
+.sider-logo {
+  height: 64px;
+  background-color: #1f1235;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #ef8157;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* ส่วนของ Header และ Content */
+.ant-layout-header {
+  background-color: white !important;
+  padding: 0 20px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.ant-layout-content {
+  padding: 24px !important;
+}
+
+/* รูปแบบกล่องสถิติและ Card ให้ขอบเหลี่ยม เงาบางๆ */
+.old-style-card {
+  background: white;
+  padding: 20px;
+  border-radius: 4px; /* ขอบเหลี่ยมขึ้น */
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.stat-box {
+  text-align: center;
+  color: white;
+  padding: 15px;
+  border-radius: 4px;
+}
