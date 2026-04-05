@@ -31,7 +31,7 @@ CREATE TABLE `backup_logs` (
   `status` varchar(50) DEFAULT 'Success',
   `created_by` varchar(100) DEFAULT 'System',
   PRIMARY KEY (`log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -40,7 +40,7 @@ CREATE TABLE `backup_logs` (
 
 LOCK TABLES `backup_logs` WRITE;
 /*!40000 ALTER TABLE `backup_logs` DISABLE KEYS */;
-INSERT INTO `backup_logs` VALUES (20,'backup_31-03-2026_15-30-00.sql','database','0.02 MB','2026-03-31 15:30:00','Success','Auto Schedule'),(21,'backup_01-04-2026_14-30-00.sql','database','0.03 MB','2026-04-01 14:30:01','Success','Auto Schedule');
+INSERT INTO `backup_logs` VALUES (20,'backup_31-03-2026_15-30-00.sql','database','0.02 MB','2026-03-31 15:30:00','Success','Auto Schedule'),(21,'backup_01-04-2026_14-30-00.sql','database','0.03 MB','2026-04-01 14:30:01','Success','Auto Schedule'),(22,'backup_02-04-2026_14-30-00.sql','database','0.03 MB','2026-04-02 14:30:01','Success','Auto Schedule');
 /*!40000 ALTER TABLE `backup_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -84,6 +84,7 @@ CREATE TABLE `categories` (
   `project_id` int(11) DEFAULT NULL,
   `category_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `category_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `weighting_factor` decimal(5,2) NOT NULL DEFAULT '1.00' COMMENT 'ค่าตัวถ่วงน้ำหนัก',
   PRIMARY KEY (`category_id`),
   KEY `project_id` (`project_id`),
   CONSTRAINT `categories_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
@@ -97,7 +98,7 @@ CREATE TABLE `categories` (
 
 LOCK TABLES `categories` WRITE;
 /*!40000 ALTER TABLE `categories` DISABLE KEYS */;
-INSERT INTO `categories` VALUES (1,1,'Hardware','เครื่องแม่ข่ายสำหรับระบบงานฐานข้อมูล (DB Server)'),(2,1,'Hardware','อุปกรณ์สำหรับจัดเก็บข้อมูลแบบภายนอก (External Storage) SAN'),(3,1,'Hardware','อุปกรณ์กระจายสัญญาณ SAN Switch'),(4,1,'Hardware','เครื่องแม่ข่ายสำหรับสนับสนุนแอพพลิเคชั่นโปรแกรมประยุกต์ (App Server)'),(5,1,'Hardware','เครื่องแม่ข่ายสำหรับงานข้อมูลขนาดใหญ่ (Big Data Server)'),(6,1,'Hardware','อุปกรณ์กระจายสัญญาณ (L3 Switch)'),(7,1,'Hardware','เครื่องแม่ข่ายระบบงานวิเคราะห์และนำเสนอข้อมูล (Analytics Server)'),(8,1,'Software','ซอฟต์แวร์ HCI Sangfor V6.1.0'),(9,1,'Software','ระบบปฏิบัติการ Operating System (OS)'),(10,1,'Software','ซอฟต์แวร์ระบบบริหารจัดการฐานข้อมูลสัมพันธ์ (Oracle Database / RAC)'),(11,1,'Software','ซอฟต์แวร์สนับสนุนการทำงานโปรแกรมประยุกต์ (Oracle Web Logic Suite)'),(12,1,'Software','ซอฟต์แวร์สนับสนุนการเชื่อมโยงและแลกเปลี่ยนข้อมูล (Oracle SOA Suite)'),(13,1,'Software','ซอฟต์แวร์สนับสนุนการนำเข้าข้อมูลเพื่อระบบงานข้อมูลขนาดใหญ่ (ODI, Cloudera)'),(14,1,'Software','ซอฟต์แวร์ระบบการวิเคราะห์และนำเสนอข้อมูล (Oracle Analytics Server)'),(15,1,'Software','ซอฟต์แวร์ระบบการวิเคราะห์อัจฉริยะ (Oracle ESSBASE Plus)'),(16,1,'Application','Web Portal ระบบวิเคราะห์ข้อมูลขนาดใหญ่ด้านแรงงาน (Labour Big Data Analytics)'),(17,1,'Application','แพลตฟอร์มการเชื่อมโยงแลกเปลี่ยนข้อมูล (Open Data)'),(18,1,'Application','ระบบสนับสนุนการนำเข้าข้อมูลเพื่อระบบงานข้อมูลขนาดใหญ่'),(19,1,'Application','ระบบการวิเคราะห์และประมวลผลอัจฉริยะ Oracle Analytics'),(20,1,'Application','ระบบบริการเชื่อมโยงและแลกเปลี่ยนข้อมูล (MOL Data Exchange) กระทรวงแรงงาน'),(21,1,'Application','ระบบบริหารการประชุม (Meeting Management System)'),(22,1,'Application','ระบบบัญชีข้อมูลภาครัฐ Agency Data Catalog (CKAN)'),(23,1,'Application','ระบบรวบรวมข้อมูลออนไลน์'),(24,1,'Application','ระบบจัดเก็บข้อมูลขนาดใหญ่ (DATA LAKE)'),(25,1,'Service','ด้านข้อมูล'),(26,1,'Service','Query Data'),(27,1,'Service','Database'),(28,1,'Service','งานเชื่อมโยงข้อมูล API'),(29,1,'Service','รายงาน'),(30,1,'Service','บทวิเคราะห์');
+INSERT INTO `categories` VALUES (1,1,'Hardware','เครื่องแม่ข่ายสำหรับระบบงานฐานข้อมูล (DB Server)',1.00),(2,1,'Hardware','อุปกรณ์สำหรับจัดเก็บข้อมูลแบบภายนอก (External Storage) SAN',1.00),(3,1,'Hardware','อุปกรณ์กระจายสัญญาณ SAN Switch',1.00),(4,1,'Hardware','เครื่องแม่ข่ายสำหรับสนับสนุนแอพพลิเคชั่นโปรแกรมประยุกต์ (App Server)',1.00),(5,1,'Hardware','เครื่องแม่ข่ายสำหรับงานข้อมูลขนาดใหญ่ (Big Data Server)',1.00),(6,1,'Hardware','อุปกรณ์กระจายสัญญาณ (L3 Switch)',1.00),(7,1,'Hardware','เครื่องแม่ข่ายระบบงานวิเคราะห์และนำเสนอข้อมูล (Analytics Server)',1.00),(8,1,'Software','ซอฟต์แวร์ HCI Sangfor V6.1.0',1.00),(9,1,'Software','ระบบปฏิบัติการ Operating System (OS)',1.00),(10,1,'Software','ซอฟต์แวร์ระบบบริหารจัดการฐานข้อมูลสัมพันธ์ (Oracle Database / RAC)',1.00),(11,1,'Software','ซอฟต์แวร์สนับสนุนการทำงานโปรแกรมประยุกต์ (Oracle Web Logic Suite)',1.00),(12,1,'Software','ซอฟต์แวร์สนับสนุนการเชื่อมโยงและแลกเปลี่ยนข้อมูล (Oracle SOA Suite)',1.00),(13,1,'Software','ซอฟต์แวร์สนับสนุนการนำเข้าข้อมูลเพื่อระบบงานข้อมูลขนาดใหญ่ (ODI, Cloudera)',1.00),(14,1,'Software','ซอฟต์แวร์ระบบการวิเคราะห์และนำเสนอข้อมูล (Oracle Analytics Server)',1.00),(15,1,'Software','ซอฟต์แวร์ระบบการวิเคราะห์อัจฉริยะ (Oracle ESSBASE Plus)',1.00),(16,1,'Application','Web Portal ระบบวิเคราะห์ข้อมูลขนาดใหญ่ด้านแรงงาน (Labour Big Data Analytics)',1.00),(17,1,'Application','แพลตฟอร์มการเชื่อมโยงแลกเปลี่ยนข้อมูล (Open Data)',1.00),(18,1,'Application','ระบบสนับสนุนการนำเข้าข้อมูลเพื่อระบบงานข้อมูลขนาดใหญ่',1.00),(19,1,'Application','ระบบการวิเคราะห์และประมวลผลอัจฉริยะ Oracle Analytics',1.00),(20,1,'Application','ระบบบริการเชื่อมโยงและแลกเปลี่ยนข้อมูล (MOL Data Exchange) กระทรวงแรงงาน',1.00),(21,1,'Application','ระบบบริหารการประชุม (Meeting Management System)',1.00),(22,1,'Application','ระบบบัญชีข้อมูลภาครัฐ Agency Data Catalog (CKAN)',1.00),(23,1,'Application','ระบบรวบรวมข้อมูลออนไลน์',1.00),(24,1,'Application','ระบบจัดเก็บข้อมูลขนาดใหญ่ (DATA LAKE)',1.00),(25,1,'Service','ด้านข้อมูล',1.00),(26,1,'Service','Query Data',1.00),(27,1,'Service','Database',1.00),(28,1,'Service','งานเชื่อมโยงข้อมูล API',1.00),(29,1,'Service','รายงาน',1.00),(30,1,'Service','บทวิเคราะห์',1.00);
 /*!40000 ALTER TABLE `categories` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -174,12 +175,11 @@ CREATE TABLE `equipments` (
   `category_id` int(11) NOT NULL,
   `equipment_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `serial_number` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `weighting_factor` decimal(5,2) NOT NULL DEFAULT '1.00' COMMENT 'ค่าตัวถ่วง',
   `status` enum('Active','Inactive') COLLATE utf8mb4_unicode_ci DEFAULT 'Active',
   PRIMARY KEY (`equipment_id`),
   KEY `category_id` (`category_id`),
   CONSTRAINT `equipments_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -188,6 +188,7 @@ CREATE TABLE `equipments` (
 
 LOCK TABLES `equipments` WRITE;
 /*!40000 ALTER TABLE `equipments` DISABLE KEYS */;
+INSERT INTO `equipments` VALUES (1,1,'HPE ProLiant D360 Gen10','SGH031WCZZ','Active'),(2,1,'HPE ProLiant D360 Gen10','SGH031WD01','Active'),(3,2,'HPE MSA 2050','ACM028T387','Active'),(4,3,'HPE SN3600B','CZC018WZ73','Active'),(5,3,'HPE SN3600B','CZC018WZ0D','Active'),(6,4,'HPE ProLiant DL380 Gen10','SGH031WD20','Active'),(7,4,'HPE ProLiant DL380 Gen10','SGH031WD22','Active'),(8,5,'HPE ProLiant DL380 Gen10','SGH031W5SX','Active'),(9,5,'HPE ProLiant DL380 Gen10','SGH031W5SW','Active'),(10,5,'HPE ProLiant DL380 Gen10','SGH031W5SV','Active'),(11,5,'HPE ProLiant DL380 Gen10','SGH031W5ST','Active'),(12,5,'HPE ProLiant DL380 Gen10','SGH031W5SS','Active'),(13,5,'HPE ProLiant DL380 Gen10','SGH031W5SR','Active'),(14,5,'HPE ProLiant DL380 Gen10','SGH031W5SQ','Active'),(15,5,'HPE ProLiant DL380 Gen10','SGH031W5SP','Active'),(16,6,'Aruba 5406R zl2','SG03G4904L','Active'),(17,6,'Aruba 5406R zl2','SG03G49035','Active'),(18,7,'HPE ProLiant DL380 Gen10','SGH031WD14','Active'),(19,7,'HPE ProLiant DL380 Gen10','SGH031WD16','Active'),(20,8,'ซอฟต์แวร์ HCI Sangfor V6.1.0','A1AE7D521B014413','Active'),(21,9,'ระบบปฏิบัติการ Operating System (OS)','G3J29AAE','Active'),(22,10,'Oracle Database Enterprise Edition','A90611','Active'),(23,10,'Oracle Database Enterprise Edition','A90619','Active'),(24,10,'Oracle Real Application Cluster',NULL,'Active'),(25,11,'Oracle Web Logic Suite','L59008','Active'),(26,12,'Oracle SOA Suite','L17426','Active'),(27,13,'Oracle Data Integrator','L42186','Active'),(28,13,'Oracle Big Data Connector','L93999','Active'),(29,13,'Cloudera Database Enterprise Edition','G7M30AAE','Active'),(30,14,'Oracle Analytics Server','L104371','Active'),(31,15,'Oracle ESSBASE Plus','L61300','Active'),(32,15,'Oracle Analytics Server','L104371','Active'),(33,16,'Web Portal ระบบวิเคราะห์ข้อมูลขนาดใหญ่ด้านแรงงาน',NULL,'Active'),(34,17,'แพลตฟอร์มการเชื่อมโยงแลกเปลี่ยนข้อมูล (Open Data)',NULL,'Active'),(35,18,'ระบบสนับสนุนการนำเข้าข้อมูลเพื่อระบบงานข้อมูลขนาดใหญ่',NULL,'Active'),(36,19,'ระบบการวิเคราะห์และประมวลผลอัจฉริยะ Oracle Analytics',NULL,'Active'),(37,20,'ระบบบริการเชื่อมโยงและแลกเปลี่ยนข้อมูล (MOL Data Exchange)',NULL,'Active'),(38,21,'ระบบบริหารการประชุม (Meeting Management System)',NULL,'Active'),(39,22,'ระบบบัญชีข้อมูลภาครัฐ Agency Data Catalog (CKAN)',NULL,'Active'),(40,23,'ระบบรวบรวมข้อมูลออนไลน์',NULL,'Active'),(41,24,'ระบบจัดเก็บข้อมูลขนาดใหญ่ (DATA LAKE)',NULL,'Active');
 /*!40000 ALTER TABLE `equipments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -205,7 +206,7 @@ CREATE TABLE `github_sync_logs` (
   `created_by` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -261,7 +262,7 @@ CREATE TABLE `source_backup_logs` (
   `created_by` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -270,7 +271,7 @@ CREATE TABLE `source_backup_logs` (
 
 LOCK TABLES `source_backup_logs` WRITE;
 /*!40000 ALTER TABLE `source_backup_logs` DISABLE KEYS */;
-INSERT INTO `source_backup_logs` VALUES (5,'src_31-03-2026_15-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-03-31 08:30:02'),(7,'src_01-04-2026_14-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-04-01 07:30:03');
+INSERT INTO `source_backup_logs` VALUES (5,'src_31-03-2026_15-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-03-31 08:30:02'),(7,'src_01-04-2026_14-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-04-01 07:30:03'),(8,'src_02-04-2026_14-30-00.zip','frontend,backend','0.24 MB','Success','Auto Schedule','2026-04-02 07:30:04');
 /*!40000 ALTER TABLE `source_backup_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -345,7 +346,7 @@ CREATE TABLE `ticket_logs` (
   `detail` text,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -354,7 +355,7 @@ CREATE TABLE `ticket_logs` (
 
 LOCK TABLES `ticket_logs` WRITE;
 /*!40000 ALTER TABLE `ticket_logs` DISABLE KEYS */;
-INSERT INTO `ticket_logs` VALUES (1,4,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','รายละเอียดที่แก้ไข: mvlld','2026-03-25 15:26:54'),(2,4,'ตีกลับให้แก้ไขใหม่','แจ้ง งาน','ผู้แจ้งตรวจสอบพบว่ายังใช้งานไม่ได้ ส่งให้ช่างแก้ใหม่','2026-03-25 15:29:04'),(3,4,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','รายละเอียดที่แก้ไข: mvlldasdsasd','2026-03-25 15:30:11'),(4,4,'ตีกลับให้แก้ไขใหม่','แจ้ง งาน','ผู้แจ้งตรวจสอบพบว่ายังใช้งานไม่ได้ ส่งให้ช่างแก้ใหม่','2026-03-25 15:39:43'),(5,4,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','รายละเอียด: mvlld','2026-03-25 15:40:03'),(6,5,'รับงาน','ช่างใหม่ ไฟแรง','ช่างกดรับผิดชอบงานนี้เข้าตัวเอง','2026-03-25 15:41:42'),(7,5,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','วิธีแก้ไข: แก้ไขครั้งที่ 1\n[แนบไฟล์: Firewall Policy.docx]','2026-03-25 15:59:27'),(8,5,'ตีกลับให้แก้ไขใหม่','แจ้ง งาน','เหตุผลที่ตีกลับ: ยังเข้าไม่ได้เลย\n[แนบไฟล์เพิ่มเติม: 1774457474051.doc]','2026-03-25 16:51:14'),(9,5,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','วิธีแก้ไข: แก้ไขครั้งที่ 2 ตรวจสอบอีกครั้งครับ\n[แนบไฟล์: 1774457568379.jpg]','2026-03-25 16:52:48'),(10,5,'ปิดเคสสมบูรณ์','แจ้ง งาน','ผู้แจ้งตรวจสอบและยืนยันการปิดงาน','2026-03-25 17:15:23'),(11,4,'ปิดเคสสมบูรณ์','นายวุฒิไกร พรหมเรือง','ผู้แจ้งตรวจสอบและยืนยันการปิดงาน','2026-03-28 14:29:43'),(12,3,'มอบหมายงาน','นายวุฒิไกร พรหมเรือง','จ่ายงานให้: ช่างใหม่ ไฟแรง','2026-03-29 09:47:41'),(13,3,'อัปเดตงาน (Resolved)','นายวุฒิไกร พรหมเรือง','วิธีแก้ไข: ๆสสไไำสา่หๆสา้นๆร นืหก่้ดนฟยหนกบๆไ่กฟาหกฟส าห่กฟาห่ก ๆนืไำกสฟืสหกืฟน ่หกร่ๆร กๆืืดนฟรกฟ ืหกาืฟสหากฟนหรก่ฟสหากสฟหก่ฟยหนก่ๆยาไทกืฟสาืห \n\nฟห่กฟาห่กา่ๆ่ไกาสฟหสาก่ ๆร่ๆาไ่ำาๆื ทืฟมหวฟากๆไราำบๆยไ','2026-03-29 09:48:39'),(14,3,'ตีกลับให้แก้ไขใหม่','นายวุฒิไกร พรหมเรือง','เหตุผลที่ตีกลับ: ไำๆไำผป(แฤฆฏ๐\"ฎ','2026-03-29 09:49:17');
+INSERT INTO `ticket_logs` VALUES (1,4,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','รายละเอียดที่แก้ไข: mvlld','2026-03-25 15:26:54'),(2,4,'ตีกลับให้แก้ไขใหม่','แจ้ง งาน','ผู้แจ้งตรวจสอบพบว่ายังใช้งานไม่ได้ ส่งให้ช่างแก้ใหม่','2026-03-25 15:29:04'),(3,4,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','รายละเอียดที่แก้ไข: mvlldasdsasd','2026-03-25 15:30:11'),(4,4,'ตีกลับให้แก้ไขใหม่','แจ้ง งาน','ผู้แจ้งตรวจสอบพบว่ายังใช้งานไม่ได้ ส่งให้ช่างแก้ใหม่','2026-03-25 15:39:43'),(5,4,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','รายละเอียด: mvlld','2026-03-25 15:40:03'),(6,5,'รับงาน','ช่างใหม่ ไฟแรง','ช่างกดรับผิดชอบงานนี้เข้าตัวเอง','2026-03-25 15:41:42'),(7,5,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','วิธีแก้ไข: แก้ไขครั้งที่ 1\n[แนบไฟล์: Firewall Policy.docx]','2026-03-25 15:59:27'),(8,5,'ตีกลับให้แก้ไขใหม่','แจ้ง งาน','เหตุผลที่ตีกลับ: ยังเข้าไม่ได้เลย\n[แนบไฟล์เพิ่มเติม: 1774457474051.doc]','2026-03-25 16:51:14'),(9,5,'ส่งตรวจสอบ','ช่างใหม่ ไฟแรง','วิธีแก้ไข: แก้ไขครั้งที่ 2 ตรวจสอบอีกครั้งครับ\n[แนบไฟล์: 1774457568379.jpg]','2026-03-25 16:52:48'),(10,5,'ปิดเคสสมบูรณ์','แจ้ง งาน','ผู้แจ้งตรวจสอบและยืนยันการปิดงาน','2026-03-25 17:15:23'),(11,4,'ปิดเคสสมบูรณ์','นายวุฒิไกร พรหมเรือง','ผู้แจ้งตรวจสอบและยืนยันการปิดงาน','2026-03-28 14:29:43'),(12,3,'มอบหมายงาน','นายวุฒิไกร พรหมเรือง','จ่ายงานให้: ช่างใหม่ ไฟแรง','2026-03-29 09:47:41'),(13,3,'อัปเดตงาน (Resolved)','นายวุฒิไกร พรหมเรือง','วิธีแก้ไข: ๆสสไไำสา่หๆสา้นๆร นืหก่้ดนฟยหนกบๆไ่กฟาหกฟส าห่กฟาห่ก ๆนืไำกสฟืสหกืฟน ่หกร่ๆร กๆืืดนฟรกฟ ืหกาืฟสหากฟนหรก่ฟสหากสฟหก่ฟยหนก่ๆยาไทกืฟสาืห \n\nฟห่กฟาห่กา่ๆ่ไกาสฟหสาก่ ๆร่ๆาไ่ำาๆื ทืฟมหวฟากๆไราำบๆยไ','2026-03-29 09:48:39'),(14,3,'ตีกลับให้แก้ไขใหม่','นายวุฒิไกร พรหมเรือง','เหตุผลที่ตีกลับ: ไำๆไำผป(แฤฆฏ๐\"ฎ','2026-03-29 09:49:17'),(15,2,'รับงาน','ช่างใหม่ ไฟแรง','ช่างกดรับผิดชอบงานนี้เข้าตัวเอง','2026-04-02 10:31:30');
 /*!40000 ALTER TABLE `ticket_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -452,7 +453,7 @@ CREATE TABLE `tickets` (
   CONSTRAINT `tickets_ibfk_1` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `tickets_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`),
   CONSTRAINT `tickets_ibfk_3` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -461,7 +462,7 @@ CREATE TABLE `tickets` (
 
 LOCK TABLES `tickets` WRITE;
 /*!40000 ALTER TABLE `tickets` DISABLE KEYS */;
-INSERT INTO `tickets` VALUES (1,'1/2569',1,NULL,22,1,'',NULL,'<p>เพิ่มชุดข้อมูล</p>','Pending','2026-04-02 07:11:55','2026-04-02 07:11:55',NULL,0,0,NULL,NULL,NULL,0,0.00),(2,'2/2569',1,NULL,6,1,'',NULL,'<p>เครื่องดับ</p>','Pending','2026-04-02 07:12:14','2026-04-02 07:12:14',NULL,1,6,NULL,NULL,'2026-04-02 20:12:14',0,0.00);
+INSERT INTO `tickets` VALUES (1,'1/2569',1,NULL,22,1,'',NULL,'<p>เพิ่มชุดข้อมูล</p>','Pending','2026-04-02 07:11:55','2026-04-02 07:11:55',NULL,0,0,NULL,NULL,NULL,0,0.00),(2,'2/2569',1,2,6,1,'',NULL,'<p>เครื่องดับ</p>','In Progress','2026-04-02 07:12:14','2026-04-02 10:31:30',NULL,1,6,'2026-04-02 17:31:30',NULL,'2026-04-02 20:12:14',1,10000.00),(3,'3/2569',1,NULL,7,1,'',NULL,'<p>ทดสอบ</p>','Pending','2026-04-02 08:43:48','2026-04-02 08:43:48',NULL,1,6,NULL,NULL,'2026-04-02 21:43:48',0,0.00),(4,'4/2569',1,NULL,22,1,'',NULL,'<p></p>','Pending','2026-04-02 09:41:13','2026-04-02 09:41:13',NULL,1,12,NULL,NULL,'2026-04-03 04:41:13',0,0.00);
 /*!40000 ALTER TABLE `tickets` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -549,4 +550,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-02 14:30:01
+-- Dump completed on 2026-04-03 14:30:02
