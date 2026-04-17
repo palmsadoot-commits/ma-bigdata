@@ -246,3 +246,35 @@ CREATE TABLE `github_sync_logs` (
 LOCK TABLES `github_sync_logs` WRITE;
 /*!40000 ALTER TABLE `github_sync_logs` DISABLE KEYS */;
 INSERT INTO `github_sync_logs` VALUES (18,'database,source','สำเร็จ','Auto Schedule','2026-03-31 08:30:03'),(20,'database,source','สำเร็จ','Admin (Manual)','2026-04-05 12:23:39');
+/*!40000 ALTER TABLE `github_sync_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `projects`
+--
+
+DROP TABLE IF EXISTS `projects`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `projects` (
+  `project_id` int(11) NOT NULL AUTO_INCREMENT,
+  `project_name` varchar(150) NOT NULL,
+  `project_contract` varchar(100) DEFAULT NULL,
+  `contract_value` decimal(15,2) DEFAULT 0.00,
+  `penalty_rate` decimal(10,4) DEFAULT 0.0010,
+  `description` text DEFAULT NULL,
+  `vendor_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`project_id`),
+  KEY `fk_projects_vendor` (`vendor_id`),
+  CONSTRAINT `fk_projects_vendor` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`vendor_id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `projects`
+--
+
+LOCK TABLES `projects` WRITE;
+/*!40000 ALTER TABLE `projects` DISABLE KEYS */;
+INSERT INTO `projects` VALUES (1,'MA BIGDATA','19/2569',0.00,0.0010,'ระบบหลัก',1,'2026-03-25 09:47:07'),(2,'NLIC','87/2121',0.00,0.0010,'ฟหก',NULL,'2026-03-28 14:14:16');
