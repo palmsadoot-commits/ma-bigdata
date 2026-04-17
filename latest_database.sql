@@ -59,7 +59,7 @@ CREATE TABLE `backup_logs` (
   `status` varchar(50) DEFAULT 'Success',
   `created_by` varchar(100) DEFAULT 'System',
   PRIMARY KEY (`log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -254,6 +254,33 @@ INSERT INTO `github_settings` VALUES (1,'ghp_GpzF7XdFwX6xGEJgQwhsED0Y7QvJ4h24Kps
 UNLOCK TABLES;
 
 --
+-- Table structure for table `github_sync_logs`
+--
+
+DROP TABLE IF EXISTS `github_sync_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `github_sync_logs` (
+  `log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `sync_targets` varchar(255) DEFAULT NULL,
+  `status` varchar(255) DEFAULT NULL,
+  `created_by` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`log_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `github_sync_logs`
+--
+
+LOCK TABLES `github_sync_logs` WRITE;
+/*!40000 ALTER TABLE `github_sync_logs` DISABLE KEYS */;
+INSERT INTO `github_sync_logs` VALUES (18,'database,source','สำเร็จ','Auto Schedule','2026-03-31 08:30:03'),(20,'database,source','สำเร็จ','Admin (Manual)','2026-04-05 12:23:39');
+/*!40000 ALTER TABLE `github_sync_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `projects`
 --
 
@@ -301,7 +328,7 @@ CREATE TABLE `source_backup_logs` (
   `created_by` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -310,7 +337,7 @@ CREATE TABLE `source_backup_logs` (
 
 LOCK TABLES `source_backup_logs` WRITE;
 /*!40000 ALTER TABLE `source_backup_logs` DISABLE KEYS */;
-INSERT INTO `source_backup_logs` VALUES (5,'src_31-03-2026_15-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-03-31 08:30:02'),(7,'src_01-04-2026_14-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-04-01 07:30:03'),(8,'src_02-04-2026_14-30-00.zip','frontend,backend','0.24 MB','Success','Auto Schedule','2026-04-02 07:30:04'),(9,'src_03-04-2026_14-30-00.zip','frontend,backend','0.25 MB','Success','Auto Schedule','2026-04-03 07:30:02'),(11,'src_18-04-2026_1776451775713.zip','frontend,backend','0.28 MB','Success','Admin (Manual)','2026-04-17 18:49:44');
+INSERT INTO `source_backup_logs` VALUES (5,'src_31-03-2026_15-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-03-31 08:30:02'),(7,'src_01-04-2026_14-30-00.zip','frontend,backend','0.23 MB','Success','Auto Schedule','2026-04-01 07:30:03'),(8,'src_02-04-2026_14-30-00.zip','frontend,backend','0.24 MB','Success','Auto Schedule','2026-04-02 07:30:04'),(9,'src_03-04-2026_14-30-00.zip','frontend,backend','0.25 MB','Success','Auto Schedule','2026-04-03 07:30:02'),(12,'src_18-04-2026_1776455094652.zip','frontend,backend','0.28 MB','Success','Admin (Manual)','2026-04-17 19:45:04');
 /*!40000 ALTER TABLE `source_backup_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -670,4 +697,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-18  1:49:50
+-- Dump completed on 2026-04-18  2:45:13
