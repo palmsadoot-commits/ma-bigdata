@@ -230,7 +230,7 @@ const performGithubSync = async (triggerBy = 'System', syncTargets = ['database'
         const syncDir = path.resolve(__dirname, '../../backups/github_sync');
         if (!fs.existsSync(syncDir)) fs.mkdirSync(syncDir, { recursive: true });
 
-        // 🚀 ใช้ Git Binary จาก .env หรือค่ามาตรฐาน
+        // 🚀 ใช้ Git Binary จาก .env หรือค่ามาตรฐาน พร้อมเปิดใช้ unsafe สำหรับ Path ที่มีช่องว่าง
         const git = simpleGit({
             baseDir: syncDir,
             binary: process.env.GIT_PATH || 'git',
@@ -239,6 +239,7 @@ const performGithubSync = async (triggerBy = 'System', syncTargets = ['database'
                 allowUnsafeCustomBinary: true
             }
         });
+
         const isRepo = await git.checkIsRepo();
         if (!isRepo) {
             await git.init();
@@ -283,7 +284,17 @@ const performGithubSync = async (triggerBy = 'System', syncTargets = ['database'
         // 🟢 2. จัดการ Source Code (แบบไฟล์ดิบ Raw Files)
         if (syncTargets.includes('source')) {
             const projectRoot = path.resolve(__dirname, '../..');
-            const ignoredPatterns = ['node_modules', '.git', 'backups', 'dist', 'build', '.env'];
+            // 🛡️ ปรับปรุงรายการที่ต้องละเว้น เพื่อความปลอดภัยและความสะอาดของ Repo
+            const ignoredPatterns = [
+                'node_modules', 
+                '.git', 
+                'backups', 
+                'dist', 
+                'build', 
+                '.env',
+                '_backups',   // ✅ เพิ่มการละเว้นโฟลเดอร์ Backup (ป้องกัน Secret Leak)
+                '_history'    // ✅ เพิ่มการละเว้นโฟลเดอร์ History
+            ];
             
             // ฟังก์ชันช่วยคัดลอกไฟล์แบบ Recursive พร้อม Filter
             const copyRecursiveSync = (src, dest) => {
@@ -747,5 +758,3 @@ module.exports = {
     bulkDeleteGDriveLogs,
     getGDriveQuota
 };
-
-
