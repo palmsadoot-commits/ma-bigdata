@@ -664,19 +664,35 @@ const verifyGDriveFiles = async (fileIdsArray) => {
 
 /**
  * 🗑️ ลบไฟล์สำรองข้อมูลแบบกลุ่ม (Bulk Delete Database)
+ * รองรับทั้ง Array ของชื่อไฟล์ หรือ Array ของ log_id
  */
-const bulkDeleteBackups = async (fileNames) => {
+const bulkDeleteBackups = async (identifiers) => {
     const backupDir = path.resolve(__dirname, '../../backups/database');
     let deletedCount = 0;
 
-    for (const fileName of fileNames) {
+    for (const item of identifiers) {
         try {
+            let fileName = item;
+            
+            // 🔍 ถ้าเป็นตัวเลข (log_id) ให้หาชื่อไฟล์จาก DB ก่อน
+            if (typeof item === 'number') {
+                const [rows] = await db.query('SELECT file_name FROM backup_logs WHERE log_id = ?', [item]);
+                if (rows.length > 0) fileName = rows[0].file_name;
+                else continue;
+            }
+
             const filePath = path.join(backupDir, fileName);
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-            await db.query('DELETE FROM backup_logs WHERE file_name = ?', [fileName]);
+            
+            // ลบจาก DB (รองรับทั้งลบด้วยชื่อหรือ ID)
+            if (typeof item === 'number') {
+                await db.query('DELETE FROM backup_logs WHERE log_id = ?', [item]);
+            } else {
+                await db.query('DELETE FROM backup_logs WHERE file_name = ?', [item]);
+            }
             deletedCount++;
         } catch (err) {
-            console.warn(`⚠️ Could not delete ${fileName}:`, err.message);
+            console.warn(`⚠️ Could not delete ${item}:`, err.message);
         }
     }
     return deletedCount;
@@ -685,18 +701,32 @@ const bulkDeleteBackups = async (fileNames) => {
 /**
  * 🗑️ ลบไฟล์สำรอง Source Code แบบกลุ่ม (Bulk Delete Source)
  */
-const bulkDeleteSourceBackups = async (fileNames) => {
+const bulkDeleteSourceBackups = async (identifiers) => {
     const backupDir = path.resolve(__dirname, '../../backups/source');
     let deletedCount = 0;
 
-    for (const fileName of fileNames) {
+    for (const item of identifiers) {
         try {
+            let fileName = item;
+            
+            // 🔍 ถ้าเป็นตัวเลข (log_id) ให้หาชื่อไฟล์จาก DB ก่อน
+            if (typeof item === 'number') {
+                const [rows] = await db.query('SELECT file_name FROM source_backup_logs WHERE log_id = ?', [item]);
+                if (rows.length > 0) fileName = rows[0].file_name;
+                else continue;
+            }
+
             const filePath = path.join(backupDir, fileName);
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-            await db.query('DELETE FROM source_backup_logs WHERE file_name = ?', [fileName]);
+            
+            if (typeof item === 'number') {
+                await db.query('DELETE FROM source_backup_logs WHERE log_id = ?', [item]);
+            } else {
+                await db.query('DELETE FROM source_backup_logs WHERE file_name = ?', [item]);
+            }
             deletedCount++;
         } catch (err) {
-            console.warn(`⚠️ Could not delete source ${fileName}:`, err.message);
+            console.warn(`⚠️ Could not delete source ${item}:`, err.message);
         }
     }
     return deletedCount;

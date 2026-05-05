@@ -1489,7 +1489,7 @@ export default function BackupManagement() {
             label: <span><CodeOutlined /> สำรองข้อมูล (Source)</span>,
             forceRender: true,
             children: (
-              <Row gutter={[24, 24]} style={{ marginTop: '0px' }}>
+              <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
                   <StorageStatusBar 
                     title="พื้นที่สำรองข้อมูล (Source)" 
@@ -1528,23 +1528,28 @@ export default function BackupManagement() {
                     title={
                         <Space>
                             <CodeOutlined /> 
-                            ประวัติการสำรอง Source Code (Zip)
-                            {selectedSrcKeys.length > 0 && <Badge count={selectedSrcKeys.length} style={{ backgroundColor: '#ff4d4f' }} />}
+                            ประวัติการสำรอง Source Code
                         </Space>
                     } 
                     extra={
                         <Space>
                             {selectedSrcKeys.length > 0 && (
-                                <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteSource}>
-                                    ลบ {selectedSrcKeys.length} รายการ
-                                </Button>
+                                <>
+                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedSrcKeys([])}>ยกเลิก {selectedSrcKeys.length}</Button>
+                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteSource}>
+                                        ลบ {selectedSrcKeys.length}
+                                    </Button>
+                                </>
                             )}
                             <Button type="primary" icon={<FileZipOutlined />} onClick={handleManualSourceBackup} disabled={isZipping} style={{ backgroundColor: '#8b5cf6' }}>เริ่มบีบอัดทันที</Button>
                         </Space>
                     } 
                     variant="borderless" 
                     style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' } }}
+                    styles={{ 
+                      header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
+                      body: { padding: 0 }
+                    }}
                   >
                     {isZipping && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#8b5cf6' }}>กำลังบีบอัดไฟล์...</Text><Progress percent={zipProgress} status="active" strokeColor="#8b5cf6" /></div>}
                     <Table 
@@ -1555,7 +1560,7 @@ export default function BackupManagement() {
                       columns={sourceColumns} 
                       dataSource={sourceLogs} 
                       rowKey="log_id" 
-                      pagination={{ pageSize: 8 }} 
+                      pagination={{ pageSize: 10 }} 
                       loading={sourceLoading} 
                       size="middle" 
                       scroll={{ x: 'max-content' }} 
@@ -1572,7 +1577,7 @@ export default function BackupManagement() {
             label: <span><DatabaseOutlined /> สำรองข้อมูล (DB)</span>,
             forceRender: true,
             children: (
-              <Row gutter={[24, 24]} style={{ marginTop: '0px' }}>
+              <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={8}>
                   <StorageStatusBar 
                     title="พื้นที่สำรองข้อมูล (DB)" 
@@ -1587,7 +1592,7 @@ export default function BackupManagement() {
                     styles={{ header: { backgroundColor: '#0EA5E9', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}
                   >
                     <Form form={form} layout="vertical" onFinish={handleSaveSettings}>
-                      <Form.Item name="is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                      <Form.Item name="is_active" id="db_is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                         <Checkbox><Text strong style={{ color: '#0EA5E9' }}>เปิดใช้งาน Auto Backup (Database)</Text></Checkbox>
                       </Form.Item>
                       <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รูปแบบรอบการทำงาน</Text>}>
@@ -1605,7 +1610,7 @@ export default function BackupManagement() {
                           return null;
                         }}
                       </Form.Item>
-                      <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล (แนะนำ 00:30 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
+                      <Form.Item name="schedule_time" id="db_schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล (แนะนำ 00:30 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
                         <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
                       </Form.Item>
                       <Divider style={{ borderColor: 'var(--border-color)' }}/><Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#0EA5E9' }}>บันทึกการตั้งค่า</Button>
@@ -1618,22 +1623,27 @@ export default function BackupManagement() {
                         <Space>
                             <DatabaseOutlined /> 
                             ประวัติการสำรองฐานข้อมูล
-                            {selectedDbKeys.length > 0 && <Badge count={selectedDbKeys.length} style={{ backgroundColor: '#ff4d4f' }} />}
                         </Space>
                     } 
                     extra={
                         <Space>
                             {selectedDbKeys.length > 0 && (
-                                <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteDb}>
-                                    ลบ {selectedDbKeys.length} รายการ
-                                </Button>
+                                <>
+                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedDbKeys([])}>ยกเลิก {selectedDbKeys.length}</Button>
+                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteDb}>
+                                        ลบ {selectedDbKeys.length}
+                                    </Button>
+                                </>
                             )}
                             <Button type="primary" icon={<DatabaseOutlined />} onClick={handleManualBackup} disabled={isDbBackingUp} style={{ backgroundColor: '#0EA5E9' }}>สำรอง DB ทันที</Button>
                         </Space>
                     } 
                     variant="borderless" 
                     style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' } }}
+                    styles={{ 
+                      header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
+                      body: { padding: 0 }
+                    }}
                   >
                     {isDbBackingUp && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#0EA5E9' }}>กำลังส่งออกไฟล์...</Text><Progress percent={dbProgress} status="active" strokeColor="#0EA5E9" /></div>}
                     <Table 
@@ -1644,7 +1654,7 @@ export default function BackupManagement() {
                       columns={columns} 
                       dataSource={logs} 
                       rowKey="log_id" 
-                      pagination={{ pageSize: 8 }} 
+                      pagination={{ pageSize: 10 }} 
                       loading={loading && !isDbBackingUp} 
                       size="middle" 
                       scroll={{ x: 'max-content' }} 
@@ -1658,10 +1668,10 @@ export default function BackupManagement() {
           },
           {
             key: '3',
-            label: <span><GithubOutlined /> อัปโหลดขึ้น Cloud (GitHub)</span>,
+            label: <span><GithubOutlined /> อัปโหลดขึ้น (GitHub)</span>,
             forceRender: true,
             children: (
-              <Row gutter={[24, 24]} style={{ marginTop: '0px' }}>
+              <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
                   <StorageStatusBar 
                     title="พื้นที่บน GitHub (โควตาจำลอง)" 
@@ -1673,7 +1683,7 @@ export default function BackupManagement() {
                   <Card title={<><SettingOutlined /> ตั้งค่า GitHub (Auto Push)</>} 
  variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: '#1f2937', color: '#fff', borderBottom: '1px solid var(--border-color)' } }}>
                     <Form form={githubForm} layout="vertical" onFinish={handleSaveGithubSettings}>
-                      <Form.Item name="is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}><Checkbox><Text strong style={{ color: 'var(--text-main)' }}>เปิดใช้งาน Auto Push</Text></Checkbox></Form.Item>
+                      <Form.Item name="is_active" id="github_is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}><Checkbox><Text strong style={{ color: 'var(--text-main)' }}>เปิดใช้งาน Auto Push</Text></Checkbox></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>GitHub Token (PAT)</Text>} name="github_token" rules={[{ required: true, message: 'กรุณากรอก Token' }]}><Input.Password placeholder="ghp_xxxx" size="large" /></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Repository URL</Text>} name="repo_url" rules={[{ required: true, message: 'กรุณากรอก URL' }]}><Input placeholder="https://github.com/..." size="large" /></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Branch เป้าหมาย</Text>} name="branch_name"><Input placeholder="main" size="large" /></Form.Item>
@@ -1694,7 +1704,7 @@ export default function BackupManagement() {
                           return null;
                         }}
                       </Form.Item>
-                      <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาดำเนินการ (แนะนำ 01:00 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
+                      <Form.Item name="schedule_time" id="github_schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาดำเนินการ (แนะนำ 01:00 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
                         <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
                       </Form.Item>
                       <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#111827' }}>บันทึกการตั้งค่า GitHub</Button>
@@ -1707,22 +1717,27 @@ export default function BackupManagement() {
                         <Space>
                             <GithubOutlined /> 
                             ประวัติการ Push
-                            {selectedGitKeys.length > 0 && <Badge count={selectedGitKeys.length} style={{ backgroundColor: '#ff4d4f' }} />}
                         </Space>
                     } 
                     extra={
                         <Space>
                             {selectedGitKeys.length > 0 && (
-                                <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGithub}>
-                                    ลบ {selectedGitKeys.length} รายการ
-                                </Button>
+                                <>
+                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedGitKeys([])}>ยกเลิก {selectedGitKeys.length}</Button>
+                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGithub}>
+                                        ลบ {selectedGitKeys.length}
+                                    </Button>
+                                </>
                             )}
                             <Button type="primary" icon={<GithubOutlined />} onClick={handleManualGithubPush} disabled={isGithubPushing} style={{ backgroundColor: '#111827' }}>Push ทันที</Button>
                         </Space>
                     } 
                     variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }} 
-                    styles={{ header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' } }}
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
+                    styles={{ 
+                      header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
+                      body: { padding: 0 }
+                    }}
                   >
                     {isGithubPushing && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#111827' }}>กำลังส่งข้อมูล...</Text><Progress percent={githubProgress} status="active" strokeColor="#111827" /></div>}
                     <Table 
@@ -1733,7 +1748,7 @@ export default function BackupManagement() {
                       columns={githubColumns} 
                       dataSource={githubLogs} 
                       rowKey="log_id" 
-                      pagination={{ pageSize: 8 }} 
+                      pagination={{ pageSize: 10 }} 
                       loading={githubLoading} 
                       size="middle" 
                       scroll={{ x: 'max-content' }} 
@@ -1749,7 +1764,7 @@ export default function BackupManagement() {
             label: <span><GoogleOutlined /> อัปโหลดขึ้น Cloud (GDrive)</span>,
             forceRender: true,
             children: (
-              <Row gutter={[24, 24]} style={{ marginTop: '0px' }}>
+              <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
                   <StorageStatusBar 
                     title="พื้นที่บน Google Drive" 
@@ -1796,22 +1811,27 @@ export default function BackupManagement() {
                         <Space>
                             <GoogleOutlined /> 
                             ประวัติการอัปโหลด
-                            {selectedGdriveKeys.length > 0 && <Badge count={selectedGdriveKeys.length} style={{ backgroundColor: '#ff4d4f' }} />}
                         </Space>
                     } 
                     extra={
                         <Space>
                             {selectedGdriveKeys.length > 0 && (
-                                <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGdrive}>
-                                    ลบ {selectedGdriveKeys.length} รายการ
-                                </Button>
+                                <>
+                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedGdriveKeys([])}>ยกเลิก {selectedGdriveKeys.length}</Button>
+                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGdrive}>
+                                        ลบ {selectedGdriveKeys.length}
+                                    </Button>
+                                </>
                             )}
                             <Button type="primary" icon={<GoogleOutlined />} onClick={handleManualGdrivePush} disabled={isGdrivePushing} style={{ backgroundColor: '#10b981' }}>Upload ทันที</Button>
                         </Space>
                     } 
                     variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }} 
-                    styles={{ header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' } }}
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
+                    styles={{ 
+                      header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
+                      body: { padding: 0 }
+                    }}
                   >
                     {isGdrivePushing && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#10b981' }}>กำลังเชื่อมต่อและอัปโหลดข้อมูล...</Text><Progress percent={gdriveProgress} status="active" strokeColor="#10b981" /></div>}
                     <Table 
@@ -1822,7 +1842,7 @@ export default function BackupManagement() {
                       columns={gdriveColumns} 
                       dataSource={gdriveLogs} 
                       rowKey="log_id" 
-                      pagination={{ pageSize: 8 }} 
+                      pagination={{ pageSize: 10 }} 
                       loading={gdriveLoading} 
                       size="middle" 
                       scroll={{ x: 'max-content' }}
@@ -1845,7 +1865,7 @@ export default function BackupManagement() {
             label: <span><ClearOutlined /> ล้างข้อมูล (Cleanup)</span>,
             forceRender: true,
             children: (
-              <Row gutter={[24, 24]} style={{ marginTop: '0px' }}>
+              <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
                   <StorageStatusBar 
                     title="พื้นที่ที่สามารถล้างข้อมูลได้ (Local)" 
@@ -2120,11 +2140,12 @@ export default function BackupManagement() {
                 if (status === 'error') return <Tag color="error">ล้มเหลว</Tag>;
                 if (status === 'missed') return <Tag color="error" style={{ fontWeight: 'bold' }}>เลยกำหนด/ไม่พบข้อมูล</Tag>;
                 return <Tag color="default">รอดำเนินการ</Tag>;
-              }
-            }
-          ]}
-        />
-      </Modal>
-    </div>
-  );
-}
+                }
+                }
+                ]}
+                />
+                </Modal>
+                </div>
+                );
+                };
+
