@@ -125,4 +125,41 @@ const sendLineToUser = async (lineId, message) => {
     }
 };
 
-module.exports = { sendLineNotify, sendEmail, sendLineMention, sendLineToUser };
+/**
+ * 📦 Send a notification for Backup/Sync Status
+ * @param {string} type - 'Database', 'Source Code', 'GitHub', 'GDrive'
+ * @param {string} status - 'Success', 'Failed'
+ * @param {string} details - Additional info (filename, error, etc.)
+ */
+const sendBackupNotification = async (type, status, details) => {
+    try {
+        const [rows] = await db.query('SELECT line_notify_token, line_group_id, enable_line, notify_backup_status FROM system_settings WHERE id = 1');
+        const config = rows[0];
+
+        if (!config || config.enable_line !== 1 || config.notify_backup_status !== 1 || !config.line_notify_token || !config.line_group_id) return;
+
+        const isSuccess = status.toLowerCase().includes('success') || status.includes('สำเร็จ');
+        const icon = isSuccess ? '✅' : '❌';
+        
+        const message = `${icon} [แจ้งเตือนระบบสำรองข้อมูล]\n` +
+                        `📂 ประเภท: ${type}\n` +
+                        `📊 สถานะ: ${status}\n` +
+                        `📝 รายละเอียด: ${details}\n` +
+                        `⏰ เวลา: ${new Date().toLocaleString('th-TH')}`;
+
+        await axios.post('https://api.line.me/v2/bot/message/push', {
+            to: config.line_group_id,
+            messages: [{ type: 'text', text: message }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.line_notify_token}`
+            }
+        });
+        console.log(`✅ LINE Backup Notification sent: ${type} - ${status}`);
+    } catch (err) {
+        console.error('❌ Failed to send Backup Notification:', err.response?.data || err.message);
+    }
+};
+
+module.exports = { sendLineNotify, sendEmail, sendLineMention, sendLineToUser, sendBackupNotification };

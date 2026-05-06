@@ -45,5 +45,6 @@ router.get('/task-history', authenticateToken, requireRole(['admin']), backupCon
 
 // Storage Stats
 router.get('/storage-stats', authenticateToken, requireRole(['admin']), backupController.getStorageStats);
+router.get('/storage-history', authenticateToken, requireRole(['admin']), backupController.getStorageHistory); // ✅ เพิ่มฟิลด์ประวัติย้อนหลัง
 
 module.exports = router;

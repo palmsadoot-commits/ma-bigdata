@@ -171,8 +171,16 @@ const setupTaskHistoryCronJob = async () => {
         await taskHistoryService.syncMissedTasks();
     });
 
+    // 3. บันทึกสถิติพื้นที่จัดเก็บ (รันทุกวัน เวลา 23:55 น.)
+    cron.schedule('55 23 * * *', async () => {
+        console.log('📊 [Storage Analytics] Recording daily snapshot...');
+        await backupService.takeStorageSnapshot();
+    });
+
     // ✅ รันครั้งแรกทันทีเมื่อเปิด Server
     console.log('🚀 [Task History] Initializing task history...');
+    await backupService.takeStorageSnapshot(); // ✅ บันทึกสถิติทันทีที่เริ่มระบบ
+    
     for (let i = 0; i <= 7; i++) { // สร้างเฉพาะวันนี้และล่วงหน้า 7 วัน (ไม่ย้อนหลังเพื่อรักษาประวัติเดิม)
         const targetDate = dayjs().add(i, 'day');
         await taskHistoryService.generateTasksForDate(targetDate);

@@ -10,8 +10,13 @@ import {
   CloudServerOutlined, SaveOutlined, DeleteOutlined, CheckCircleOutlined, 
   CloseCircleOutlined, CodeOutlined, FileZipOutlined, GithubOutlined, 
   CalendarOutlined, LeftOutlined, RightOutlined, SyncOutlined, GoogleOutlined,
-  SafetyCertificateOutlined, ClearOutlined, EditOutlined, PlusOutlined
+  SafetyCertificateOutlined, ClearOutlined, EditOutlined, PlusOutlined,
+  AreaChartOutlined
 } from '@ant-design/icons';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, 
+  ResponsiveContainer, Legend 
+} from 'recharts';
 import dayjs from 'dayjs';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError, alertConfirm } from '../utils/alert';
@@ -85,6 +90,7 @@ export default function BackupManagement() {
   const [selectedSrcKeys, setSelectedSrcKeys] = useState([]);
   const [selectedGitKeys, setSelectedGitKeys] = useState([]);
   const [selectedGdriveKeys, setSelectedGdriveKeys] = useState([]);
+  const [storageHistory, setStorageHistory] = useState([]); // ✅ [New] เก็บประวัติพื้นที่ย้อนหลัง
 
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('backupActiveTab') || '0');
@@ -135,6 +141,47 @@ export default function BackupManagement() {
   const [githubForm] = Form.useForm(); 
   const [gdriveForm] = Form.useForm(); 
   const [cleanupForm] = Form.useForm(); // ✅ [New]
+
+  // 📊 [New] Storage Analytics Chart Component
+  const StorageAnalyticsChart = ({ data }) => {
+    if (!data || data.length === 0) return <Empty description="ไม่พบข้อมูลสถิติพื้นที่ย้อนหลัง" style={{ padding: '40px 0' }} />;
+    const isDark = document.body.classList.contains('dark-mode');
+    
+    const formattedData = data.map(item => ({
+      date: dayjs(item.snapshot_date).format('DD/MM'),
+      'ฐานข้อมูล': parseFloat((item.db_used / (1024 * 1024)).toFixed(2)),
+      'ซอร์สโค้ด': parseFloat((item.source_used / (1024 * 1024)).toFixed(2)),
+      'GitHub': parseFloat((item.github_used / (1024 * 1024)).toFixed(2)),
+      'Google Drive': parseFloat((item.gdrive_used / (1024 * 1024)).toFixed(2))
+    }));
+
+    return (
+      <div style={{ width: '100%', height: 350, padding: '20px 0 0' }}>
+        <ResponsiveContainer>
+          <AreaChart data={formattedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorDb" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/></linearGradient>
+              <linearGradient id="colorSrc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient>
+              <linearGradient id="colorGit" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#111827" stopOpacity={0.8}/><stop offset="95%" stopColor="#111827" stopOpacity={0}/></linearGradient>
+              <linearGradient id="colorGdrive" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#e2e8f0'} />
+            <XAxis dataKey="date" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
+            <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} unit="MB" />
+            <ChartTooltip 
+              contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: 'var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+              itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+            />
+            <Legend verticalAlign="top" height={36}/>
+            <Area type="monotone" dataKey="ฐานข้อมูล" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorDb)" stackId="1" />
+            <Area type="monotone" dataKey="ซอร์สโค้ด" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSrc)" stackId="1" />
+            <Area type="monotone" dataKey="GitHub" stroke="#111827" fillOpacity={1} fill="url(#colorGit)" stackId="1" />
+            <Area type="monotone" dataKey="Google Drive" stroke="#10b981" fillOpacity={1} fill="url(#colorGdrive)" stackId="1" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
   // --- 2. Data Fetching ---
   const verifyGDriveFilesOnCloud = useCallback(async () => {
@@ -188,7 +235,7 @@ export default function BackupManagement() {
       const start = dayjs().locale('en').subtract(30, 'day').format('YYYY-MM-DD');
       const end = dayjs().locale('en').add(7, 'day').format('YYYY-MM-DD');
 
-      const [logRes, settingRes, srcLogRes, srcSettingRes, githubLogRes, githubSettingRes, gdriveLogRes, gdriveSettingRes, cleanupSettingRes, statsRes] = await Promise.all([
+      const [logRes, settingRes, srcLogRes, srcSettingRes, githubLogRes, githubSettingRes, gdriveLogRes, gdriveSettingRes, cleanupSettingRes, statsRes, historyRes] = await Promise.all([
         axiosInstance.get('/backup/logs'),
         axiosInstance.get('/backup/settings'),
         axiosInstance.get('/backup/source/logs'),
@@ -198,7 +245,8 @@ export default function BackupManagement() {
         axiosInstance.get('/backup/gdrive/logs'),
         axiosInstance.get('/backup/gdrive/settings'),
         axiosInstance.get('/cleanup/settings'),
-        axiosInstance.get('/backup/storage-stats').catch(() => ({ data: null }))
+        axiosInstance.get('/backup/storage-stats').catch(() => ({ data: null })),
+        axiosInstance.get('/backup/storage-history').catch(() => ({ data: [] }))
       ]);
 
       await fetchTaskHistory(start, end); // ✅ [Fixed] เรียกใช้ประวัติแผนงานจริงจาก DB
@@ -208,6 +256,7 @@ export default function BackupManagement() {
       setGithubLogs(githubLogRes.data || []);
       setGdriveLogs(gdriveLogRes.data || []);
       setStorageStats(statsRes?.data || null);
+      setStorageHistory(historyRes?.data || []);
       
       setDbSetting(settingRes.data);
       setSourceSettings(srcSettingRes.data || []);
@@ -1475,13 +1524,44 @@ export default function BackupManagement() {
         items={[
           {
             key: '0',
-            label: <span><CalendarOutlined /> ภาพรวม (Calendar)</span>,
+            label: <span><AreaChartOutlined /> ภาพรวม (Overview)</span>,
             children: (
-              <Card className="modern-calendar-card" variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', marginTop: 0 }}>
-                <ConfigProvider locale={thTH}>
-                  <Calendar className="modern-calendar" value={calendarValue} onChange={setCalendarValue} headerRender={customCalendarHeader} cellRender={cellRender} mode="month" />
-                </ConfigProvider>
-              </Card>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <Row gutter={[24, 24]} align="top">
+                  <Col xs={24} xl={14}>
+                    <Card 
+                      title={<Space><AreaChartOutlined style={{ color: '#6366f1' }} /> สถิติการใช้งานพื้นที่จัดเก็บ (30 วันย้อนหลัง)</Space>}
+                      variant="borderless"
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
+                      styles={{ header: { borderBottom: '1px solid var(--border-color)' } }}
+                    >
+                      <StorageAnalyticsChart data={storageHistory} />
+                      <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>* หน่วยข้อมูลในกราฟคือเมกะไบต์ (MB) และรวมพื้นที่จากทุกช่องทาง</Text>
+                      </div>
+                    </Card>
+                  </Col>
+                  <Col xs={24} xl={10}>
+                    <Card 
+                      title={<Space><DatabaseOutlined style={{ color: '#0ea5e9' }} /> สถานะพื้นที่จัดเก็บปัจจุบัน</Space>}
+                      variant="borderless"
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }}
+                      styles={{ header: { borderBottom: '1px solid var(--border-color)' } }}
+                    >
+                      <StorageStatusBar title="ฐานข้อมูล (DB)" stats={storageStats?.db} icon={<DatabaseOutlined />} color="#0ea5e9" />
+                      <StorageStatusBar title="ซอร์สโค้ด (Source)" stats={storageStats?.source} icon={<CodeOutlined />} color="#8b5cf6" />
+                      <StorageStatusBar title="GitHub (Quota)" stats={storageStats?.github} icon={<GithubOutlined />} color="#111827" isCloud={true} />
+                      <StorageStatusBar title="Google Drive" stats={storageStats?.gdrive} icon={<GoogleOutlined />} color="#10b981" isCloud={true} />
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Card className="modern-calendar-card" variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', marginTop: 0 }}>
+                  <ConfigProvider locale={thTH}>
+                    <Calendar className="modern-calendar" value={calendarValue} onChange={setCalendarValue} headerRender={customCalendarHeader} cellRender={cellRender} mode="month" />
+                  </ConfigProvider>
+                </Card>
+              </div>
             )
           },
           {
@@ -2140,12 +2220,12 @@ export default function BackupManagement() {
                 if (status === 'error') return <Tag color="error">ล้มเหลว</Tag>;
                 if (status === 'missed') return <Tag color="error" style={{ fontWeight: 'bold' }}>เลยกำหนด/ไม่พบข้อมูล</Tag>;
                 return <Tag color="default">รอดำเนินการ</Tag>;
-                }
-                }
-                ]}
-                />
-                </Modal>
-                </div>
-                );
-                };
+              }
+            }
+          ]}
+        />
+      </Modal>
+    </div>
+  );
+}
 

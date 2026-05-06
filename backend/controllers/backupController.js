@@ -471,3 +471,14 @@ exports.getStorageStats = async (req, res) => {
     }
 };
 
+exports.getStorageHistory = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM storage_history ORDER BY snapshot_date DESC LIMIT 30');
+        res.json(rows.reverse()); // ส่งข้อมูลเรียงจากอดีตไปปัจจุบัน
+    } catch (err) {
+        console.error('❌ Get Storage History Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch storage history' });
+    }
+};
+
+

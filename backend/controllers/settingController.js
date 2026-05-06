@@ -52,6 +52,7 @@ exports.updateSettings = async (req, res) => {
         addField('system_name', body.system_name);
         addField('agency_name', body.agency_name);
         addField('enable_line', body.enable_line, 'bool');
+        addField('notify_backup_status', body.notify_backup_status, 'bool'); // ✅ เพิ่มฟิลด์ใหม่
         addField('enable_email', body.enable_email, 'bool');
         addField('notify_new_ticket', body.notify_new_ticket, 'bool');
         addField('notify_status_change', body.notify_status_change, 'bool');

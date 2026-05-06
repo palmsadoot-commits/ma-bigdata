@@ -6,6 +6,7 @@ const simpleGit = require('simple-git');
 const { google } = require('googleapis');
 const db = require('../config/db');
 const taskHistoryService = require('./taskHistoryService');
+const { sendBackupNotification } = require('./notificationService'); // ✅ นำเข้าฟังก์ชันแจ้งเตือน
 
 // ✅ ตรวจหา Path ของ mysqldump อัตโนมัติและรองรับค่าจาก .env
 const getDumpPath = () => {
@@ -26,7 +27,7 @@ const getDumpPath = () => {
 };
 
 const performBackup = async (triggerBy = 'System') => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
             const thaiTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
             const dd = String(thaiTime.getDate()).padStart(2, '0');
@@ -94,6 +95,7 @@ const performBackup = async (triggerBy = 'System') => {
                 
                 // ✅ อัปเดตสถานะในประวัติแผนงาน
                 await taskHistoryService.updateTaskStatus('db', new Date(), 'success', logResult.insertId);
+                await sendBackupNotification('Database', 'สำเร็จ', fileName); // ✅ แจ้งเตือน Line
 
                 console.log(`✅ Professional Backup Success: ${fileName}`);
                 resolve(fileName);
@@ -101,6 +103,7 @@ const performBackup = async (triggerBy = 'System') => {
 
         } catch (e) {
             console.error("❌ Professional Service Fatal Error:", e);
+            await sendBackupNotification('Database', 'ล้มเหลว', e.message); // ✅ แจ้งเตือน Line
             reject(e);
         }
     });
@@ -142,6 +145,7 @@ const performSourceBackup = async (triggerBy = 'System', targetFolders = ['front
                 
                 // ✅ อัปเดตสถานะในประวัติแผนงาน
                 await taskHistoryService.updateTaskStatus('source', new Date(), 'success', logResult.insertId);
+                await sendBackupNotification('Source Code', 'สำเร็จ', fileName); // ✅ แจ้งเตือน Line
                 
                 console.log(`✅ Source Backup Success: ${fileName} (${fileSizeMB})`);
                 resolve(fileName);
@@ -151,6 +155,7 @@ const performSourceBackup = async (triggerBy = 'System', targetFolders = ['front
                 console.error("❌ Archive Stream Error:", err.message);
                 if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
                 await db.query(`INSERT INTO source_backup_logs (file_name, status, created_by) VALUES (?, 'Failed', ?)`, [fileName, triggerBy]);
+                await sendBackupNotification('Source Code', 'ล้มเหลว', err.message); // ✅ แจ้งเตือน Line
                 reject(err);
             });
 
@@ -332,6 +337,7 @@ const performGithubSync = async (triggerBy = 'System', syncTargets = ['database'
 
         if (status.isClean()) {
             await db.query(`INSERT INTO github_sync_logs (sync_targets, status, created_by) VALUES (?, 'สำเร็จ (ไม่มีไฟล์เปลี่ยนแปลง)', ?)`, [syncTargets.join(','), triggerBy]);
+            await sendBackupNotification('GitHub Sync', 'สำเร็จ', 'ไม่มีไฟล์เปลี่ยนแปลง'); // ✅ แจ้งเตือน Line
             return 'No Changes';
         }
 
@@ -341,12 +347,14 @@ const performGithubSync = async (triggerBy = 'System', syncTargets = ['database'
 
         const [logResult] = await db.query(`INSERT INTO github_sync_logs (sync_targets, status, created_by) VALUES (?, 'สำเร็จ', ?)`, [syncTargets.join(','), triggerBy]);
         await taskHistoryService.updateTaskStatus('github', new Date(), 'success', logResult.insertId);
+        await sendBackupNotification('GitHub Sync', 'สำเร็จ', `Push ไปยัง branch ${branchName} เรียบร้อย`); // ✅ แจ้งเตือน Line
         
         return 'Sync Success';
         
     } catch (error) {
         const errMsg = error.message.substring(0, 150);
         await db.query(`INSERT INTO github_sync_logs (sync_targets, status, created_by) VALUES (?, ?, ?)`, [syncTargets.join(','), `ล้มเหลว: ${errMsg}`, triggerBy]);
+        await sendBackupNotification('GitHub Sync', 'ล้มเหลว', errMsg); // ✅ แจ้งเตือน Line
         throw error;
     }
 };
@@ -579,6 +587,7 @@ const performGDriveSync = async (triggerBy = 'System', syncTargets = ['database'
 
         if (uploadedFiles.length === 0) {
             await db.query(`INSERT INTO gdrive_sync_logs (sync_targets, status, created_by) VALUES (?, 'สำเร็จ (ไม่พบไฟล์อัปโหลด)', ?)`, [syncTargets.join(','), triggerBy]);
+            await sendBackupNotification('Google Drive', 'สำเร็จ', 'ไม่พบไฟล์ที่ต้องอัปโหลด'); // ✅ แจ้งเตือน Line
             return 'No Files Uploaded';
         }
 
@@ -588,6 +597,7 @@ const performGDriveSync = async (triggerBy = 'System', syncTargets = ['database'
         
         // ✅ อัปเดตสถานะในประวัติแผนงาน
         await taskHistoryService.updateTaskStatus('gdrive', new Date(), 'success', logResult.insertId);
+        await sendBackupNotification('Google Drive', 'สำเร็จ', `อัปโหลดไปยังโฟลเดอร์วันที่เรียบร้อย (${uploadedFiles.join(', ')})`); // ✅ แจ้งเตือน Line
 
         console.log(`✅ Google Drive Sync success into folder: ${uploadedFiles.join(', ')}`);
         return 'Sync Success';
@@ -596,6 +606,7 @@ const performGDriveSync = async (triggerBy = 'System', syncTargets = ['database'
         console.error("❌ Google Drive Sync Error:", error.message);
         const errMsg = error.message.substring(0, 150);
         await db.query(`INSERT INTO gdrive_sync_logs (sync_targets, status, created_by) VALUES (?, ?, ?)`, [syncTargets.join(','), `ล้มเหลว: ${errMsg}`, triggerBy]);
+        await sendBackupNotification('Google Drive', 'ล้มเหลว', errMsg); // ✅ แจ้งเตือน Line
         throw error;
     }
 };
@@ -775,16 +786,63 @@ const getGDriveQuota = async () => {
     }
 };
 
-module.exports = { 
-    performBackup, 
-    performSourceBackup, 
-    performGithubSync, 
-    performGDriveSync, 
-    deleteGDriveFileFromCloud, 
-    verifyGDriveFiles,
-    bulkDeleteBackups,
-    bulkDeleteSourceBackups,
-    bulkDeleteGithubLogs,
-    bulkDeleteGDriveLogs,
-    getGDriveQuota
-};
+/**
+ * 📊 Take a snapshot of current storage usage for analytics
+ */
+const takeStorageSnapshot = async () => {
+            try {
+                const getFolderSize = (dirPath) => {
+                    let size = 0;
+                    if (!fs.existsSync(dirPath)) return 0;
+                    const files = fs.readdirSync(dirPath);
+                    for (const file of files) {
+                        const filePath = path.join(dirPath, file);
+                        const stats = fs.statSync(filePath);
+                        if (stats.isDirectory()) {
+                            size += getFolderSize(filePath);
+                        } else {
+                            size += stats.size;
+                        }
+                    }
+                    return size;
+                };
+
+                const backupsPath = path.resolve(__dirname, '../../backups');
+                const dbSize = getFolderSize(path.join(backupsPath, 'database'));
+                const srcSize = getFolderSize(path.join(backupsPath, 'source'));
+                const gitSize = getFolderSize(path.resolve(__dirname, '../../backups/github_sync/.git'));
+
+                let gdriveUsed = 0;
+                const driveQuota = await getGDriveQuota();
+                if (driveQuota) gdriveUsed = parseInt(driveQuota.usage || '0', 10);
+
+                const totalUsed = dbSize + srcSize + gitSize + gdriveUsed;
+                const snapshotDate = new Date().toISOString().split('T')[0];
+
+                await db.query(
+                    `INSERT INTO storage_history (snapshot_date, db_used, source_used, github_used, gdrive_used, total_used) 
+                     VALUES (?, ?, ?, ?, ?, ?) 
+                     ON DUPLICATE KEY UPDATE db_used=VALUES(db_used), source_used=VALUES(source_used), github_used=VALUES(github_used), gdrive_used=VALUES(gdrive_used), total_used=VALUES(total_used)`,
+                    [snapshotDate, dbSize, srcSize, gitSize, gdriveUsed, totalUsed]
+                );
+
+                console.log(`📊 Storage snapshot recorded for ${snapshotDate}`);
+            } catch (err) {
+                console.error('❌ Storage Snapshot Error:', err.message);
+            }
+        };
+
+        module.exports = { 
+            performBackup, 
+            performSourceBackup, 
+            performGithubSync, 
+            performGDriveSync, 
+            deleteGDriveFileFromCloud, 
+            verifyGDriveFiles,
+            bulkDeleteBackups,
+            bulkDeleteSourceBackups,
+            bulkDeleteGithubLogs,
+            bulkDeleteGDriveLogs,
+            getGDriveQuota,
+            takeStorageSnapshot // ✅ เพิ่มฟังก์ชันใหม่
+        };

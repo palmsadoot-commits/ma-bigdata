@@ -129,6 +129,7 @@ export default function SystemSettings() {
           allowed_file_types: settings.allowed_file_types ? settings.allowed_file_types.split(',').map(e => e.trim()) : ['jpg', 'jpeg', 'png', 'pdf'],
           admin_email: settings.admin_email ? settings.admin_email.split(',').map(e => e.trim()) : [],
           enable_line: settings.enable_line === 1,
+          notify_backup_status: settings.notify_backup_status === 1, // ✅ เพิ่มฟิลด์ใหม่
           enable_email: settings.enable_email === 1,
           notify_new_ticket: settings.notify_new_ticket === 1,
           notify_status_change: settings.notify_status_change === 1,
@@ -462,11 +463,14 @@ export default function SystemSettings() {
         <Col xs={24} lg={12}>
           <Title level={5}><BellOutlined /> การแจ้งเตือนและข้อความ</Title>
           <Divider style={{ margin: '12px 0' }} />
+          <Form.Item name="notify_backup_status" label="แจ้งเตือนผลการสำรองข้อมูลอัตโนมัติ" valuePropName="checked">
+            <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
+          </Form.Item>
           <Form.Item name="notify_new_ticket" label="แจ้งเตือนเมื่อมีใบงานใหม่" valuePropName="checked">
-            <Switch />
+            <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
           </Form.Item>
           <Form.Item name="notify_status_change" label="แจ้งเตือนเมื่อมีการเปลี่ยนสถานะใบงาน" valuePropName="checked">
-            <Switch />
+            <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
           </Form.Item>
           
           <Divider style={{ margin: '24px 0 12px 0' }} />
