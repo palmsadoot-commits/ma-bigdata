@@ -207,28 +207,28 @@ function MainLayout() {
     <Layout style={{ minHeight: '100vh' }}>
       {!isMobile && (
         <Sider trigger={null} collapsible collapsed={collapsed} width={200} style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 100 }}>
-          <div className="sider-logo" style={{ color: 'white', textAlign: 'center', padding: '20px 10px', fontSize: collapsed ? '12px' : '16px', fontWeight: '900', letterSpacing: '0.5px', background: 'rgba(255,255,255,0.05)', marginBottom: '10px', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <div className="sider-logo">
             {collapsed ? 'LMIS' : '⚙️ LMIS BIG DATA'}
           </div>
           {renderNavMenu()}
         </Sider>
       )}
-      <Drawer title="⚙️ LMIS BIG DATA" placement="left" onClose={() => setMobileVisible(false)} open={mobileVisible} styles={{ wrapper: { width: 260 }, body: { padding: 0, backgroundColor: '#001529' }, header: { backgroundColor: '#001529', color: 'white' }, mask: { backdropFilter: 'blur(4px)' } }} closeIcon={<span style={{ color: 'white' }}>✕</span>}>
+      <Drawer title="⚙️ LMIS BIG DATA" placement="left" onClose={() => setMobileVisible(false)} open={mobileVisible} styles={{ wrapper: { width: 260 }, body: { padding: 0, backgroundColor: 'var(--sidebar-bg)' }, header: { backgroundColor: 'var(--sidebar-bg)', color: 'white' }, mask: { backdropFilter: 'blur(4px)' } }} closeIcon={<span style={{ color: 'white' }}>✕</span>}>
         {renderNavMenu()}
       </Drawer>
 
       <Layout style={{ marginLeft: isMobile ? 0 : (collapsed ? 80 : 200), transition: 'all 0.2s' }}>
-        <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 16px' : '0 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', position: 'sticky', top: 0, zIndex: 99, width: '100%', height: '64px', backgroundColor: '#fff' }}>
+        <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 16px' : '0 24px', position: 'sticky', top: 0, zIndex: 99, width: '100%', height: '64px' }}>
           <Space size={isMobile ? 8 : 16}>
             <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => isMobile ? setMobileVisible(true) : setCollapsed(!collapsed)} style={{ fontSize: '18px' }} />
-            <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: '#1e293b' }}>{isMobile ? 'แจ้งซ่อม' : 'ระบบแจ้งซ่อมและบำรุงรักษา'}</Title>
+            <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: 'var(--text-main)' }}>{isMobile ? 'แจ้งซ่อม' : 'ระบบแจ้งซ่อมและบำรุงรักษา'}</Title>
             {!isMobile && <Tag color="blue" icon={<RocketOutlined />}>{activeProject?.project_name}</Tag>}
           </Space>
           <Dropdown menu={userMenu} placement="bottomRight" arrow>
             <Space style={{ cursor: 'pointer' }}>
-                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
-                {!isMobile && <Text strong>{user?.first_name}</Text>}
-                <DownOutlined style={{ fontSize: 10 }} />
+                <Avatar icon={<UserOutlined />} style={{ backgroundColor: 'var(--primary-color)' }} />
+                {!isMobile && <Text strong style={{ color: 'var(--text-main)' }}>{user?.first_name}</Text>}
+                <DownOutlined style={{ fontSize: 10, color: 'var(--text-main)' }} />
             </Space>
           </Dropdown>
         </Header>

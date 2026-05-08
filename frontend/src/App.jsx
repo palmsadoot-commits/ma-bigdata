@@ -99,31 +99,47 @@ export default function App() {
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: settings?.primary_color || '#1677ff',
-          fontFamily: settings?.system_font || 'Inter',
+          colorPrimary: '#4F46E5',
+          colorInfo: '#3B82F6',
+          colorSuccess: '#10B981',
+          colorWarning: '#F59E0B',
+          colorError: '#EF4444',
           borderRadius: 12,
-          // ✅ ปรับจูนสีให้มีความสมดุล (Neutral Gray Theme)
-          colorBgLayout: isDark ? '#3b4149' : '#f4f7f6', // พื้นหลังแอปตามต้องการ
-          colorBgContainer: isDark ? '#4a515a' : '#ffffff', // พื้นหลัง Card/Menu
-          colorBgElevated: isDark ? '#565f69' : '#ffffff', // พื้นหลัง Modal/Pop
-          colorText: isDark ? '#ffffff' : '#1e293b', // สีตัวอักษรหลัก
-          colorTextDescription: isDark ? '#e2e8f0' : '#64748b', // สีตัวอักษรรอง
-          colorBorder: isDark ? '#64748b' : '#e2e8f0',
+          fontFamily: "'Prompt', sans-serif",
+          wireframe: false,
+          colorBgLayout: isDark ? '#0F172A' : '#F1F5F9',
+          colorBgContainer: isDark ? '#1E293B' : '#FFFFFF',
+          colorBgElevated: isDark ? '#334155' : '#FFFFFF',
+          colorText: isDark ? '#FFFFFF' : '#0F172A',
+          colorTextDescription: isDark ? '#94A3B8' : '#475569',
+          colorBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
         },
         components: {
           Layout: {
-            headerBg: isDark ? '#2d3238' : '#ffffff', // Header เข้มกว่า Body เล็กน้อยเพื่อให้ดูมีมิติ
-            siderBg: '#001529',
+            headerBg: isDark ? '#1E293B' : '#FFFFFF',
+            siderBg: isDark ? '#020617' : '#0F172A',
+            triggerBg: isDark ? '#020617' : '#0F172A',
           },
           Card: {
-            colorBgContainer: isDark ? '#4a515a' : '#ffffff',
+            colorBgContainer: isDark ? '#1E293B' : '#FFFFFF',
+            headerBg: 'transparent',
+            colorTextHeading: isDark ? '#FFFFFF' : '#0F172A',
           },
           Table: {
-            colorBgContainer: isDark ? '#4a515a' : '#ffffff',
-            colorHeaderBg: isDark ? '#2d3238' : '#fafafa',
+            colorBgContainer: isDark ? '#1E293B' : '#FFFFFF',
+            colorHeaderBg: isDark ? '#334155' : '#F8FAFC',
+            colorHeaderText: isDark ? '#FFFFFF' : '#0F172A',
           },
           Menu: {
-            darkItemBg: '#001529',
+            darkItemColor: '#94A3B8',
+            darkItemSelectedColor: '#FFFFFF',
+            darkItemSelectedBg: '#4F46E5',
+            itemColor: isDark ? '#FFFFFF' : '#0F172A',
+          },
+          Typography: {
+            colorText: isDark ? '#FFFFFF' : '#0F172A',
+            colorTextDescription: isDark ? '#94A3B8' : '#475569',
+            colorTextHeading: isDark ? '#FFFFFF' : '#0F172A',
           }
         }
       }}

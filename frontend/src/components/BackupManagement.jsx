@@ -1524,38 +1524,9 @@ export default function BackupManagement() {
         items={[
           {
             key: '0',
-            label: <span><AreaChartOutlined /> ภาพรวม (Overview)</span>,
+            label: <span><CalendarOutlined /> ปฏิทินงาน (Calendar)</span>,
             children: (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <Row gutter={[24, 24]} align="top">
-                  <Col xs={24} xl={14}>
-                    <Card 
-                      title={<Space><AreaChartOutlined style={{ color: '#6366f1' }} /> สถิติการใช้งานพื้นที่จัดเก็บ (30 วันย้อนหลัง)</Space>}
-                      variant="borderless"
-                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
-                      styles={{ header: { borderBottom: '1px solid var(--border-color)' } }}
-                    >
-                      <StorageAnalyticsChart data={storageHistory} />
-                      <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>* หน่วยข้อมูลในกราฟคือเมกะไบต์ (MB) และรวมพื้นที่จากทุกช่องทาง</Text>
-                      </div>
-                    </Card>
-                  </Col>
-                  <Col xs={24} xl={10}>
-                    <Card 
-                      title={<Space><DatabaseOutlined style={{ color: '#0ea5e9' }} /> สถานะพื้นที่จัดเก็บปัจจุบัน</Space>}
-                      variant="borderless"
-                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }}
-                      styles={{ header: { borderBottom: '1px solid var(--border-color)' } }}
-                    >
-                      <StorageStatusBar title="ฐานข้อมูล (DB)" stats={storageStats?.db} icon={<DatabaseOutlined />} color="#0ea5e9" />
-                      <StorageStatusBar title="ซอร์สโค้ด (Source)" stats={storageStats?.source} icon={<CodeOutlined />} color="#8b5cf6" />
-                      <StorageStatusBar title="GitHub (Quota)" stats={storageStats?.github} icon={<GithubOutlined />} color="#111827" isCloud={true} />
-                      <StorageStatusBar title="Google Drive" stats={storageStats?.gdrive} icon={<GoogleOutlined />} color="#10b981" isCloud={true} />
-                    </Card>
-                  </Col>
-                </Row>
-
                 <Card className="modern-calendar-card" variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', marginTop: 0 }}>
                   <ConfigProvider locale={thTH}>
                     <Calendar className="modern-calendar" value={calendarValue} onChange={setCalendarValue} headerRender={customCalendarHeader} cellRender={cellRender} mode="month" />
@@ -1945,20 +1916,50 @@ export default function BackupManagement() {
             label: <span><ClearOutlined /> ล้างข้อมูล (Cleanup)</span>,
             forceRender: true,
             children: (
-              <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
-                <Col xs={24} lg={10}>
-                  <StorageStatusBar 
-                    title="พื้นที่ที่สามารถล้างข้อมูลได้ (Local)" 
-                    stats={storageStats?.cleanup} 
-                    icon={<ClearOutlined />} 
-                    color="#f97316" 
-                  />
-                  <Card 
-                    title={<><SettingOutlined /> ตั้งค่า Auto Cleanup (ล้างข้อมูลอัตโนมัติ)</>} 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ header: { backgroundColor: '#f97316', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}
-                  >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <Row gutter={[24, 24]} align="top">
+                  <Col xs={24} xl={14}>
+                    <Card 
+                      title={<Space><AreaChartOutlined style={{ color: '#6366f1' }} /> สถิติการใช้งานพื้นที่จัดเก็บ (30 วันย้อนหลัง)</Space>}
+                      variant="borderless"
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
+                      styles={{ header: { borderBottom: '1px solid var(--border-color)' } }}
+                    >
+                      <StorageAnalyticsChart data={storageHistory} />
+                      <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>* หน่วยข้อมูลในกราฟคือเมกะไบต์ (MB) และรวมพื้นที่จากทุกช่องทาง</Text>
+                      </div>
+                    </Card>
+                  </Col>
+                  <Col xs={24} xl={10}>
+                    <Card 
+                      title={<Space><DatabaseOutlined style={{ color: '#0ea5e9' }} /> สถานะพื้นที่จัดเก็บปัจจุบัน</Space>}
+                      variant="borderless"
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }}
+                      styles={{ header: { borderBottom: '1px solid var(--border-color)' } }}
+                    >
+                      <StorageStatusBar title="ฐานข้อมูล (DB)" stats={storageStats?.db} icon={<DatabaseOutlined />} color="#0ea5e9" />
+                      <StorageStatusBar title="ซอร์สโค้ด (Source)" stats={storageStats?.source} icon={<CodeOutlined />} color="#8b5cf6" />
+                      <StorageStatusBar title="GitHub (Quota)" stats={storageStats?.github} icon={<GithubOutlined />} color="#111827" isCloud={true} />
+                      <StorageStatusBar title="Google Drive" stats={storageStats?.gdrive} icon={<GoogleOutlined />} color="#10b981" isCloud={true} />
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
+                  <Col xs={24} lg={10}>
+                    <StorageStatusBar 
+                      title="พื้นที่ที่สามารถล้างข้อมูลได้ (Local)" 
+                      stats={storageStats?.cleanup} 
+                      icon={<ClearOutlined />} 
+                      color="#f97316" 
+                    />
+                    <Card 
+                      title={<><SettingOutlined /> ตั้งค่า Auto Cleanup (ล้างข้อมูลอัตโนมัติ)</>} 
+                      variant="borderless" 
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
+                      styles={{ header: { backgroundColor: '#f97316', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}
+                    >
                     <Form form={cleanupForm} layout="vertical" onFinish={handleSaveCleanupSettings}>
                       <Form.Item name="is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                         <Checkbox><Text strong style={{ color: '#f97316' }}>เปิดใช้งานระบบล้างข้อมูลอัตโนมัติ</Text></Checkbox>
@@ -2110,6 +2111,7 @@ export default function BackupManagement() {
                   </Card>
                 </Col>
               </Row>
+              </div>
             )
           }
         ]}
