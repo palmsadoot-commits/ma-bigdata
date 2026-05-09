@@ -1,0 +1,484 @@
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
+const db = require('../config/db');
+const backupService = require('../services/backupService');
+const taskHistoryService = require('../services/taskHistoryService');
+
+exports.manualBackup = async (req, res) => {
+    try {
+        const fileName = await backupService.performBackup('Admin (Manual)');
+        res.json({ success: true, message: 'สำรองข้อมูลสำเร็จ', file_name: fileName });
+    } catch (error) { res.status(500).json({ error: 'การสำรองข้อมูลล้มเหลว', details: error.message }); }
+};
+
+exports.getBackupLogs = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM backup_logs ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: 'ดึงข้อมูลไม่สำเร็จ' }); }
+};
+
+exports.getBackupSettings = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM backup_settings LIMIT 1');
+        res.json(rows[0] || null);
+    } catch (err) { res.status(500).json({ error: 'ดึงการตั้งค่าไม่สำเร็จ' }); }
+};
+
+exports.updateBackupSettings = async (req, res) => {
+    const { schedule_type, schedule_days, schedule_time, is_active } = req.body;
+    try {
+        await db.query(`UPDATE backup_settings SET schedule_type=?, schedule_days=?, schedule_time=?, is_active=? WHERE id=1`, 
+            [schedule_type, schedule_days, schedule_time, is_active]);
+        
+        const cronService = require('../services/cronService');
+        await cronService.setupCronJob();
+
+        // ✅ อัปเดตแผนงานล่วงหน้าทันที
+        const dayjs = require('dayjs');
+        for (let i = 0; i <= 7; i++) {
+            await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
+        }
+        
+        res.json({ success: true, message: 'บันทึกการตั้งค่าสำเร็จ' });
+    } catch (err) { res.status(500).json({ error: 'บันทึกไม่สำเร็จ' }); }
+};
+
+exports.deleteBackup = async (req, res) => {
+    const fileName = req.params.fileName;
+    const filePath = path.join(__dirname, '../../backups', 'database', fileName);
+    try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath); 
+        await db.query('DELETE FROM backup_logs WHERE file_name = ?', [fileName]); 
+        res.json({ success: true, message: 'ลบไฟล์สำรองข้อมูลเรียบร้อยแล้ว' });
+    } catch (error) { res.status(500).json({ error: 'ไม่สามารถลบไฟล์ได้', details: error.message }); }
+};
+
+// ✅ [New] ลบฐานข้อมูลแบบกลุ่ม
+exports.bulkDeleteBackups = async (req, res) => {
+    const { file_names } = req.body;
+    if (!Array.isArray(file_names)) return res.status(400).json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง' });
+    try {
+        const count = await backupService.bulkDeleteBackups(file_names);
+        res.json({ success: true, message: `ลบไฟล์สำรอง ${count} รายการเรียบร้อยแล้ว` });
+    } catch (error) { res.status(500).json({ error: 'การลบแบบกลุ่มล้มเหลว' }); }
+};
+
+exports.restoreBackup = async (req, res) => {
+    const { file_name } = req.body;
+    const filePath = path.join(__dirname, '../../backups', 'database', file_name);
+
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'ไม่พบไฟล์แบ็คอัพนี้' });
+
+    const dbUser = process.env.DB_USER;
+    const dbPass = process.env.DB_PASSWORD ? `-p"${process.env.DB_PASSWORD}"` : '';
+    const dbName = process.env.DB_NAME;
+    const dbHost = process.env.DB_HOST;
+
+    const mysqlPath = process.env.MYSQL_PATH || 'mysql';
+    const restoreCmd = `"${mysqlPath}" -h ${dbHost} -u ${dbUser} ${dbPass} ${dbName} < "${filePath}"`;
+
+    exec(restoreCmd, async (error) => {
+        if (error) return res.status(500).json({ error: 'การกู้คืนล้มเหลว ตรวจสอบ Path ใน .env', details: error.message });
+        await db.query(`INSERT INTO backup_logs (file_name, file_size, status, created_by) VALUES (?, 'Restore', 'Success', 'Admin (Restore)')`, [file_name]);
+        res.json({ success: true, message: 'กู้คืนฐานข้อมูลเรียบร้อยแล้ว' });
+    });
+};
+
+exports.manualSourceBackup = async (req, res) => {
+    try {
+        const { target_folders, ignore_extensions } = req.body;
+        const foldersToBackup = (target_folders && target_folders.length > 0) ? target_folders : ['frontend', 'backend'];
+        
+        const fileName = await backupService.performSourceBackup('Admin (Manual)', foldersToBackup, ignore_extensions || null);
+        res.json({ success: true, message: 'บีบอัด Source Code สำเร็จ', file_name: fileName });
+    } catch (error) { 
+        res.status(500).json({ error: 'การสำรองข้อมูลล้มเหลว', details: error.message }); 
+    }
+};
+
+exports.getSourceBackupLogs = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM source_backup_logs ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: 'ดึงข้อมูลไม่สำเร็จ' }); }
+};
+
+exports.getSourceBackupSettings = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM source_backup_settings ORDER BY id ASC');
+        res.json(rows); 
+    } catch (err) { res.status(500).json({ error: 'ดึงการตั้งค่าไม่สำเร็จ' }); }
+};
+
+exports.createSourceBackupProfile = async (req, res) => {
+    try {
+        const [result] = await db.query(`
+            INSERT INTO source_backup_settings (profile_name, target_folders, schedule_type, schedule_days, schedule_time, is_active) 
+            VALUES ('โปรไฟล์ใหม่', 'frontend,backend', 'daily', '', '04:00:00', 0)
+        `);
+        res.json({ success: true, id: result.insertId });
+    } catch (err) { res.status(500).json({ error: 'เพิ่มโปรไฟล์ไม่สำเร็จ' }); }
+};
+
+exports.deleteSourceBackupProfile = async (req, res) => {
+    const { id } = req.params;
+    try {
+        // ห้ามลบ ID 1 (Primary Profile)
+        if (id == 1) return res.status(400).json({ error: 'ไม่สามารถลบโปรไฟล์หลักได้' });
+        await db.query('DELETE FROM source_backup_settings WHERE id = ?', [id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'ลบโปรไฟล์ไม่สำเร็จ' }); }
+};
+
+exports.updateSourceBackupSettings = async (req, res) => {
+    const { id, profile_name, target_folders, ignore_extensions, ignored_folders, schedule_type, schedule_days, schedule_time, is_active } = req.body;
+    try {
+        await db.query(`UPDATE source_backup_settings SET profile_name=?, target_folders=?, ignore_extensions=?, ignored_folders=?, schedule_type=?, schedule_days=?, schedule_time=?, is_active=? WHERE id=?`, 
+            [profile_name, target_folders, ignore_extensions, ignored_folders, schedule_type, schedule_days, schedule_time, is_active, id]);
+        
+        const cronService = require('../services/cronService');
+        await cronService.setupSourceCronJob();
+
+        const dayjs = require('dayjs');
+        const taskHistoryService = require('../services/taskHistoryService');
+        for (let i = 0; i <= 7; i++) {
+            await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
+        }
+
+        res.json({ success: true, message: `บันทึกการตั้งค่า ${profile_name} สำเร็จ` });
+    } catch (err) { 
+        console.error("Update Settings Error:", err.message);
+        res.status(500).json({ error: 'บันทึกไม่สำเร็จ', details: err.message }); 
+    }
+};
+
+exports.deleteSourceBackup = async (req, res) => {
+    const fileName = req.params.fileName;
+    const filePath = path.join(__dirname, '../../backups', 'source', fileName);
+    try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath); 
+        await db.query('DELETE FROM source_backup_logs WHERE file_name = ?', [fileName]); 
+        res.json({ success: true, message: 'ลบไฟล์ Zip เรียบร้อยแล้ว' });
+    } catch (error) { 
+        res.status(500).json({ error: 'ไม่สามารถลบไฟล์ได้', details: error.message }); 
+    }
+};
+
+// ✅ [New] ลบ Source Code แบบกลุ่ม
+exports.bulkDeleteSourceBackups = async (req, res) => {
+    const { file_names } = req.body;
+    if (!Array.isArray(file_names)) return res.status(400).json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง' });
+    try {
+        const count = await backupService.bulkDeleteSourceBackups(file_names);
+        res.json({ success: true, message: `ลบไฟล์ Source ${count} รายการเรียบร้อยแล้ว` });
+    } catch (error) { res.status(500).json({ error: 'การลบแบบกลุ่มล้มเหลว' }); }
+};
+
+exports.manualGithubSync = async (req, res) => {
+    try {
+        const syncTargets = req.body.sync_targets || ['database', 'source'];
+        await backupService.performGithubSync('Admin (Manual)', syncTargets);
+        res.json({ success: true, message: 'Push ข้อมูลขึ้น GitHub สำเร็จ' });
+    } catch (error) { 
+        res.status(500).json({ error: error.message }); 
+    }
+};
+
+exports.getGithubLogs = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM github_sync_logs ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.getGithubSettings = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM github_settings LIMIT 1');
+        res.json(rows[0] || null);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.updateGithubSettings = async (req, res) => {
+    const { github_token, repo_url, branch_name, sync_targets, schedule_type, schedule_days, schedule_time, is_active } = req.body;
+    try {
+        await db.query(`UPDATE github_settings SET github_token=?, repo_url=?, branch_name=?, sync_targets=?, schedule_type=?, schedule_days=?, schedule_time=?, is_active=? WHERE id=1`, 
+            [github_token, repo_url, branch_name, sync_targets, schedule_type, schedule_days, schedule_time, is_active]);
+        
+        const cronService = require('../services/cronService');
+        await cronService.setupGithubCronJob();
+
+        // ✅ อัปเดตแผนงานล่วงหน้าทันที
+        const dayjs = require('dayjs');
+        for (let i = 0; i <= 7; i++) {
+            await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
+        }
+
+        res.json({ success: true, message: 'บันทึกการตั้งค่า GitHub สำเร็จ' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.deleteGithubLog = async (req, res) => {
+    const logId = req.params.id;
+    try {
+        const [result] = await db.query('DELETE FROM github_sync_logs WHERE log_id = ?', [logId]);
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'ไม่พบประวัตินี้ในระบบ' });
+        res.json({ success: true, message: 'ลบประวัติการ Push เรียบร้อยแล้ว' });
+    } catch (error) { 
+        res.status(500).json({ error: 'ไม่สามารถลบประวัติได้', details: error.message }); 
+    }
+};
+
+// ✅ [New] ลบประวัติ GitHub แบบกลุ่ม
+exports.bulkDeleteGithubLogs = async (req, res) => {
+    const { log_ids } = req.body;
+    if (!Array.isArray(log_ids)) return res.status(400).json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง' });
+    try {
+        const count = await backupService.bulkDeleteGithubLogs(log_ids);
+        res.json({ success: true, message: `ลบประวัติ GitHub ${count} รายการเรียบร้อยแล้ว` });
+    } catch (error) { res.status(500).json({ error: 'การลบทิ้งล้มเหลว' }); }
+};
+
+exports.manualGDriveSync = async (req, res) => {
+
+    try {
+        const syncTargets = req.body.sync_targets || ['database', 'source'];
+        const resultMsg = await backupService.performGDriveSync('Admin (Manual)', syncTargets);
+        res.json({ success: true, message: `อัปโหลดขึ้น Google Drive สำเร็จ: ${resultMsg}` });
+    } catch (error) { 
+        res.status(500).json({ error: error.message }); 
+    }
+};
+
+exports.getGDriveLogs = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM gdrive_sync_logs ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.getGDriveSettings = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM gdrive_settings LIMIT 1');
+        res.json(rows[0] || null);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.updateGDriveSettings = async (req, res) => {
+    const { client_id, client_secret, refresh_token, folder_id, sync_targets, schedule_type, schedule_days, schedule_time, is_active } = req.body;
+    try {
+        await db.query(`UPDATE gdrive_settings SET client_id=?, client_secret=?, refresh_token=?, folder_id=?, sync_targets=?, schedule_type=?, schedule_days=?, schedule_time=?, is_active=? WHERE id=1`, 
+            [client_id, client_secret, refresh_token, folder_id, sync_targets, schedule_type, schedule_days, schedule_time, is_active]);
+        
+        const cronService = require('../services/cronService');
+        await cronService.setupGDriveCronJob();
+
+        // ✅ อัปเดตแผนงานล่วงหน้าทันที
+        const dayjs = require('dayjs');
+        for (let i = 0; i <= 7; i++) {
+            await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
+        }
+
+        res.json({ success: true, message: 'บันทึกการตั้งค่า Google Drive สำเร็จ' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.deleteGDriveLog = async (req, res) => {
+    const logId = req.params.id;
+    const { deleteFromCloud } = req.query; 
+    
+    try {
+        const [rows] = await db.query('SELECT gdrive_file_ids, remarks FROM gdrive_sync_logs WHERE log_id = ?', [logId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'ไม่พบประวัตินี้' });
+
+        const currentFileIds = rows[0].gdrive_file_ids ? JSON.parse(rows[0].gdrive_file_ids) : [];
+        const currentRemarks = rows[0].remarks;
+
+        let filesActuallyDeleted = [];
+        let filesKeptBecauseShared = [];
+
+        if (deleteFromCloud === 'true' && currentFileIds.length > 0) {
+            for (const file of currentFileIds) {
+                const [usage] = await db.query(
+                    "SELECT count(*) as count FROM gdrive_sync_logs WHERE gdrive_file_ids LIKE ? AND log_id != ?", 
+                    [`%${file.id}%`, logId]
+                );
+
+                if (usage[0].count > 0) {
+                    filesKeptBecauseShared.push(file.name);
+                } else {
+                    await backupService.deleteGDriveFileFromCloud([file]);
+                    filesActuallyDeleted.push(file.name);
+                }
+            }
+        }
+
+        if (currentRemarks) {
+            const matches = currentRemarks.match(/\((.*?)\)/g);
+            if (matches) {
+                for (const m of matches) {
+                    const ts = m.slice(1, -1).trim();
+                    const [affectedLogs] = await db.query(
+                        "SELECT log_id, remarks FROM gdrive_sync_logs WHERE remarks LIKE ? AND log_id != ?", 
+                        [`%มีการอัปโหลดซ้ำ%${ts}%`, logId]
+                    );
+
+                    for (const affected of affectedLogs) {
+                        let lines = affected.remarks.split('|').map(l => l.trim());
+                        
+                        lines = lines.map(line => {
+                            if (line.includes('มีการอัปโหลดซ้ำ') && line.includes(ts)) {
+                                const wasActuallyDeleted = filesActuallyDeleted.some(name => 
+                                    (line.toLowerCase().includes('database') && name.endsWith('.sql')) || 
+                                    ((line.toLowerCase().includes('source') || line.toLowerCase().includes('src')) && name.endsWith('.zip'))
+                                );
+
+                                const statusText = wasActuallyDeleted ? 'ไฟล์ถูกลบจาก Cloud แล้ว' : 'ไฟล์ออนไลน์ปกติ';
+                                return line.replace(/Source:|Source Code:/g, 'Source Code:').replace('มีการอัปโหลดซ้ำ', statusText);
+                            }
+                            return line;
+                        });
+                        
+                        const newRemarks = lines.join(' | ');
+                        await db.query("UPDATE gdrive_sync_logs SET remarks = ? WHERE log_id = ?", [newRemarks, affected.log_id]);
+                    }
+                }
+            }
+        }
+
+        await db.query('DELETE FROM gdrive_sync_logs WHERE log_id = ?', [logId]);
+        
+        let message = `ลบประวัติเรียบร้อยแล้ว`;
+        if (deleteFromCloud === 'true') {
+            if (filesActuallyDeleted.length > 0) message += ` และลบไฟล์ที่ไม่ได้ใช้งานแล้วบน Cloud`;
+            if (filesKeptBecauseShared.length > 0) message += ` (ระบบคงไฟล์ ${filesKeptBecauseShared.length} รายการไว้เนื่องจากมีประวัติอื่นเรียกใช้งานอยู่)`;
+        }
+
+        res.json({ success: true, message });
+    } catch (error) { 
+        res.status(500).json({ error: 'ไม่สามารถลบประวัติได้', details: error.message }); 
+    }
+};
+
+// ✅ [New] ลบประวัติ GDrive แบบกลุ่ม (เฉพาะใน DB)
+exports.bulkDeleteGDriveLogs = async (req, res) => {
+    const { log_ids } = req.body;
+    try {
+        const count = await backupService.bulkDeleteGDriveLogs(log_ids);
+        res.json({ success: true, message: `ลบประวัติ Cloud ${count} รายการเรียบร้อยแล้ว` });
+    } catch (error) { res.status(500).json({ error: 'การลบทิ้งล้มเหลว' }); }
+};
+
+exports.verifyGDriveFiles = async (req, res) => {
+
+    try {
+        const [rows] = await db.query('SELECT log_id, gdrive_file_ids FROM gdrive_sync_logs WHERE gdrive_file_ids IS NOT NULL');
+        const results = {};
+
+        for (const row of rows) {
+            try {
+                const fileIds = JSON.parse(row.gdrive_file_ids);
+                const verification = await backupService.verifyGDriveFiles(fileIds);
+                results[row.log_id] = verification;
+            } catch (e) { results[row.log_id] = []; }
+        }
+
+        res.json(results);
+    } catch (error) {
+        res.status(500).json({ error: 'ตรวจสอบไฟล์ล้มเหลว', details: error.message });
+    }
+};
+
+exports.getTaskHistory = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+        const history = await taskHistoryService.getHistory(start, end);
+        res.json(history);
+    } catch (err) { res.status(500).json({ error: 'ดึงประวัติแผนงานไม่สำเร็จ' }); }
+};
+
+exports.getStorageStats = async (req, res) => {
+    try {
+        const getFolderSize = async (dirPath) => {
+            let size = 0;
+            try {
+                if (!fs.existsSync(dirPath)) return 0;
+                const files = await fs.promises.readdir(dirPath, { withFileTypes: true });
+                for (const file of files) {
+                    const filePath = path.join(dirPath, file.name);
+                    if (file.isDirectory()) {
+                        size += await getFolderSize(filePath);
+                    } else {
+                        const stats = await fs.promises.stat(filePath);
+                        size += stats.size;
+                    }
+                }
+            } catch (e) {}
+            return size;
+        };
+
+        const backupsPath = path.resolve(__dirname, '../../backups');
+        const dbPath = path.join(backupsPath, 'database');
+        const srcPath = path.join(backupsPath, 'source');
+        const gitPath = path.resolve(__dirname, '../../backups/github_sync/.git');
+        
+        const dbSize = await getFolderSize(dbPath);
+        const srcSize = await getFolderSize(srcPath);
+        const gitSize = await getFolderSize(gitPath);
+
+        let localTotal = 100 * 1024 * 1024 * 1024; // Default 100GB if statfs fails
+        let localFree = 0;
+        try {
+            const stats = await fs.promises.statfs(backupsPath);
+            localTotal = stats.bsize * stats.blocks;
+            localFree = stats.bsize * stats.bavail;
+        } catch (e) {}
+        
+        const cleanupUsed = dbSize + srcSize; // Assume all backups could be potential cleanup space
+
+        let gdriveUsed = 0;
+        let gdriveTotal = 15 * 1024 * 1024 * 1024; // Default 15GB
+        try {
+            const driveQuota = await backupService.getGDriveQuota();
+            if (driveQuota) {
+                gdriveUsed = parseInt(driveQuota.usage || '0', 10);
+                gdriveTotal = parseInt(driveQuota.limit || (15 * 1024 * 1024 * 1024).toString(), 10);
+            }
+        } catch (e) {}
+
+        const formatPercent = (used, total) => {
+            if (!total || total === 0) return 0;
+            return Math.min(100, Math.max(0, (used / total) * 100));
+        };
+
+        const localUsed = localTotal - localFree;
+        const localPercentage = formatPercent(localUsed, localTotal);
+
+        res.json({
+            source: { categoryUsed: srcSize, used: localUsed, total: localTotal, percentage: localPercentage, remaining: localFree },
+            db: { categoryUsed: dbSize, used: localUsed, total: localTotal, percentage: localPercentage, remaining: localFree },
+            github: { used: gitSize, total: 1024 * 1024 * 1024, percentage: formatPercent(gitSize, 1024 * 1024 * 1024), remaining: (1024 * 1024 * 1024) - gitSize }, // 1GB quota
+            gdrive: { used: gdriveUsed, total: gdriveTotal, percentage: formatPercent(gdriveUsed, gdriveTotal), remaining: gdriveTotal - gdriveUsed },
+            cleanup: { categoryUsed: cleanupUsed, used: localUsed, total: localTotal, percentage: localPercentage, remaining: localFree },
+            local_total: localTotal,
+            local_free: localFree,
+            local_used: localUsed
+        });
+    } catch (error) {
+        console.error('Storage Stats Error:', error);
+        res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลพื้นที่จัดเก็บได้', details: error.message });
+    }
+};
+
+exports.getStorageHistory = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM storage_history ORDER BY snapshot_date DESC LIMIT 30');
+        res.json(rows.reverse()); // ส่งข้อมูลเรียงจากอดีตไปปัจจุบัน
+    } catch (err) {
+        console.error('❌ Get Storage History Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch storage history' });
+    }
+};
+
+

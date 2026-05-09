@@ -1,0 +1,169 @@
+const db = require('../config/db');
+const dayjs = require('dayjs');
+
+/**
+ * 📊 Report Controller
+ * Handles data aggregation for the Maintenance Reporting Dashboard
+ */
+const reportController = {
+    /**
+     * 1. Get Executive KPIs
+     */
+    async getKpis(req, res, next) {
+        try {
+            const { start, end, project_id } = req.query;
+            let queryParams = [];
+            let dateFilter = '';
+            
+            if (start && end) {
+                dateFilter = ' AND created_at BETWEEN ? AND ?';
+                queryParams.push(start, end);
+            }
+            
+            let projectFilter = '';
+            if (project_id) {
+                projectFilter = ' AND t.category_id IN (SELECT category_id FROM categories WHERE project_id = ?)';
+                queryParams.push(project_id);
+            }
+
+            const kpiQuery = `
+                SELECT 
+                    COUNT(*) as total_tickets,
+                    SUM(CASE WHEN status_id IN (1, 2, 3) THEN 1 ELSE 0 END) as active_tickets,
+                    SUM(CASE WHEN status_id IN (4, 5, 6) THEN 1 ELSE 0 END) as resolved_tickets,
+                    SUM(CASE WHEN is_sla_breached = 1 THEN 1 ELSE 0 END) as sla_breaches,
+                    SUM(penalty_amount) as total_penalties
+                FROM tickets t
+                WHERE 1=1 ${dateFilter} ${projectFilter}
+            `;
+
+            const [rows] = await db.query(kpiQuery, queryParams);
+            res.json(rows[0]);
+        } catch (err) { next(err); }
+    },
+
+    /**
+     * 2. Get Ticket Trend (Dynamic Daily/Monthly)
+     */
+    async getTrend(req, res, next) {
+        try {
+            const { start, end } = req.query;
+            const startDate = dayjs(start || dayjs().subtract(30, 'day').format('YYYY-MM-DD'));
+            const endDate = dayjs(end || dayjs().format('YYYY-MM-DD'));
+            
+            // ✅ ถ้าช่วงวันที่น้อยกว่าหรือเท่ากับ 60 วัน ให้โชว์เป็นรายวัน
+            const diffDays = endDate.diff(startDate, 'day');
+            const isDaily = diffDays <= 60;
+            const dateFormat = isDaily ? '%Y-%m-%d' : '%Y-%m';
+
+            const query = `
+                SELECT 
+                    time_label as month,
+                    SUM(created_count) as created,
+                    SUM(resolved_count) as resolved
+                FROM (
+                    -- นับงานที่สร้างใหม่
+                    SELECT DATE_FORMAT(created_at, '${dateFormat}') as time_label, COUNT(*) as created_count, 0 as resolved_count
+                    FROM tickets
+                    WHERE created_at BETWEEN ? AND ?
+                    GROUP BY time_label
+                    
+                    UNION ALL
+                    
+                    -- นับงานที่ปิดสำเร็จ (อ้างอิงตามวันที่ปิดงานจริง)
+                    SELECT DATE_FORMAT(resolved_at, '${dateFormat}') as time_label, 0 as created_count, COUNT(*) as resolved_count
+                    FROM tickets
+                    WHERE status_id = 6 AND resolved_at BETWEEN ? AND ?
+                    GROUP BY time_label
+                ) combined
+                GROUP BY month
+                ORDER BY month ASC
+            `;
+
+            const [rows] = await db.query(query, [
+                startDate.format('YYYY-MM-DD 00:00:00'), 
+                endDate.format('YYYY-MM-DD 23:59:59'),
+                startDate.format('YYYY-MM-DD 00:00:00'), 
+                endDate.format('YYYY-MM-DD 23:59:59')
+            ]);
+            
+            res.json(rows);
+        } catch (err) { next(err); }
+    },
+
+    /**
+     * 3. Get Issues by Category
+     */
+    async getCategoryDistribution(req, res, next) {
+        try {
+            const [rows] = await db.query(`
+                SELECT c.category_name as name, COUNT(t.ticket_id) as value
+                FROM categories c
+                LEFT JOIN tickets t ON c.category_id = t.category_id
+                GROUP BY c.category_id
+                HAVING value > 0
+                ORDER BY value DESC
+            `);
+            res.json(rows);
+        } catch (err) { next(err); }
+    },
+
+    /**
+     * 4. Get Vendor SLA Performance
+     */
+    async getVendorPerformance(req, res, next) {
+        try {
+            const [rows] = await db.query(`
+                SELECT 
+                    v.vendor_name as name,
+                    COUNT(t.ticket_id) as total,
+                    SUM(CASE WHEN t.is_sla_breached = 0 AND t.status_id >= 4 THEN 1 ELSE 0 END) as on_time,
+                    SUM(CASE WHEN t.is_sla_breached = 1 THEN 1 ELSE 0 END) as breached
+                FROM vendors v
+                JOIN tickets t ON v.vendor_id = t.vendor_id
+                GROUP BY v.vendor_id
+                ORDER BY total DESC
+            `);
+            res.json(rows);
+        } catch (err) { next(err); }
+    },
+
+    /**
+     * 5. Get Status Breakdown (Detailed)
+     */
+    async getStatusBreakdown(req, res, next) {
+        try {
+            const { start, end, project_id } = req.query;
+            let queryParams = [];
+            let joinFilter = '';
+            
+            if (start && end) {
+                joinFilter += ' AND t.created_at BETWEEN ? AND ?';
+                queryParams.push(start, end);
+            }
+            if (project_id && project_id !== 'null') {
+                joinFilter += ' AND t.category_id IN (SELECT category_id FROM categories WHERE project_id = ?)';
+                queryParams.push(project_id);
+            }
+
+            const query = `
+                SELECT 
+                    ts.status_name as name,
+                    COUNT(t.ticket_id) as value,
+                    ts.status_color as color
+                FROM ticket_statuses ts
+                LEFT JOIN tickets t ON ts.status_id = t.status_id ${joinFilter}
+                WHERE ts.is_active = 1
+                GROUP BY ts.status_id
+                ORDER BY ts.sort_order ASC
+            `;
+            const [rows] = await db.query(query, queryParams);
+            res.json(rows);
+        } catch (err) { 
+            console.error('Status Breakdown Error:', err.message);
+            next(err); 
+        }
+    }
+};
+
+module.exports = reportController;

@@ -1,0 +1,79 @@
+/* --- src/OldSystem.css --- */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+
+:root {
+  --legacy-purple: #2a1a4a;
+  --legacy-orange: #ef8157;
+  --legacy-dark-purple: #1f1235;
+  --legacy-bg: #f4f7f6;
+  --legacy-text: #1e293b;
+}
+
+body.dark-mode {
+  --legacy-purple: #1a1130;
+  --legacy-orange: #d46b45;
+  --legacy-dark-purple: #130b22;
+  --legacy-bg: #3b4149;
+  --legacy-text: #ffffff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Sarabun', sans-serif !important;
+  background-color: var(--legacy-bg) !important;
+  color: var(--legacy-text) !important;
+}
+
+/* ส่วนของ Sidebar สีม่วงเข้มแบบระบบเดิม */
+.ant-layout-sider {
+  background-color: var(--legacy-purple) !important;
+}
+
+.ant-menu-dark {
+  background-color: var(--legacy-purple) !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background-color: var(--legacy-orange) !important;
+  color: white !important;
+}
+
+.sider-logo {
+  height: 64px;
+  background-color: var(--legacy-dark-purple);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--legacy-orange);
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* ส่วนของ Header และ Content */
+.ant-layout-header {
+  background-color: var(--bg-card, #ffffff) !important;
+  padding: 0 20px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  color: var(--legacy-text) !important;
+}
+
+.ant-layout-content {
+  padding: 24px !important;
+}
+
+/* รูปแบบกล่องสถิติและ Card ให้ขอบเหลี่ยม เงาบางๆ */
+.old-style-card {
+  background: white;
+  padding: 20px;
+  border-radius: 4px; /* ขอบเหลี่ยมขึ้น */
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.stat-box {
+  text-align: center;
+  color: white;
+  padding: 15px;
+  border-radius: 4px;
+}

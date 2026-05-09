@@ -1,0 +1,78 @@
+:root {
+  /* Light Mode Variables */
+  --bg-app: #f4f7f6;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-main: #1e293b;
+  --text-sub: #64748b;
+  --border-color: #e2e8f0;
+  --primary-color: #1677ff;
+  --card-shadow: 0 8px 30px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 15px 35px rgba(0,0,0,0.12);
+}
+
+body.dark-mode {
+  /* High Clarity Dark Mode Variables - Updated to Neutral Gray */
+  --bg-app: #3b4149;        /* พื้นหลังแอปตามที่ต้องการ */
+  --bg-card: #4a515a;       /* พื้นหลัง Card (สว่างกว่าพื้นหลัง) */
+  --bg-elevated: #565f69;   /* พื้นหลัง Modal */
+  --text-main: #ffffff;     /* ตัวอักษรขาวบริสุทธิ์ */
+  --text-sub: #e2e8f0;      /* ตัวอักษรรอง */
+  --border-color: #64748b;  /* เส้นขอบสว่างขึ้นเพื่อให้เห็นกรอบชัดเจน */
+  --card-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  --card-shadow-hover: 0 15px 35px rgba(0,0,0,0.4);
+}
+
+/* Global Styles */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+#root {
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: left;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* UI Helper Classes */
+.ticket-kanban-card, .old-style-card, .ant-card {
+  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s !important;
+}
+
+/* Custom Scrollbar for modern look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive Table Fixes */
+.ant-table-wrapper {
+  background: transparent !important;
+}
+
+/* Overwrite Ant Design Dark Mode for better visuals */
+.ant-layout-header {
+  border-bottom: 1px solid var(--border);
+}
