@@ -12,4 +12,8 @@ router.get('/blocked-ips', securityController.getBlockedIps);
 router.post('/block-ip', securityController.blockIp);
 router.post('/unblock-ip', securityController.unblockIp);
 
+// Security Settings Management
+router.get('/settings', securityController.getSecuritySettings);
+router.put('/settings', securityController.updateSecuritySettings);
+
 module.exports = router;

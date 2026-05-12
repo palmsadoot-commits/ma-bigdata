@@ -52,3 +52,40 @@ exports.unblockIp = async (req, res, next) => {
         res.json({ success: true, message: `IP ${ip_address} has been unblocked.` });
     } catch (err) { next(err); }
 };
+
+exports.getSecuritySettings = async (req, res, next) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM security_settings WHERE id = 1');
+        res.json(rows[0] || {});
+    } catch (err) { next(err); }
+};
+
+exports.updateSecuritySettings = async (req, res, next) => {
+    const { 
+        auto_block_enabled, 
+        score_threshold, 
+        attack_limit_per_hour, 
+        block_duration_hours, 
+        whitelist_ips 
+    } = req.body;
+    
+    try {
+        await db.query(`
+            UPDATE security_settings 
+            SET 
+                auto_block_enabled = ?, 
+                score_threshold = ?, 
+                attack_limit_per_hour = ?, 
+                block_duration_hours = ?, 
+                whitelist_ips = ?
+            WHERE id = 1
+        `, [
+            auto_block_enabled, 
+            score_threshold, 
+            attack_limit_per_hour, 
+            block_duration_hours, 
+            whitelist_ips
+        ]);
+        res.json({ success: true, message: 'Security settings updated successfully.' });
+    } catch (err) { next(err); }
+};
