@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Row, Col, Typography, Table, Button, Space, Tag, 
-  Statistic, Steps, Divider, Empty, Modal, message, Badge, Tooltip,
+  Statistic, Divider, Empty, Modal, message, Badge, Tooltip,
   Timeline, List, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover
 } from 'antd';
 import { 
@@ -11,12 +11,10 @@ import {
   LockOutlined, 
   SecurityScanOutlined,
   StopOutlined,
-  DownloadOutlined,
   SyncOutlined,
   GlobalOutlined,
   InfoCircleOutlined,
   WarningOutlined,
-  ArrowRightOutlined,
   ClockCircleOutlined,
   UserOutlined,
   EnvironmentOutlined,
@@ -40,6 +38,10 @@ dayjs.locale('th');
 
 const { Title, Text, Paragraph } = Typography;
 
+/**
+ * 🛡️ Security Command Center - Enterprise Hardened Version
+ * แก้ไข Warning และปรับจูนประสิทธิภาพระบบ
+ */
 export default function SecurityCommandCenter() {
   const { token } = theme.useToken();
   const [threats, setThreats] = useState([]);
@@ -207,7 +209,7 @@ export default function SecurityCommandCenter() {
 
   const columns = [
     {
-      title: <ColumnHeader title="ผู้โจมตี" desc="ที่อยู่ IP ของผู้ที่พยายามกระทำการอันตราย หากมี Tag BLOCKED แสดงว่าระบบได้ตัดการเชื่อมต่อถาวรแล้วเนื่องจากมีความเสี่ยงสูงเกินเกณฑ์" />,
+      title: <ColumnHeader title="ผู้โจมตี" desc="ที่อยู่ IP ของผู้ที่พยายามกระทำการอันตราย หากมี Tag BLOCKED แสดงว่าระบบได้ตัดการเชื่อมต่อถาวรแล้ว" />,
       dataIndex: 'ip_address',
       key: 'who',
       render: (text) => (
@@ -218,13 +220,13 @@ export default function SecurityCommandCenter() {
             {blockedIps.some(b => b.ip_address === text) && <Tag color="error">BLOCKED</Tag>}
           </Space>
           <Button type="link" size="small" onClick={() => showTimeline(text)} style={{ padding: 0, fontSize: '12px' }}>
-            <ClockCircleOutlined /> ดูไทม์ไลน์การโจมตี
+            <ClockCircleOutlined /> ดูไทม์ไลน์
           </Button>
         </Flex>
       )
     },
     {
-      title: <ColumnHeader title="ขั้นตอน" desc="ลำดับการโจมตีตาม Cyber Kill Chain ช่วยให้ทราบว่าผู้โจมตีอยู่ในระยะไหน (เช่น กำลังแค่สแกนหาช่องโหว่ หรือกำลังเริ่มส่งคำสั่งทำลายข้อมูล)" />,
+      title: <ColumnHeader title="ขั้นตอน" desc="ลำดับการโจมตีตาม Cyber Kill Chain ช่วยให้ทราบว่าผู้โจมตีอยู่ในระยะไหน" />,
       dataIndex: 'kill_chain_phase',
       key: 'phase',
       render: (phase) => {
@@ -233,7 +235,7 @@ export default function SecurityCommandCenter() {
       }
     },
     {
-      title: <ColumnHeader title="เป้าหมาย" desc="ตำแหน่งของระบบ (API Endpoint) ที่ผู้โจมตีพยายามเรียกใช้งาน พร้อมเทคนิคที่ตรวจพบ (GET, POST, PUT)" />,
+      title: <ColumnHeader title="เป้าหมาย" desc="ตำแหน่งของระบบ (API Endpoint) ที่ผู้โจมตีพยายามเรียกใช้งาน" />,
       dataIndex: 'target_url',
       key: 'where',
       render: (text, record) => (
@@ -245,14 +247,7 @@ export default function SecurityCommandCenter() {
       )
     },
     {
-      title: <ColumnHeader title="สถานะการตอบโต้" desc={
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div>🟢 <b>สกัดกั้น (403):</b> ป้องกันสำเร็จ ระบบตรวจพบภัยคุกคามและตัดการทำงานทันที ก่อนจะถึงฐานข้อมูล</div>
-          <div>🟠 <b>ผ่านได้ (200):</b> ระบบตรวจพบแต่ยังไม่ได้สั่งบล็อก หรือเป็นการเฝ้าระวังพฤติกรรม (ควรตรวจสอบ)</div>
-          <div>🔴 <b>อันตราย (Score):</b> ระดับความรุนแรง (0-100) ยิ่งเลขสูงยิ่งหมายถึงการโจมตีที่ตั้งใจทำลายระบบ</div>
-          <div>🚨 <b>AUTO-BLOCKED:</b> IP นี้ถูกแบนถาวรโดยอัตโนมัติ ช่วยลดภาระ Server</div>
-        </div>
-      } />,
+      title: <ColumnHeader title="สถานะการตอบโต้" desc="ผลลัพธ์ของระบบ: สกัดกั้น (403) คือป้องกันสำเร็จ, อันตราย (Score) คือระดับความรุนแรง" />,
       key: 'status',
       render: (_, record) => {
         const isProtected = record.status_code >= 400;
@@ -276,7 +271,7 @@ export default function SecurityCommandCenter() {
       }
     },
     {
-      title: <ColumnHeader title="วัน-เวลา" desc="วันและเวลาที่ระบบ Intrusion Prevention System (IPS) ตรวจพบและบันทึกเหตุการณ์นี้" />,
+      title: <ColumnHeader title="วัน-เวลา" desc="วันและเวลาที่ระบบตรวจพบเหตุการณ์นี้" />,
       dataIndex: 'created_at',
       key: 'when',
       render: (date) => <Text type="secondary" style={{ fontSize: '12px' }}>{formatThaiDate(date)}</Text>
@@ -310,13 +305,7 @@ export default function SecurityCommandCenter() {
         </div>
         <Space>
           <Button icon={<SettingOutlined />} onClick={() => { fetchSecuritySettings(); setIsSettingsModalVisible(true); }}>ตั้งค่าระบบป้องกัน</Button>
-          <Button 
-            icon={<FileExcelOutlined style={{ color: '#1D6F42' }} />} 
-            onClick={handleExportReport}
-            disabled={threats.length === 0}
-          >
-            ส่งออกรายงาน (Excel)
-          </Button>
+          <Button icon={<FileExcelOutlined style={{ color: '#1D6F42' }} />} onClick={handleExportReport}>ส่งออกรายงาน</Button>
           <Button type="primary" icon={<SyncOutlined />} onClick={fetchSecurityData} loading={loading}>รีเฟรชข้อมูล</Button>
         </Space>
       </div>
@@ -328,7 +317,13 @@ export default function SecurityCommandCenter() {
           return (
             <Col xs={24} sm={12} lg={6} key={phase.key}>
               <Card variant="borderless" hoverable style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', borderTop: `4px solid ${phase.color}` }}>
-                <Statistic title={phase.title} value={count} prefix={phase.icon} valueStyle={{ color: phase.color }} />
+                {/* FIX: antd 5.x deprecation for valueStyle */}
+                <Statistic 
+                  title={phase.title} 
+                  value={count} 
+                  prefix={phase.icon} 
+                  styles={{ content: { color: phase.color } }} 
+                />
                 <Text type="secondary" style={{ fontSize: '11px' }}>{phase.desc}</Text>
               </Card>
             </Col>
@@ -337,7 +332,7 @@ export default function SecurityCommandCenter() {
       </Row>
 
       <Row gutter={[24, 24]}>
-        {/* Main Intelligence Table */}
+        {/* Main Table */}
         <Col xs={24} xl={17}>
           <Card 
             title={<Space><SecurityScanFilled style={{ color: token.colorPrimary }} /> บันทึกเหตุการณ์และผลลัพธ์การสกัดกั้น</Space>}
@@ -355,7 +350,6 @@ export default function SecurityCommandCenter() {
             <Card title={<Space><StopOutlined style={{ color: '#ef4444' }} /> รายการ IP ที่ถูกปิดกั้น</Space>} variant="borderless" style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }} extra={<Badge count={blockedIps.length} showZero color="#ef4444" />}>
               <List
                 dataSource={blockedIps}
-                maxHeight={400}
                 renderItem={(item) => (
                   <List.Item actions={[<Button type="text" danger icon={<SyncOutlined />} onClick={() => handleUnblockIp(item.ip_address)} />]}>
                     <List.Item.Meta avatar={<Avatar icon={<GlobalOutlined />} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }} />} title={<Text strong>{item.ip_address}</Text>} description={<Text type="secondary" style={{ fontSize: '11px' }}>ระงับเมื่อ: {formatThaiDate(item.created_at)}</Text>} />
@@ -365,72 +359,40 @@ export default function SecurityCommandCenter() {
               />
             </Card>
 
-            <Card title={<Space><ShieldOutlined style={{ color: '#10b981' }} /> ประสิทธิภาพการป้องกัน</Space>} variant="borderless" style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', background: `linear-gradient(135deg, ${token.colorPrimary}05 0%, ${token.colorPrimary}15 100%)` }}>
+            <Card title={<Space><SafetyOutlined style={{ color: '#10b981' }} /> ประสิทธิภาพการป้องกัน</Space>} variant="borderless" style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', background: `linear-gradient(135deg, ${token.colorPrimary}05 0%, ${token.colorPrimary}15 100%)` }}>
               <div style={{ marginBottom: '16px' }}>
                 <Text strong>อัตราความสำเร็จในการสกัดกั้น</Text>
                 <Progress percent={threats.length > 0 ? Math.round((threats.filter(t => t.status_code >= 400).length / threats.length) * 100) : 100} status="active" strokeColor="#10b981" />
               </div>
               <Paragraph style={{ fontSize: '12px', color: 'var(--text-sub)' }}>
-                ระบบ IPS กำลังเฝ้าระวังอย่างต่อเนื่อง ตรวจพบการพยายามโจมตี {threats.length} ครั้งล่าสุด และสั่งแบน IP อัตโนมัติไปแล้ว {blockedIps.length} รายการ
+                ระบบ IPS กำลังเฝ้าระวังอย่างต่อเนื่อง ตรวจพบการพยายามโจมตี {threats.length} ครั้งล่าสุด
               </Paragraph>
             </Card>
           </Flex>
         </Col>
       </Row>
 
-      {/* ⚙️ Security Settings Modal */}
-      <Modal 
-        title={<Space><SettingOutlined /> ตั้งค่าระบบบล็อก IP อัตโนมัติ (IPS Configuration)</Space>} 
-        open={isSettingsModalVisible} 
-        onCancel={() => setIsSettingsModalVisible(false)} 
-        footer={null} 
-        width={600}
-      >
+      {/* Settings Modal */}
+      <Modal title={<Space><SettingOutlined /> ตั้งค่าระบบบล็อก IP อัตโนมัติ (IPS Configuration)</Space>} open={isSettingsModalVisible} onCancel={() => setIsSettingsModalVisible(false)} footer={null} width={600}>
         <div style={{ marginBottom: 20, padding: '12px', background: '#f0f7ff', borderRadius: '8px', border: '1px solid #bae7ff' }}>
-          <Text type="secondary" style={{ fontSize: '13px' }}>
-            <InfoCircleOutlined /> <b>คำแนะนำ:</b> ระบบจะทำการแบน IP ทันทีเมื่อคะแนนสะสมหรือจำนวนครั้งถึงเกณฑ์ที่กำหนด เพื่อหยุดยั้งผู้บุกรุกโดยไม่รอ Admin
-          </Text>
+          <Text type="secondary" style={{ fontSize: '13px' }}><InfoCircleOutlined /> <b>คำแนะนำ:</b> ระบบจะทำการแบน IP ทันทีเมื่อคะแนนสะสมหรือจำนวนครั้งถึงเกณฑ์ที่กำหนด</Text>
         </div>
         <Form form={form} layout="vertical" onFinish={handleUpdateSettings}>
-          <Form.Item name="auto_block_enabled" label={<b>เปิดใช้งานระบบบล็อกอัตโนมัติ</b>} valuePropName="checked">
-            <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
-          </Form.Item>
+          <Form.Item name="auto_block_enabled" label={<b>เปิดใช้งานระบบบล็อกอัตโนมัติ</b>} valuePropName="checked"><Switch checkedChildren="เปิด" unCheckedChildren="ปิด" /></Form.Item>
           <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="score_threshold" label={<b>เกณฑ์คะแนนความเสี่ยง</b>} tooltip="คะแนนสะสมที่หากถึงเกณฑ์จะถูกบล็อกทันที">
-                <InputNumber min={1} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="attack_limit_per_hour" label={<b>จำนวนครั้งที่อนุญาต/ชม.</b>} tooltip="จำนวนการโจมตีที่ยอมให้เกิดใน 1 ชม.">
-                <InputNumber min={1} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
+            <Col span={12}><Form.Item name="score_threshold" label={<b>เกณฑ์คะแนนความเสี่ยง</b>} tooltip="คะแนนสะสมที่หากถึงเกณฑ์จะถูกบล็อกทันที"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="attack_limit_per_hour" label={<b>จำนวนครั้งที่อนุญาต/ชม.</b>} tooltip="จำนวนการโจมตีที่ยอมให้เกิดใน 1 ชม."><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
           </Row>
-          <Form.Item name="block_duration_hours" label={<b>ระยะเวลาการบล็อก (ชั่วโมง)</b>}>
-            <InputNumber min={1} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="whitelist_ips" label={<b>IP ที่ยกเว้น (Whitelist)</b>} help="คั่นด้วยเครื่องหมายจุลภาค ,">
-            <Input.TextArea rows={3} />
-          </Form.Item>
+          <Form.Item name="block_duration_hours" label={<b>ระยะเวลาการบล็อก (ชั่วโมง)</b>}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="whitelist_ips" label={<b>IP ที่ยกเว้น (Whitelist)</b>} help="คั่นด้วยเครื่องหมายจุลภาค ,"><Input.TextArea rows={3} /></Form.Item>
           <Divider />
-          <div style={{ textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setIsSettingsModalVisible(false)}>ยกเลิก</Button>
-              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={settingsLoading}>บันทึกการตั้งค่า</Button>
-            </Space>
-          </div>
+          <div style={{ textAlign: 'right' }}><Space><Button onClick={() => setIsSettingsModalVisible(false)}>ยกเลิก</Button><Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={settingsLoading}>บันทึกการตั้งค่า</Button></Space></div>
         </Form>
       </Modal>
 
-      {/* 🗓️ Attack Journey Timeline Modal (World Class Analysis View) */}
+      {/* Timeline Modal */}
       <Modal
-        title={
-          <Space>
-            <HistoryOutlined style={{ color: token.colorPrimary }} />
-            <span>การวิเคราะห์เส้นทางการโจมตีเชิงลึก: <Text strong type="danger">{selectedIp}</Text></span>
-          </Space>
-        }
+        title={<Space><HistoryOutlined style={{ color: token.colorPrimary }} /><span>การวิเคราะห์เส้นทางการโจมตีเชิงลึก: <Text strong type="danger">{selectedIp}</Text></span></Space>}
         open={isTimelineModalVisible}
         onCancel={() => setIsTimelineModalVisible(false)}
         footer={[<Button key="close" onClick={() => setIsTimelineModalVisible(false)}>ปิดหน้าต่าง</Button>]}
@@ -439,7 +401,6 @@ export default function SecurityCommandCenter() {
         styles={{ body: { padding: '24px', backgroundColor: 'var(--bg-app)' } }}
       >
         <Row gutter={24}>
-          {/* Left: Timeline Summary */}
           <Col xs={24} md={10} style={{ borderRight: '1px solid var(--border-color)', maxHeight: '65vh', overflowY: 'auto' }}>
             <Title level={5} style={{ marginBottom: '20px' }}><ClockCircleOutlined /> ลำดับเหตุการณ์ (Kill Chain)</Title>
             {selectedIp && attackerJourneys[selectedIp] ? (
@@ -448,7 +409,6 @@ export default function SecurityCommandCenter() {
                 items={attackerJourneys[selectedIp].map(t => {
                   const phaseInfo = killChainPhases.find(p => p.key === t.kill_chain_phase);
                   const isSelected = selectedThreat?.id === t.id;
-                  
                   let severity = { label: 'LOW', color: 'blue' };
                   if (t.threat_score >= 80) severity = { label: 'CRITICAL', color: 'error' };
                   else if (t.threat_score >= 60) severity = { label: 'HIGH', color: 'warning' };
@@ -458,21 +418,10 @@ export default function SecurityCommandCenter() {
                     color: phaseInfo?.color,
                     title: <Text type="secondary" style={{ fontSize: '11px' }}>{dayjs(t.created_at).format('HH:mm:ss')}</Text>,
                     content: (
-                      <div 
-                        onClick={() => setSelectedThreat(t)}
-                        style={{ 
-                          cursor: 'pointer',
-                          padding: '12px', 
-                          borderRadius: '10px', 
-                          backgroundColor: isSelected ? `${phaseInfo?.color}15` : 'var(--bg-card)',
-                          border: isSelected ? `1px solid ${phaseInfo?.color}` : '1px solid var(--border-color)',
-                          boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
+                      <div onClick={() => setSelectedThreat(t)} style={{ cursor: 'pointer', padding: '12px', borderRadius: '10px', backgroundColor: isSelected ? `${phaseInfo?.color}15` : 'var(--bg-card)', border: isSelected ? `1px solid ${phaseInfo?.color}` : '1px solid var(--border-color)', boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s ease' }}>
                         <Flex vertical gap={2} style={{ width: '100%' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Tag color={severity.color} style={{ fontSize: '10px', fontWeight: 'bold' }}>{severity.label}</Tag>
+                            <Tag color={severity.color}>{severity.label}</Tag>
                             <Text type="secondary" style={{ fontSize: '10px' }}>{phaseInfo?.title}</Text>
                           </div>
                           <Text strong style={{ fontSize: '13px', display: 'block' }}>{t.attack_type}</Text>
@@ -485,29 +434,15 @@ export default function SecurityCommandCenter() {
             ) : <Empty />}
           </Col>
 
-          {/* Right: 5W1H Analysis */}
           <Col xs={24} md={14}>
             {selectedThreat ? (
               <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', height: '100%', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.02)' }}>
                 <Title level={4} style={{ marginTop: 0, color: token.colorPrimary }}>รายละเอียดเหตุการณ์ (5W1H Analysis)</Title>
-                <Descriptions 
-                  column={1} 
-                  size="small" 
-                  bordered={false}
-                  styles={{ label: { width: '130px', fontWeight: 'bold', color: 'var(--text-main)' } }}
-                >
-                  <Descriptions.Item label={<Space><UserOutlined /> Who (ใคร)</Space>}>
-                    <Text copyable>IP: {selectedThreat.ip_address}</Text>
-                  </Descriptions.Item>
-                  <Descriptions.Item label={<Space><ThunderboltOutlined /> What (ทำอะไร)</Space>}>
-                    {`${selectedThreat.method} ส่งข้อมูลอันตราย (${selectedThreat.attack_type})`}
-                  </Descriptions.Item>
-                  <Descriptions.Item label={<Space><EnvironmentOutlined /> Where (ที่ไหน)</Space>}>
-                    <Text code>{selectedThreat.target_url}</Text>
-                  </Descriptions.Item>
-                  <Descriptions.Item label={<Space><ClockCircleOutlined /> When (เมื่อไหร่)</Space>}>
-                    {formatThaiDate(selectedThreat.created_at)}
-                  </Descriptions.Item>
+                <Descriptions column={1} size="small" bordered={false} styles={{ label: { width: '130px', fontWeight: 'bold', color: 'var(--text-main)' } }}>
+                  <Descriptions.Item label={<Space><UserOutlined /> Who (ใคร)</Space>}><Text copyable>IP: {selectedThreat.ip_address}</Text></Descriptions.Item>
+                  <Descriptions.Item label={<Space><ThunderboltOutlined /> What (ทำอะไร)</Space>}>{`${selectedThreat.method} ส่งข้อมูลอันตราย (${selectedThreat.attack_type})`}</Descriptions.Item>
+                  <Descriptions.Item label={<Space><EnvironmentOutlined /> Where (ที่ไหน)</Space>}><Text code ellipsis>{selectedThreat.target_url}</Text></Descriptions.Item>
+                  <Descriptions.Item label={<Space><ClockCircleOutlined /> When (เมื่อไหร่)</Space>}>{formatThaiDate(selectedThreat.created_at)}</Descriptions.Item>
                   <Descriptions.Item label={<Space><CheckCircleOutlined /> Outcome (ผลลัพธ์)</Space>}>
                     <Space>
                       {selectedThreat.status_code < 400 ? <Tag color="warning">ผ่านได้ (200)</Tag> : <Tag color="success">สกัดกั้นสำเร็จ ({selectedThreat.status_code})</Tag>}
@@ -515,43 +450,20 @@ export default function SecurityCommandCenter() {
                     </Space>
                   </Descriptions.Item>
                 </Descriptions>
-
                 <Divider style={{ margin: '16px 0' }} />
-                
-                <Title level={5}><CodeOutlined /> Raw Log Data (บันทึกข้อมูลดิบ)</Title>
-                <div style={{ 
-                  backgroundColor: '#1e293b', 
-                  color: '#e2e8f0', 
-                  padding: '16px', 
-                  borderRadius: '8px', 
-                  fontSize: '12px',
-                  fontFamily: 'monospace',
-                  maxHeight: '200px',
-                  overflowY: 'auto',
-                  border: '1px solid #334155'
-                }}>
+                <Title level={5}><CodeOutlined /> Raw Log Data</Title>
+                <div style={{ backgroundColor: '#1e293b', color: '#e2e8f0', padding: '16px', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', maxHeight: '200px', overflowY: 'auto', border: '1px solid #334155' }}>
                    {`[SECURITY] ${selectedThreat.method} ${selectedThreat.target_url}\nIP: ${selectedThreat.ip_address}\nPayload: ${selectedThreat.payload}`}
                 </div>
               </div>
-            ) : (
-              <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Empty description="เลือกเหตุการณ์จากไทม์ไลน์เพื่อวิเคราะห์" />
-              </div>
-            )}
+            ) : <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Empty description="เลือกเหตุการณ์จากไทม์ไลน์เพื่อวิเคราะห์" /></div>}
           </Col>
         </Row>
       </Modal>
 
       <style>{`
-        .enterprise-table .ant-table-thead > tr > th {
-          background-color: var(--bg-app) !important;
-          font-weight: 700;
-          color: var(--text-main);
-          border-bottom: 1px solid var(--border-color);
-        }
-        .enterprise-table .ant-table-row:hover > td {
-          background-color: ${token.colorPrimary}05 !important;
-        }
+        .enterprise-table .ant-table-thead > tr > th { background-color: var(--bg-app) !important; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-color); }
+        .enterprise-table .ant-table-row:hover > td { background-color: ${token.colorPrimary}05 !important; }
       `}</style>
     </div>
   );
