@@ -12,18 +12,22 @@ let lastCacheUpdate = 0;
 const updateSecurityCache = async () => {
     try {
         const now = Date.now();
-        if (now - lastCacheUpdate < 30000) return;
+        if (now - lastCacheUpdate < 30000) return; 
 
+        // 1. ดึง IP ที่ถูกบล็อก
         const [blockedRows] = await db.query('SELECT ip_address FROM blocked_ips WHERE expires_at IS NULL OR expires_at > NOW()');
         blockedIpCache = new Set(blockedRows.map(r => r.ip_address));
 
+        // 2. ดึงการตั้งค่าความปลอดภัย (รองรับฟีเจอร์ใหม่)
         const [settingsRows] = await db.query('SELECT * FROM security_settings WHERE id = 1');
         securitySettingsCache = settingsRows[0] || {
             auto_block_enabled: true,
             score_threshold: 100,
             attack_limit_per_hour: 10,
             block_duration_hours: 24,
-            whitelist_ips: '127.0.0.1, ::1, localhost'
+            whitelist_ips: '127.0.0.1, ::1, localhost',
+            immediate_block_score: 80,
+            notify_admin: true
         };
 
         lastCacheUpdate = now;
@@ -39,7 +43,7 @@ const isWhitelisted = (ip) => {
 };
 
 /**
- * 🚨 Automated IP Blocking Logic
+ * 🚨 Automated IP Blocking Logic (IPS)
  */
 const autoBlockIp = async (ip, score, reason) => {
     if (isWhitelisted(ip) || !securitySettingsCache.auto_block_enabled) return false;
@@ -53,16 +57,29 @@ const autoBlockIp = async (ip, score, reason) => {
         const totalScore = (rows[0].total_score || 0) + score;
         const attackCount = (rows[0].attack_count || 0) + 1;
 
-        if (totalScore >= securitySettingsCache.score_threshold || attackCount >= securitySettingsCache.attack_limit_per_hour || score >= 100) {
+        // เงื่อนไขการบล็อกแบบ Full Configuration:
+        // 1. คะแนนสะสมเกินเกณฑ์ (Accumulative Score)
+        // 2. ความถี่การโจมตีเกินกำหนด (Attack Frequency)
+        // 3. เป็นการโจมตีระดับร้ายแรง (Immediate Block Score)
+        if (
+            totalScore >= securitySettingsCache.score_threshold || 
+            attackCount >= securitySettingsCache.attack_limit_per_hour || 
+            score >= securitySettingsCache.immediate_block_score
+        ) {
             let expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + securitySettingsCache.block_duration_hours);
 
             await db.query(
                 'INSERT INTO blocked_ips (ip_address, reason, blocked_by, expires_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE reason=VALUES(reason), expires_at=VALUES(expires_at)',
-                [ip, `Auto-blocked: ${reason} (Score: ${totalScore}, Attacks: ${attackCount})`, 'System-AutoBlock', expiresAt]
+                [
+                    ip, 
+                    `Auto-blocked: ${reason} (Cumulative Score: ${totalScore}, Peak Score: ${score})`, 
+                    'System-AutoBlock',
+                    expiresAt
+                ]
             );
             
-            lastCacheUpdate = 0;
+            lastCacheUpdate = 0; 
             return true;
         }
         return false;
@@ -88,7 +105,9 @@ const threatDetector = async (req, res, next) => {
     }
 
     const url = req.originalUrl || req.url;
-    if (req.headers.upgrade === 'websocket' || url.includes('token=')) return next();
+    if (req.headers.upgrade?.toLowerCase() === 'websocket' || url.includes('token=')) {
+        return next();
+    }
 
     const userAgent = req.headers['user-agent'] || '';
     let decodedUrl = '';
@@ -101,7 +120,7 @@ const threatDetector = async (req, res, next) => {
     let detectedThreat = null;
     let score = 0;
 
-    // --- Threat Detection Logic ---
+    // --- Threat Analysis ---
     const reconPatterns = [
         { regex: /^\/(\.env|\.git|\.aws|\.ssh|config\.php|backup|dump|phpmyadmin)/i, type: 'Sensitive Path Discovery' },
         { regex: /nmap|masscan|sqlmap|nikto|acunetix|goby|zgrab|cyberchef/i, type: 'Security Scanner', target: userAgent },
@@ -130,7 +149,7 @@ const threatDetector = async (req, res, next) => {
         for (const p of attackPatterns) {
             if (p.regex.test(fullPayload)) {
                 detectedThreat = { phase: 'Execution', type: p.type };
-                score = 85;
+                score = 85; // จะถูกบล็อกทันทีหากเกณฑ์ immediate_block_score คือ 80
                 break;
             }
         }
@@ -151,7 +170,6 @@ const threatDetector = async (req, res, next) => {
         }
     }
 
-    // Capture Response Status (Finish Event)
     res.on('finish', async () => {
         if (detectedThreat && !isWhitelisted(ip)) {
             try {
@@ -166,10 +184,12 @@ const threatDetector = async (req, res, next) => {
                     res.statusCode, isBlocked
                 ]);
 
-                const alertLevel = score >= 80 ? 'CRITICAL' : 'WARNING';
-                await sysLog(alertLevel, 'SECURITY', `⚠️ ${isBlocked ? '[BLOCKED]' : '[REJECTED]'} ${detectedThreat.type} from ${ip} - Status: ${res.statusCode}`, {
-                    req, metadata: { phase: detectedThreat.phase, type: detectedThreat.type, score, autoBlocked: isBlocked, status: res.statusCode }
-                });
+                if (securitySettingsCache.notify_admin) {
+                    const alertLevel = score >= 80 ? 'CRITICAL' : 'WARNING';
+                    await sysLog(alertLevel, 'SECURITY', `⚠️ ${isBlocked ? '[AUTO-BLOCKED]' : '[REJECTED]'} ${detectedThreat.type} from ${ip}`, {
+                        req, metadata: { phase: detectedThreat.phase, type: detectedThreat.type, score, autoBlocked: isBlocked, status: res.statusCode }
+                    });
+                }
             } catch (err) {
                 console.error('❌ Threat Logger Error:', err.message);
             }

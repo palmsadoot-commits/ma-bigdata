@@ -66,7 +66,9 @@ exports.updateSecuritySettings = async (req, res, next) => {
         score_threshold, 
         attack_limit_per_hour, 
         block_duration_hours, 
-        whitelist_ips 
+        whitelist_ips,
+        immediate_block_score,
+        notify_admin
     } = req.body;
     
     try {
@@ -77,14 +79,18 @@ exports.updateSecuritySettings = async (req, res, next) => {
                 score_threshold = ?, 
                 attack_limit_per_hour = ?, 
                 block_duration_hours = ?, 
-                whitelist_ips = ?
+                whitelist_ips = ?,
+                immediate_block_score = ?,
+                notify_admin = ?
             WHERE id = 1
         `, [
             auto_block_enabled, 
             score_threshold, 
             attack_limit_per_hour, 
             block_duration_hours, 
-            whitelist_ips
+            whitelist_ips,
+            immediate_block_score,
+            notify_admin
         ]);
         res.json({ success: true, message: 'Security settings updated successfully.' });
     } catch (err) { next(err); }

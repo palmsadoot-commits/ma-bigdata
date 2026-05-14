@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Row, Col, Typography, Table, Button, Space, Tag, 
   Statistic, Divider, Empty, Modal, message, Badge, Tooltip,
-  Timeline, List, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover
+  Timeline, List, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover, Alert
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -15,6 +15,7 @@ import {
   GlobalOutlined,
   InfoCircleOutlined,
   WarningOutlined,
+  ArrowRightOutlined,
   ClockCircleOutlined,
   UserOutlined,
   EnvironmentOutlined,
@@ -26,7 +27,11 @@ import {
   CheckCircleOutlined,
   QuestionCircleOutlined,
   SecurityScanFilled,
-  SafetyOutlined
+  SafetyOutlined,
+  NotificationOutlined,
+  RocketOutlined,
+  AuditOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th'; 
@@ -37,10 +42,10 @@ import * as XLSX from 'xlsx';
 dayjs.locale('th');
 
 const { Title, Text, Paragraph } = Typography;
+const { Search } = Input;
 
 /**
- * 🛡️ Security Command Center - Enterprise Hardened Version
- * แก้ไข Warning และปรับจูนประสิทธิภาพระบบ
+ * 🛡️ Security Command Center - Enterprise Search Enabled Version
  */
 export default function SecurityCommandCenter() {
   const { token } = theme.useToken();
@@ -51,6 +56,10 @@ export default function SecurityCommandCenter() {
   const [selectedIp, setSelectedIp] = useState(null); 
   const [selectedThreat, setSelectedThreat] = useState(null); 
   const [isTimelineModalVisible, setIsTimelineModalVisible] = useState(false);
+
+  // Search States
+  const [threatSearchText, setThreatSearchText] = useState('');
+  const [blockedIpSearchText, setBlockedIpSearchText] = useState('');
 
   // Security Settings States
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
@@ -82,7 +91,8 @@ export default function SecurityCommandCenter() {
       const res = await axiosInstance.get('/security/settings');
       form.setFieldsValue({
         ...res.data,
-        auto_block_enabled: res.data.auto_block_enabled === 1 || res.data.auto_block_enabled === true
+        auto_block_enabled: res.data.auto_block_enabled === 1 || res.data.auto_block_enabled === true,
+        notify_admin: res.data.notify_admin === 1 || res.data.notify_admin === true
       });
     } catch (err) {
       message.error("ไม่สามารถโหลดการตั้งค่าความปลอดภัยได้");
@@ -97,8 +107,28 @@ export default function SecurityCommandCenter() {
     return () => clearInterval(interval);
   }, [fetchSecurityData]);
 
-  // --- 🛠️ Logic & Calculations ---
+  // --- 🛠️ Filtering Logic ---
   
+  const filteredThreats = useMemo(() => {
+    if (!threatSearchText) return threats;
+    const search = threatSearchText.toLowerCase();
+    return threats.filter(t => 
+      t.ip_address?.toLowerCase().includes(search) ||
+      t.attack_type?.toLowerCase().includes(search) ||
+      t.target_url?.toLowerCase().includes(search) ||
+      t.method?.toLowerCase().includes(search)
+    );
+  }, [threats, threatSearchText]);
+
+  const filteredBlockedIps = useMemo(() => {
+    if (!blockedIpSearchText) return blockedIps;
+    const search = blockedIpSearchText.toLowerCase();
+    return blockedIps.filter(b => 
+      b.ip_address?.toLowerCase().includes(search) ||
+      b.reason?.toLowerCase().includes(search)
+    );
+  }, [blockedIps, blockedIpSearchText]);
+
   const attackerJourneys = useMemo(() => {
     const journeys = {};
     threats.forEach(t => {
@@ -112,7 +142,7 @@ export default function SecurityCommandCenter() {
     setSettingsLoading(true);
     try {
       await axiosInstance.put('/security/settings', values);
-      alertSuccess('สำเร็จ', 'บันทึกการตั้งค่าความปลอดภัยเรียบร้อยแล้ว');
+      alertSuccess('สำเร็จ', 'บันทึกการตั้งค่า IPS แบบ Full เรียบร้อยแล้ว');
       setIsSettingsModalVisible(false);
     } catch (err) {
       alertError('ผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้');
@@ -125,7 +155,7 @@ export default function SecurityCommandCenter() {
     const result = await alertConfirm('ยืนยันการปิดกั้น IP?', `คุณแน่ใจหรือไม่ว่าต้องการบล็อก IP: ${ip} ทันที?`);
     if (result.isConfirmed) {
       try {
-        await axiosInstance.post('/security/block-ip', { ip_address: ip, reason: 'Detected malicious activity' });
+        await axiosInstance.post('/security/block-ip', { ip_address: ip, reason: 'Manual block by Admin' });
         alertSuccess('ปิดกั้นสำเร็จ', `IP ${ip} ถูกระงับการใช้งานแล้ว`);
         fetchSecurityData();
       } catch (err) {
@@ -158,7 +188,7 @@ export default function SecurityCommandCenter() {
         'Method': t.method,
         'Target URL': t.target_url,
         'Threat Score': t.threat_score,
-        'Outcome': t.status_code < 400 ? 'SUCCESS' : `REJECTED (${t.status_code})`,
+        'Status Code': t.status_code,
         'Action': t.is_blocked ? 'AUTO-BLOCKED' : 'REJECTED',
         'Date Time': dayjs(t.created_at).format('DD MMM YY HH:mm')
       }));
@@ -166,7 +196,7 @@ export default function SecurityCommandCenter() {
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Security Threats");
-      XLSX.writeFile(wb, `Security_Report_${dayjs().format('YYYYMMDD_HHmm')}.xlsx`);
+      XLSX.writeFile(wb, `Full_Security_Report_${dayjs().format('YYYYMMDD_HHmm')}.xlsx`);
       message.success("ส่งออกรายงานสำเร็จ");
     } catch (error) {
       message.error("เกิดข้อผิดพลาดในการส่งออกรายงาน");
@@ -188,10 +218,10 @@ export default function SecurityCommandCenter() {
   // --- 🎨 UI Components ---
 
   const killChainPhases = [
-    { key: 'Reconnaissance', title: 'การสอดแนม (Recon)', desc: 'ขั้นสำรวจค้นหาช่องโหว่และรวบรวมข้อมูลระบบเพื่อหาทางเจาะ', color: '#3b82f6', icon: <EyeOutlined /> },
-    { key: 'Access', title: 'การพยายามเข้าถึง', desc: 'พยายามข้ามระบบตรวจสอบสิทธิ์หรือเจาะเข้าสู่พื้นที่จำกัด', color: '#f59e0b', icon: <ThunderboltOutlined /> },
-    { key: 'Execution', title: 'การโจมตีระบบ', desc: 'การส่งคำสั่งอันตราย (SQL Injection, XSS) เพื่อทำลายหรือขโมยข้อมูล', color: '#ef4444', icon: <WarningOutlined /> },
-    { key: 'Persistence', title: 'การฝังตัว', desc: 'พยายามสร้างช่องทางลับ (Backdoor) เพื่อเข้าถึงระบบในระยะยาว', color: '#8b5cf6', icon: <LockOutlined /> }
+    { key: 'Reconnaissance', title: 'การสอดแนม (Recon)', desc: 'ค้นหาช่องโหว่และรวบรวมข้อมูลระบบ', color: '#3b82f6', icon: <EyeOutlined /> },
+    { key: 'Access', title: 'การพยายามเข้าถึง', desc: 'พยายามข้ามระบบตรวจสอบสิทธิ์', color: '#f59e0b', icon: <ThunderboltOutlined /> },
+    { key: 'Execution', title: 'การโจมตีระบบ', desc: 'การส่งคำสั่งอันตราย (SQLi, XSS)', color: '#ef4444', icon: <WarningOutlined /> },
+    { key: 'Persistence', title: 'การฝังตัว', desc: 'พยายามยึดครองระบบในระยะยาว', color: '#8b5cf6', icon: <LockOutlined /> }
   ];
 
   const ColumnHeader = ({ title, desc }) => (
@@ -209,7 +239,7 @@ export default function SecurityCommandCenter() {
 
   const columns = [
     {
-      title: <ColumnHeader title="ผู้โจมตี" desc="ที่อยู่ IP ของผู้ที่พยายามกระทำการอันตราย หากมี Tag BLOCKED แสดงว่าระบบได้ตัดการเชื่อมต่อถาวรแล้ว" />,
+      title: <ColumnHeader title="ผู้โจมตี" desc="ที่อยู่ IP ของผู้ที่พยายามกระทำการอันตราย" />,
       dataIndex: 'ip_address',
       key: 'who',
       render: (text) => (
@@ -226,7 +256,7 @@ export default function SecurityCommandCenter() {
       )
     },
     {
-      title: <ColumnHeader title="ขั้นตอน" desc="ลำดับการโจมตีตาม Cyber Kill Chain ช่วยให้ทราบว่าผู้โจมตีอยู่ในระยะไหน" />,
+      title: <ColumnHeader title="ขั้นตอน" desc="ลำดับการโจมตีตาม Cyber Kill Chain" />,
       dataIndex: 'kill_chain_phase',
       key: 'phase',
       render: (phase) => {
@@ -235,19 +265,7 @@ export default function SecurityCommandCenter() {
       }
     },
     {
-      title: <ColumnHeader title="เป้าหมาย" desc="ตำแหน่งของระบบ (API Endpoint) ที่ผู้โจมตีพยายามเรียกใช้งาน" />,
-      dataIndex: 'target_url',
-      key: 'where',
-      render: (text, record) => (
-        <Tooltip title={`Method: ${record.method}`}>
-          <div style={{ maxWidth: '180px' }}>
-            <Text code ellipsis style={{ fontSize: '12px' }}>{text}</Text>
-          </div>
-        </Tooltip>
-      )
-    },
-    {
-      title: <ColumnHeader title="สถานะการตอบโต้" desc="ผลลัพธ์ของระบบ: สกัดกั้น (403) คือป้องกันสำเร็จ, อันตราย (Score) คือระดับความรุนแรง" />,
+      title: <ColumnHeader title="สถานะการตอบโต้" desc="ผลลัพธ์ของระบบ: สกัดกั้น (403) คือป้องกันสำเร็จ" />,
       key: 'status',
       render: (_, record) => {
         const isProtected = record.status_code >= 400;
@@ -301,58 +319,95 @@ export default function SecurityCommandCenter() {
             <SafetyCertificateOutlined style={{ color: '#10b981' }} />
             <span>ศูนย์ควบคุมความปลอดภัยไซเบอร์</span>
           </Title>
-          <Text type="secondary">Intrusion Prevention System (IPS) - วิเคราะห์พฤติกรรมการโจมตีและสถานะการสกัดกั้น</Text>
+          <Text type="secondary">ระบบป้องกันการบุกรุกแบบรวมศูนย์ (Enterprise IPS)</Text>
         </div>
         <Space>
-          <Button icon={<SettingOutlined />} onClick={() => { fetchSecuritySettings(); setIsSettingsModalVisible(true); }}>ตั้งค่าระบบป้องกัน</Button>
+          <Button type="primary" ghost icon={<SettingOutlined />} onClick={() => { fetchSecuritySettings(); setIsSettingsModalVisible(true); }}>ตั้งค่า IPS แบบ Full</Button>
           <Button icon={<FileExcelOutlined style={{ color: '#1D6F42' }} />} onClick={handleExportReport}>ส่งออกรายงาน</Button>
           <Button type="primary" icon={<SyncOutlined />} onClick={fetchSecurityData} loading={loading}>รีเฟรชข้อมูล</Button>
         </Space>
       </div>
 
-      {/* Kill Chain Pipeline Visual */}
+      {/* Kill Chain Statistics */}
       <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
-        {killChainPhases.map((phase) => {
-          const count = stats.find(s => s.phase === phase.key)?.count || 0;
-          return (
-            <Col xs={24} sm={12} lg={6} key={phase.key}>
-              <Card variant="borderless" hoverable style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', borderTop: `4px solid ${phase.color}` }}>
-                {/* FIX: antd 5.x deprecation for valueStyle */}
-                <Statistic 
-                  title={phase.title} 
-                  value={count} 
-                  prefix={phase.icon} 
-                  styles={{ content: { color: phase.color } }} 
-                />
-                <Text type="secondary" style={{ fontSize: '11px' }}>{phase.desc}</Text>
-              </Card>
-            </Col>
-          );
-        })}
+        {killChainPhases.map((phase) => (
+          <Col xs={24} sm={12} lg={6} key={phase.key}>
+            <Card variant="borderless" hoverable style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', borderTop: `4px solid ${phase.color}` }}>
+              <Statistic 
+                title={phase.title} 
+                value={stats.find(s => s.phase === phase.key)?.count || 0} 
+                prefix={phase.icon} 
+                styles={{ content: { color: phase.color } }} 
+              />
+              <Text type="secondary" style={{ fontSize: '11px' }}>{phase.desc}</Text>
+            </Card>
+          </Col>
+        ))}
       </Row>
 
       <Row gutter={[24, 24]}>
-        {/* Main Table */}
+        {/* Main Log Table Section */}
         <Col xs={24} xl={17}>
           <Card 
-            title={<Space><SecurityScanFilled style={{ color: token.colorPrimary }} /> บันทึกเหตุการณ์และผลลัพธ์การสกัดกั้น</Space>}
+            title={
+              <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+                <Space><SecurityScanFilled style={{ color: token.colorPrimary }} /> บันทึกเหตุการณ์การสกัดกั้น</Space>
+                <Search 
+                  placeholder="ค้นหา IP, ประเภทการโจมตี หรือเป้าหมาย..." 
+                  allowClear 
+                  onSearch={value => setThreatSearchText(value)}
+                  onChange={e => setThreatSearchText(e.target.value)}
+                  style={{ width: 300 }}
+                  prefix={<SearchOutlined />}
+                />
+              </Flex>
+            }
             variant="borderless"
             style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }}
             styles={{ body: { padding: 0 } }}
           >
-            <Table dataSource={threats} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 8 }} scroll={{ x: 'max-content' }} className="enterprise-table" />
+            <Table 
+  dataSource={filteredThreats} 
+  columns={columns} 
+  rowKey="id" 
+  loading={loading} 
+  pagination={{ 
+    defaultPageSize: 10, 
+    showSizeChanger: true, 
+    pageSizeOptions: ['10', '20', '50', '100'], 
+    showTotal: (total) => `ทั้งหมด ${total} รายการ` 
+  }} 
+  scroll={{ x: 'max-content' }} 
+  className="enterprise-table" 
+/>
           </Card>
         </Col>
 
-        {/* IP Block List & Insights */}
+        {/* IP Block List & Protection Insights */}
         <Col xs={24} xl={7}>
           <Flex vertical gap="large" style={{ width: '100%' }}>
-            <Card title={<Space><StopOutlined style={{ color: '#ef4444' }} /> รายการ IP ที่ถูกปิดกั้น</Space>} variant="borderless" style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }} extra={<Badge count={blockedIps.length} showZero color="#ef4444" />}>
+            <Card 
+              title={
+                <Flex vertical gap={8}>
+                  <Space><StopOutlined style={{ color: '#ef4444' }} /> รายการ IP ที่ถูกแบน <Badge count={filteredBlockedIps.length} showZero color="#ef4444" /></Space>
+                  <Search 
+                    placeholder="ค้นหา IP หรือสาเหตุ..." 
+                    size="small"
+                    allowClear 
+                    onSearch={value => setBlockedIpSearchText(value)}
+                    onChange={e => setBlockedIpSearchText(e.target.value)}
+                  />
+                </Flex>
+              } 
+              variant="borderless" 
+              style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }}
+            >
               <List
-                dataSource={blockedIps}
+                dataSource={filteredBlockedIps}
+                maxHeight={400}
                 renderItem={(item) => (
                   <List.Item actions={[<Button type="text" danger icon={<SyncOutlined />} onClick={() => handleUnblockIp(item.ip_address)} />]}>
-                    <List.Item.Meta avatar={<Avatar icon={<GlobalOutlined />} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }} />} title={<Text strong>{item.ip_address}</Text>} description={<Text type="secondary" style={{ fontSize: '11px' }}>ระงับเมื่อ: {formatThaiDate(item.created_at)}</Text>} />
+                    <List.Item.Meta avatar={<Avatar icon={<GlobalOutlined />} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }} />} title={<Text strong>{item.ip_address}</Text>} description={`ระงับเมื่อ: ${formatThaiDate(item.created_at)}`} />
                   </List.Item>
                 )}
                 style={{ maxHeight: '400px', overflowY: 'auto' }}
@@ -361,38 +416,71 @@ export default function SecurityCommandCenter() {
 
             <Card title={<Space><SafetyOutlined style={{ color: '#10b981' }} /> ประสิทธิภาพการป้องกัน</Space>} variant="borderless" style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', background: `linear-gradient(135deg, ${token.colorPrimary}05 0%, ${token.colorPrimary}15 100%)` }}>
               <div style={{ marginBottom: '16px' }}>
-                <Text strong>อัตราความสำเร็จในการสกัดกั้น</Text>
+                <Text strong>อัตราการป้องกันสำเร็จ</Text>
                 <Progress percent={threats.length > 0 ? Math.round((threats.filter(t => t.status_code >= 400).length / threats.length) * 100) : 100} status="active" strokeColor="#10b981" />
               </div>
               <Paragraph style={{ fontSize: '12px', color: 'var(--text-sub)' }}>
-                ระบบ IPS กำลังเฝ้าระวังอย่างต่อเนื่อง ตรวจพบการพยายามโจมตี {threats.length} ครั้งล่าสุด
+                {threatSearchText ? `ผลการค้นหา: พบ ${filteredThreats.length} รายการ` : `ระบบดำเนินการป้องกันอัตโนมัติตามนโยบายที่กำหนดไว้`}
               </Paragraph>
             </Card>
           </Flex>
         </Col>
       </Row>
 
-      {/* Settings Modal */}
-      <Modal title={<Space><SettingOutlined /> ตั้งค่าระบบบล็อก IP อัตโนมัติ (IPS Configuration)</Space>} open={isSettingsModalVisible} onCancel={() => setIsSettingsModalVisible(false)} footer={null} width={600}>
-        <div style={{ marginBottom: 20, padding: '12px', background: '#f0f7ff', borderRadius: '8px', border: '1px solid #bae7ff' }}>
-          <Text type="secondary" style={{ fontSize: '13px' }}><InfoCircleOutlined /> <b>คำแนะนำ:</b> ระบบจะทำการแบน IP ทันทีเมื่อคะแนนสะสมหรือจำนวนครั้งถึงเกณฑ์ที่กำหนด</Text>
-        </div>
+      {/* ⚙️ Full IPS Configuration Modal */}
+      <Modal 
+        title={<Space><SettingOutlined /> การตั้งค่าระบบป้องกันการบุกรุกแบบเต็มรูปแบบ (Full IPS Configuration)</Space>} 
+        open={isSettingsModalVisible} 
+        onCancel={() => setIsSettingsModalVisible(false)} 
+        footer={null} 
+        width={750}
+        centered
+      >
+        <Alert 
+          message="นโยบายการป้องกัน (Security Policy)"
+          description="การตั้งค่าเหล่านี้มีผลกระทบต่อการเข้าถึงระบบของ IP ภายนอกทั้งหมด ระบบจะทำการวิเคราะห์และบล็อกแบบ Real-time ตามเกณฑ์ที่ระบุ"
+          type="info"
+          showIcon
+          style={{ marginBottom: '24px' }}
+        />
+
         <Form form={form} layout="vertical" onFinish={handleUpdateSettings}>
-          <Form.Item name="auto_block_enabled" label={<b>เปิดใช้งานระบบบล็อกอัตโนมัติ</b>} valuePropName="checked"><Switch checkedChildren="เปิด" unCheckedChildren="ปิด" /></Form.Item>
-          <Row gutter={16}>
-            <Col span={12}><Form.Item name="score_threshold" label={<b>เกณฑ์คะแนนความเสี่ยง</b>} tooltip="คะแนนสะสมที่หากถึงเกณฑ์จะถูกบล็อกทันที"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="attack_limit_per_hour" label={<b>จำนวนครั้งที่อนุญาต/ชม.</b>} tooltip="จำนวนการโจมตีที่ยอมให้เกิดใน 1 ชม."><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Divider orientation="left" style={{ marginTop: 0 }}><RocketOutlined /> การเปิดใช้งานหลัก</Divider>
+              <div style={{ background: '#fafafa', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #f0f0f0' }}>
+                <Form.Item name="auto_block_enabled" label={<b>เปิดใช้งานระบบ IPS (Automated Block)</b>} valuePropName="checked" style={{ marginBottom: 0 }}>
+                  <Switch checkedChildren="เปิดการป้องกัน" unCheckedChildren="ปิดการป้องกัน" />
+                </Form.Item>
+              </div>
+            </Col>
+
+            <Col span={12}>
+              <Divider orientation="left"><WarningOutlined /> เกณฑ์การบล็อก (Rules)</Divider>
+              <Form.Item name="score_threshold" label={<b>คะแนนอันตรายสะสม</b>} tooltip="คะแนนรวมจากการโจมตีหลายครั้งใน 1 ชม."><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
+              <Form.Item name="immediate_block_score" label={<b>เกณฑ์บล็อกทันที</b>} tooltip="หากการโจมตีครั้งเดียวมีคะแนนถึงเกณฑ์นี้จะถูกบล็อกถาวรทันที"><InputNumber min={1} max={100} style={{ width: '100%' }} /></Form.Item>
+              <Form.Item name="attack_limit_per_hour" label={<b>ความถี่สูงสุดต่อชั่วโมง</b>} tooltip="จำนวนครั้งที่พยายามโจมตีที่ยอมให้เกิดได้ใน 1 ชม."><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Divider orientation="left"><NotificationOutlined /> การตอบโต้ (Mitigation)</Divider>
+              <Form.Item name="block_duration_hours" label={<b>ระยะเวลาการบล็อก (ชั่วโมง)</b>} tooltip="0 = ถาวร"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+              <Form.Item name="notify_admin" label={<b>แจ้งเตือนผู้ดูแลระบบ</b>} valuePropName="checked"><Switch checkedChildren="เปิดแจ้งเตือน" unCheckedChildren="ปิดแจ้งเตือน" /></Form.Item>
+            </Col>
+
+            <Col span={24}>
+              <Divider orientation="left"><SafetyOutlined /> รายการยกเว้น (Bypass Rules)</Divider>
+              <Form.Item name="whitelist_ips" label={<b>IP ที่เชื่อถือได้ (Whitelist IPs)</b>} help="คั่นด้วยเครื่องหมายจุลภาค ,"><Input.TextArea rows={3} /></Form.Item>
+            </Col>
           </Row>
-          <Form.Item name="block_duration_hours" label={<b>ระยะเวลาการบล็อก (ชั่วโมง)</b>}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="whitelist_ips" label={<b>IP ที่ยกเว้น (Whitelist)</b>} help="คั่นด้วยเครื่องหมายจุลภาค ,"><Input.TextArea rows={3} /></Form.Item>
           <Divider />
-          <div style={{ textAlign: 'right' }}><Space><Button onClick={() => setIsSettingsModalVisible(false)}>ยกเลิก</Button><Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={settingsLoading}>บันทึกการตั้งค่า</Button></Space></div>
+          <div style={{ textAlign: 'right' }}><Space><Button onClick={() => setIsSettingsModalVisible(false)}>ยกเลิก</Button><Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={settingsLoading} size="large">บันทึกและบังคับใช้ทันที</Button></Space></div>
         </Form>
       </Modal>
 
-      {/* Timeline Modal */}
+      {/* Attack Journey Modal */}
       <Modal
-        title={<Space><HistoryOutlined style={{ color: token.colorPrimary }} /><span>การวิเคราะห์เส้นทางการโจมตีเชิงลึก: <Text strong type="danger">{selectedIp}</Text></span></Space>}
+        title={<Space><HistoryOutlined style={{ color: token.colorPrimary }} /><span>วิเคราะห์เส้นทางการโจมตี: <Text strong type="danger">{selectedIp}</Text></span></Space>}
         open={isTimelineModalVisible}
         onCancel={() => setIsTimelineModalVisible(false)}
         footer={[<Button key="close" onClick={() => setIsTimelineModalVisible(false)}>ปิดหน้าต่าง</Button>]}
@@ -421,7 +509,7 @@ export default function SecurityCommandCenter() {
                       <div onClick={() => setSelectedThreat(t)} style={{ cursor: 'pointer', padding: '12px', borderRadius: '10px', backgroundColor: isSelected ? `${phaseInfo?.color}15` : 'var(--bg-card)', border: isSelected ? `1px solid ${phaseInfo?.color}` : '1px solid var(--border-color)', boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s ease' }}>
                         <Flex vertical gap={2} style={{ width: '100%' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Tag color={severity.color}>{severity.label}</Tag>
+                            <Tag color={severity.color} style={{ fontSize: '10px', fontWeight: 'bold' }}>{severity.label}</Tag>
                             <Text type="secondary" style={{ fontSize: '10px' }}>{phaseInfo?.title}</Text>
                           </div>
                           <Text strong style={{ fontSize: '13px', display: 'block' }}>{t.attack_type}</Text>
@@ -438,11 +526,24 @@ export default function SecurityCommandCenter() {
             {selectedThreat ? (
               <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', height: '100%', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.02)' }}>
                 <Title level={4} style={{ marginTop: 0, color: token.colorPrimary }}>รายละเอียดเหตุการณ์ (5W1H Analysis)</Title>
-                <Descriptions column={1} size="small" bordered={false} styles={{ label: { width: '130px', fontWeight: 'bold', color: 'var(--text-main)' } }}>
-                  <Descriptions.Item label={<Space><UserOutlined /> Who (ใคร)</Space>}><Text copyable>IP: {selectedThreat.ip_address}</Text></Descriptions.Item>
-                  <Descriptions.Item label={<Space><ThunderboltOutlined /> What (ทำอะไร)</Space>}>{`${selectedThreat.method} ส่งข้อมูลอันตราย (${selectedThreat.attack_type})`}</Descriptions.Item>
-                  <Descriptions.Item label={<Space><EnvironmentOutlined /> Where (ที่ไหน)</Space>}><Text code ellipsis>{selectedThreat.target_url}</Text></Descriptions.Item>
-                  <Descriptions.Item label={<Space><ClockCircleOutlined /> When (เมื่อไหร่)</Space>}>{formatThaiDate(selectedThreat.created_at)}</Descriptions.Item>
+                <Descriptions 
+                  column={1} 
+                  size="small" 
+                  bordered={false}
+                  styles={{ label: { width: '130px', fontWeight: 'bold', color: 'var(--text-main)' } }}
+                >
+                  <Descriptions.Item label={<Space><UserOutlined /> Who (ใคร)</Space>}>
+                    <Text copyable>IP: {selectedThreat.ip_address}</Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<Space><ThunderboltOutlined /> What (ทำอะไร)</Space>}>
+                    {`${selectedThreat.method} ส่งข้อมูลอันตราย (${selectedThreat.attack_type})`}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<Space><EnvironmentOutlined /> Where (ที่ไหน)</Space>}>
+                    <Text code>{selectedThreat.target_url}</Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<Space><ClockCircleOutlined /> When (เมื่อไหร่)</Space>}>
+                    {formatThaiDate(selectedThreat.created_at)}
+                  </Descriptions.Item>
                   <Descriptions.Item label={<Space><CheckCircleOutlined /> Outcome (ผลลัพธ์)</Space>}>
                     <Space>
                       {selectedThreat.status_code < 400 ? <Tag color="warning">ผ่านได้ (200)</Tag> : <Tag color="success">สกัดกั้นสำเร็จ ({selectedThreat.status_code})</Tag>}
@@ -456,14 +557,25 @@ export default function SecurityCommandCenter() {
                    {`[SECURITY] ${selectedThreat.method} ${selectedThreat.target_url}\nIP: ${selectedThreat.ip_address}\nPayload: ${selectedThreat.payload}`}
                 </div>
               </div>
-            ) : <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Empty description="เลือกเหตุการณ์จากไทม์ไลน์เพื่อวิเคราะห์" /></div>}
+            ) : (
+              <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Empty description="เลือกเหตุการณ์จากไทม์ไลน์เพื่อวิเคราะห์" />
+              </div>
+            )}
           </Col>
         </Row>
       </Modal>
 
       <style>{`
-        .enterprise-table .ant-table-thead > tr > th { background-color: var(--bg-app) !important; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-color); }
-        .enterprise-table .ant-table-row:hover > td { background-color: ${token.colorPrimary}05 !important; }
+        .enterprise-table .ant-table-thead > tr > th {
+          background-color: var(--bg-app) !important;
+          font-weight: 700;
+          color: var(--text-main);
+          border-bottom: 1px solid var(--border-color);
+        }
+        .enterprise-table .ant-table-row:hover > td {
+          background-color: ${token.colorPrimary}05 !important;
+        }
       `}</style>
     </div>
   );
