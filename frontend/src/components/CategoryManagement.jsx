@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Space, Typography, Tag, Modal, Form, Input, Select, Popconfirm, Row, Col, Tabs, InputNumber, Switch, message, Divider } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  Card, Table, Button, Space, Typography, Tag, Modal, Form, 
+  Input, Select, Popconfirm, Row, Col, Tabs, InputNumber, 
+  Switch, message, Divider, Badge, theme 
+} from 'antd';
 import { 
   AppstoreOutlined, PlusOutlined, EditOutlined, DeleteOutlined, 
   ArrowLeftOutlined, GlobalOutlined, ApartmentOutlined, SettingOutlined,
-  DesktopOutlined, ApiOutlined, DatabaseOutlined, TagsOutlined, ProfileOutlined, FileProtectOutlined 
+  DesktopOutlined, ApiOutlined, DatabaseOutlined, TagsOutlined, 
+  ProfileOutlined, FileProtectOutlined, SearchOutlined 
 } from '@ant-design/icons';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError } from '../utils/alert';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { Search } = Input;
 
 export default function CategoryManagement() {
+  const { useToken } = theme;
+  const { token } = useToken();
   const [categories, setCategories] = useState([]);
   const [projects, setProjects] = useState([]);
   const [categoryTypes, setCategoryTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [vendors, setVendors] = useState([]); 
+  
+  // Search & Pagination States
+  const [projectSearchText, setSearchText] = useState('');
+  const [catPageSize, setCatPageSize] = useState(15);
   
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null); 
@@ -40,7 +52,7 @@ export default function CategoryManagement() {
   const [editingEq, setEditingEq] = useState(null);
   const [eqForm] = Form.useForm();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [catRes, projRes, typeRes, eqRes, vendRes] = await Promise.all([
@@ -66,9 +78,20 @@ export default function CategoryManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // --- Filtering Logic ---
+  const filteredProjects = useMemo(() => {
+    if (!projectSearchText) return projects;
+    const search = projectSearchText.toLowerCase();
+    return projects.filter(p => 
+      p.project_name?.toLowerCase().includes(search) || 
+      p.vendor_name?.toLowerCase().includes(search) ||
+      p.project_contract?.toLowerCase().includes(search)
+    );
+  }, [projects, projectSearchText]);
 
   const handleTypeManage = () => setIsTypeManageModalVisible(true);
   const handleTypeAdd = () => { setEditingType(null); typeForm.resetFields(); setIsTypeModalVisible(true); };
@@ -122,10 +145,6 @@ export default function CategoryManagement() {
   const handleCatDelete = async (id) => { try { await axiosInstance.delete(`/categories/${id}`); alertSuccess('ลบสำเร็จ', 'ลบหมวดหมู่แล้ว'); fetchData(); } catch (error) { alertError('ลบไม่สำเร็จ', 'เกิดข้อผิดพลาด'); } };
   const handleCatSubmit = async (values) => { try { if (editingCategory) await axiosInstance.put(`/categories/${editingCategory.category_id}`, values); else await axiosInstance.post('/categories', values); setIsModalVisible(false); fetchData(); alertSuccess('สำเร็จ', 'บันทึกหมวดหมู่เรียบร้อย'); } catch (error) { alertError('บันทึกไม่สำเร็จ', 'เกิดข้อผิดพลาด'); } };
 
-  const handleEqSubmit = async (values) => { try { if (editingEq) { await axiosInstance.put(`/equipments/${editingEq.equipment_id}`, values); message.success('อัปเดตข้อมูลสำเร็จ'); } else { await axiosInstance.post('/equipments', values); message.success('เพิ่มอุปกรณ์สำเร็จ'); } setIsEqFormModalVisible(false); fetchData(); } catch(e) { alertError('เกิดข้อผิดพลาดในการบันทึกข้อมูลอุปกรณ์'); } };
-  const handleEqDelete = async (id) => { try { await axiosInstance.delete(`/equipments/${id}`); message.success('ลบอุปกรณ์สำเร็จ'); fetchData(); } catch(e) { alertError('ไม่สามารถลบอุปกรณ์ได้'); } }
-  const handleEqStatusChange = async (equipmentId, checked) => { const newStatus = checked ? 'Active' : 'Inactive'; try { await axiosInstance.put(`/equipments/${equipmentId}/status`, { status: newStatus }); message.success(`เปลี่ยนสถานะเป็น ${newStatus} สำเร็จ`); fetchData(); } catch (error) { alertError('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตสถานะอุปกรณ์ได้'); } };
-
   const getCatColumns = (headerName) => [
     { title: 'ลำดับ', key: 'index', width: 60, align: 'center', render: (text, record, index) => index + 1 },
     { title: headerName || 'ชื่อหมวดหมู่ / ระบบ', dataIndex: 'category_name', key: 'category_name', render: text => <Text strong>{text}</Text> },
@@ -158,7 +177,7 @@ export default function CategoryManagement() {
   };
 
   const renderProjectCards = () => {
-    const allProjectsList = [...projects];
+    const allProjectsList = [...filteredProjects];
     const cardThemes = [
       { bg: 'linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)', color: '#e11d48', tagBg: '#fda4af', border: '#fecdd3' }, 
       { bg: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)', color: '#9333ea', tagBg: '#d8b4fe', border: '#e9d5ff' }, 
@@ -166,6 +185,8 @@ export default function CategoryManagement() {
       { bg: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', color: '#0284c7', tagBg: '#7dd3fc', border: '#bae6fd' }, 
       { bg: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)', color: '#ea580c', tagBg: '#fdba74', border: '#fed7aa' }, 
     ];
+
+    if (allProjectsList.length === 0) return <Empty description="ไม่พบโครงการที่ค้นหา" />;
 
     return (
       <Row gutter={[24, 24]} align="stretch">
@@ -223,7 +244,20 @@ export default function CategoryManagement() {
         ),
         children: (
           <div style={{ padding: '10px 0' }}>
-            <Table columns={getCatColumns(type.type_name)} dataSource={catsOfType} rowKey="category_id" pagination={{ pageSize: 15 }} size="middle" scroll={{ x: 'max-content' }}/>
+            <Table 
+              columns={getCatColumns(type.type_name)} 
+              dataSource={catsOfType} 
+              rowKey="category_id" 
+              pagination={{ 
+                pageSize: catPageSize,
+                showSizeChanger: true,
+                pageSizeOptions: ['10', '15', '20', '50', '100'],
+                onShowSizeChange: (current, size) => setCatPageSize(size),
+                showTotal: (total) => `ทั้งหมด ${total} รายการ`
+              }} 
+              size="middle" 
+              scroll={{ x: 'max-content' }}
+            />
           </div>
         )
       };
@@ -254,9 +288,19 @@ export default function CategoryManagement() {
               </Title>
             </Space>
           ) : (
-            <Title level={3} style={{ color: '#1e293b', margin: 0 }}>
-              <AppstoreOutlined style={{ color: '#0ea5e9', marginRight: '10px' }}/> จัดการโครงการและหมวดหมู่
-            </Title>
+            <Space size="large">
+              <Title level={3} style={{ color: '#1e293b', margin: 0 }}>
+                <AppstoreOutlined style={{ color: '#0ea5e9', marginRight: '10px' }}/> จัดการโครงการและหมวดหมู่
+              </Title>
+              <Search 
+                placeholder="ค้นหาชื่อโครงการ, ผู้รับจ้าง หรือสัญญา..." 
+                allowClear 
+                style={{ width: 350 }} 
+                onSearch={v => setSearchText(v)}
+                onChange={e => setSearchText(e.target.value)}
+                prefix={<SearchOutlined />}
+              />
+            </Space>
           )}
         </div>
         <Space>
@@ -281,15 +325,13 @@ export default function CategoryManagement() {
         width={1200} 
         destroyOnHidden
       >
-
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 15 }}>
           <Button type="primary" icon={<PlusOutlined />} style={{ backgroundColor: '#10b981', borderRadius: '8px' }} onClick={handleProjectAdd}>เพิ่มโครงการ</Button>
         </div>
         <Table columns={projManageColumns} dataSource={projects} rowKey="project_id" pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
       </Modal>
 
-      {/* เพิ่มส่วน Modal ที่ขาดหายไปพร้อมใส่ form={...} */}
-      <Modal title={editingCategory ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่ใหม่"} open={isModalVisible} onCancel={() => setIsModalVisible(false)} onOk={() => catForm.submit()} destroyOnHidden focusable={{ focusTriggerAfterClose: false }}>
+      <Modal title={editingCategory ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่ใหม่"} open={isModalVisible} onCancel={() => setIsModalVisible(false)} onOk={() => catForm.submit()} destroyOnHidden>
         <Form form={catForm} layout="vertical" onFinish={handleCatSubmit}>
           <Form.Item name="project_id" label="โครงการ" rules={[{ required: true }]}><Select>{projects.map(p => <Option key={p.project_id} value={p.project_id}>{p.project_name}</Option>)}</Select></Form.Item>
           <Form.Item name="category_name" label="ชื่อหมวดหมู่" rules={[{ required: true }]}><Input /></Form.Item>
@@ -298,7 +340,7 @@ export default function CategoryManagement() {
         </Form>
       </Modal>
 
-      <Modal title={editingProject ? "แก้ไขโครงการ" : "เพิ่มโครงการใหม่"} open={isProjModalVisible} onCancel={() => setIsProjModalVisible(false)} onOk={() => projForm.submit()} destroyOnHidden focusable={{ focusTriggerAfterClose: false }}>
+      <Modal title={editingProject ? "แก้ไขโครงการ" : "เพิ่มโครงการใหม่"} open={isProjModalVisible} onCancel={() => setIsProjModalVisible(false)} onOk={() => projForm.submit()} destroyOnHidden>
         <Form form={projForm} layout="vertical" onFinish={handleProjectSubmit}>
           <Form.Item name="project_name" label="ชื่อโครงการ" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="vendor_id" label="ผู้รับจ้าง"><Select allowClear>{vendors.map(v => <Option key={v.vendor_id} value={v.vendor_id}>{v.vendor_name}</Option>)}</Select></Form.Item>
@@ -307,9 +349,6 @@ export default function CategoryManagement() {
           <Form.Item name="penalty_rate" label="อัตราค่าปรับต่อวัน (เช่น 0.001)"><InputNumber step={0.0001} style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
-
-
-
     </div>
   );
 }

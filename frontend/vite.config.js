@@ -8,12 +8,6 @@ export default defineConfig({
     port: 5173,
     strictPort: true, 
     host: true,
-    allowedHosts: ['gainfully-candle-lapel.ngrok-free.dev'],
-    hmr: {
-      host: 'gainfully-candle-lapel.ngrok-free.dev',
-      clientPort: 443,
-      protocol: 'wss'
-    },
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
