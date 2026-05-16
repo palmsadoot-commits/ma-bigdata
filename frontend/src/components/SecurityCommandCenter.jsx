@@ -404,7 +404,6 @@ export default function SecurityCommandCenter() {
             >
               <List
                 dataSource={filteredBlockedIps}
-                maxHeight={400}
                 renderItem={(item) => (
                   <List.Item actions={[<Button type="text" danger icon={<SyncOutlined />} onClick={() => handleUnblockIp(item.ip_address)} />]}>
                     <List.Item.Meta avatar={<Avatar icon={<GlobalOutlined />} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }} />} title={<Text strong>{item.ip_address}</Text>} description={`ระงับเมื่อ: ${formatThaiDate(item.created_at)}`} />

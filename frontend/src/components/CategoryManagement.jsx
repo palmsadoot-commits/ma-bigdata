@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Table, Button, Space, Typography, Tag, Modal, Form, 
   Input, Select, Popconfirm, Row, Col, Tabs, InputNumber, 
-  Switch, message, Divider, Badge, theme 
+  Switch, message, Divider, Badge, theme, Empty 
 } from 'antd';
 import { 
   AppstoreOutlined, PlusOutlined, EditOutlined, DeleteOutlined, 
   ArrowLeftOutlined, GlobalOutlined, ApartmentOutlined, SettingOutlined,
   DesktopOutlined, ApiOutlined, DatabaseOutlined, TagsOutlined, 
-  ProfileOutlined, FileProtectOutlined, SearchOutlined 
+  ProfileOutlined, FileProtectOutlined, SearchOutlined, CheckCircleOutlined 
 } from '@ant-design/icons';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError } from '../utils/alert';
@@ -16,36 +16,44 @@ import { alertSuccess, alertError } from '../utils/alert';
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { Search } = Input;
+const { useToken } = theme;
 
+/**
+ * 📁 CategoryManagement - Enterprise Grade Refactored Version (Final Fix)
+ * แก้ไข ReferenceError: projManageColumns และคืนค่าระบบจัดการอุปกรณ์ครบถ้วน
+ */
 export default function CategoryManagement() {
-  const { useToken } = theme;
   const { token } = useToken();
   const [categories, setCategories] = useState([]);
   const [projects, setProjects] = useState([]);
   const [categoryTypes, setCategoryTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [vendors, setVendors] = useState([]); 
+  const [equipments, setEquipments] = useState([]);
   
   // Search & Pagination States
   const [projectSearchText, setSearchText] = useState('');
   const [catPageSize, setCatPageSize] = useState(15);
   
+  // Category Modal
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null); 
   const [catForm] = Form.useForm();
 
+  // Project Modal
   const [isProjModalVisible, setIsProjModalVisible] = useState(false);
   const [editingProject, setEditingProject] = useState(null); 
   const [projForm] = Form.useForm();
   const [isProjManageModalVisible, setIsProjManageModalVisible] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
 
+  // Type Modal
   const [isTypeManageModalVisible, setIsTypeManageModalVisible] = useState(false);
   const [isTypeModalVisible, setIsTypeModalVisible] = useState(false);
   const [editingType, setEditingType] = useState(null);
   const [typeForm] = Form.useForm();
 
-  const [equipments, setEquipments] = useState([]);
+  // Equipment Management States
   const [isEqListModalVisible, setIsEqListModalVisible] = useState(false);
   const [isEqFormModalVisible, setIsEqFormModalVisible] = useState(false);
   const [selectedCategoryForEq, setSelectedCategoryForEq] = useState(null);
@@ -63,15 +71,10 @@ export default function CategoryManagement() {
         axiosInstance.get('/vendors').catch(() => ({ data: [] })) 
       ]);
       
-      const sortedCats = catRes.data.sort((a, b) => Number(a.category_id) - Number(b.category_id));
-      const sortedProjs = projRes.data.sort((a, b) => Number(a.project_id) - Number(b.project_id));
-      const sortedTypes = (typeRes.data || []).sort((a, b) => Number(a.type_id) - Number(b.type_id));
-      const sortedEqs = (eqRes.data || []).sort((a, b) => Number(a.equipment_id) - Number(b.equipment_id));
-      
-      setCategories(sortedCats);
-      setProjects(sortedProjs);
-      setCategoryTypes(sortedTypes);
-      setEquipments(sortedEqs); 
+      setCategories(catRes.data.sort((a, b) => Number(a.category_id) - Number(b.category_id)));
+      setProjects(projRes.data.sort((a, b) => Number(a.project_id) - Number(b.project_id)));
+      setCategoryTypes((typeRes.data || []).sort((a, b) => Number(a.type_id) - Number(b.type_id)));
+      setEquipments((eqRes.data || []).sort((a, b) => Number(a.equipment_id) - Number(b.equipment_id)));
       setVendors(vendRes.data || []);
     } catch (error) {
       alertError('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้');
@@ -93,6 +96,7 @@ export default function CategoryManagement() {
     );
   }, [projects, projectSearchText]);
 
+  // --- Type Handlers ---
   const handleTypeManage = () => setIsTypeManageModalVisible(true);
   const handleTypeAdd = () => { setEditingType(null); typeForm.resetFields(); setIsTypeModalVisible(true); };
   const handleTypeEdit = (record) => { setEditingType(record); typeForm.setFieldsValue(record); setIsTypeModalVisible(true); };
@@ -107,18 +111,19 @@ export default function CategoryManagement() {
       setIsTypeModalVisible(false); fetchData();
     } catch (error) { alertError('บันทึกไม่สำเร็จ', 'รหัส Type อาจซ้ำกัน'); }
   };
+
   const typeColumns = [
-    { title: 'ชื่อประเภท (อังกฤษ/รหัส)', dataIndex: 'type_code', key: 'type_code' },
-    { title: 'ชื่อที่แสดงบนหัวตาราง', dataIndex: 'type_name', key: 'type_name' },
-    { title: 'จัดการ', key: 'action', align: 'right', width: 120, render: (_, record) => (
-        <Space size="small">
-          <Button type="primary" size="small" icon={<EditOutlined />} onClick={() => handleTypeEdit(record)} />
-          <Popconfirm title="ยืนยันการลบ?" onConfirm={() => handleTypeDelete(record.type_id)} okText="ลบ" cancelText="ยกเลิก"><Button type="primary" danger size="small" icon={<DeleteOutlined />} /></Popconfirm>
-        </Space>
-      ),
-    },
+    { title: 'รหัสประเภท', dataIndex: 'type_code', key: 'type_code' },
+    { title: 'ชื่อที่แสดง', dataIndex: 'type_name', key: 'type_name' },
+    { title: 'จัดการ', align: 'right', width: 120, render: (_, r) => (
+      <Space size="small">
+        <Button type="primary" size="small" icon={<EditOutlined />} onClick={() => handleTypeEdit(r)} />
+        <Popconfirm title="ลบ?" onConfirm={() => handleTypeDelete(r.type_id)} okText="ลบ" cancelText="ยกเลิก"><Button type="primary" danger size="small" icon={<DeleteOutlined />} /></Popconfirm>
+      </Space>
+    )}
   ];
 
+  // --- Project Handlers ---
   const handleProjectManage = () => setIsProjManageModalVisible(true);
   const handleProjectAdd = () => { setEditingProject(null); projForm.resetFields(); setIsProjModalVisible(true); };
   const handleProjectEdit = (record) => { setEditingProject(record); projForm.setFieldsValue({ ...record, contract_value: Number(record.contract_value) || 0, penalty_rate: Number(record.penalty_rate) || 0.001 }); setIsProjModalVisible(true); };
@@ -140,10 +145,18 @@ export default function CategoryManagement() {
     },
   ];
 
-  const handleCatAdd = () => { setEditingCategory(null); catForm.resetFields(); catForm.setFieldsValue({ project_id: selectedProject ? selectedProject.project_id : undefined, weighting_factor: 1.0 }); setIsModalVisible(true); };
+  // --- Category Handlers ---
+  const handleCatAdd = () => { setEditingCategory(null); catForm.resetFields(); catForm.setFieldsValue({ project_id: selectedProject?.project_id, weighting_factor: 1.0 }); setIsModalVisible(true); };
   const handleCatEdit = (record) => { setEditingCategory(record); catForm.setFieldsValue(record); setIsModalVisible(true); };
   const handleCatDelete = async (id) => { try { await axiosInstance.delete(`/categories/${id}`); alertSuccess('ลบสำเร็จ', 'ลบหมวดหมู่แล้ว'); fetchData(); } catch (error) { alertError('ลบไม่สำเร็จ', 'เกิดข้อผิดพลาด'); } };
   const handleCatSubmit = async (values) => { try { if (editingCategory) await axiosInstance.put(`/categories/${editingCategory.category_id}`, values); else await axiosInstance.post('/categories', values); setIsModalVisible(false); fetchData(); alertSuccess('สำเร็จ', 'บันทึกหมวดหมู่เรียบร้อย'); } catch (error) { alertError('บันทึกไม่สำเร็จ', 'เกิดข้อผิดพลาด'); } };
+
+  // --- Equipment Handlers ---
+  const handleEqAdd = () => { setEditingEq(null); eqForm.resetFields(); eqForm.setFieldsValue({ category_id: selectedCategoryForEq?.category_id, status: 'Active' }); setIsEqFormModalVisible(true); };
+  const handleEqEdit = (record) => { setEditingEq(record); eqForm.setFieldsValue(record); setIsEqFormModalVisible(true); };
+  const handleEqDelete = async (id) => { try { await axiosInstance.delete(`/equipments/${id}`); message.success('ลบอุปกรณ์สำเร็จ'); fetchData(); } catch(e) { alertError('ไม่สามารถลบอุปกรณ์ได้'); } }
+  const handleEqStatusChange = async (equipmentId, checked) => { const newStatus = checked ? 'Active' : 'Inactive'; try { await axiosInstance.put(`/equipments/${equipmentId}/status`, { status: newStatus }); message.success(`เปลี่ยนสถานะเป็น ${newStatus} สำเร็จ`); fetchData(); } catch (error) { alertError('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตสถานะอุปกรณ์ได้'); } };
+  const handleEqSubmit = async (values) => { try { if (editingEq) { await axiosInstance.put(`/equipments/${editingEq.equipment_id}`, values); message.success('อัปเดตข้อมูลสำเร็จ'); } else { await axiosInstance.post('/equipments', values); message.success('เพิ่มอุปกรณ์สำเร็จ'); } setIsEqFormModalVisible(false); fetchData(); } catch(e) { alertError('เกิดข้อผิดพลาดในการบันทึกข้อมูลอุปกรณ์'); } };
 
   const getCatColumns = (headerName) => [
     { title: 'ลำดับ', key: 'index', width: 60, align: 'center', render: (text, record, index) => index + 1 },
@@ -192,34 +205,34 @@ export default function CategoryManagement() {
       <Row gutter={[24, 24]} align="stretch">
         {allProjectsList.map((proj, index) => {
           const count = categories.filter(c => c.project_id === proj.project_id).length;
-          const theme = cardThemes[index % cardThemes.length];
+          const cardTheme = cardThemes[index % cardThemes.length];
           
           return (
             <Col xs={24} sm={12} md={8} lg={8} key={proj.project_id}>
               <div 
                 onClick={() => setSelectedProject(proj)}
                 style={{
-                  background: theme.bg, borderRadius: '24px', padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column',
-                  boxShadow: '0 8px 30px rgba(0,0,0,0.06)', transition: 'all 0.3s ease', height: '100%', border: `2px solid ${theme.border}` 
+                  background: cardTheme.bg, borderRadius: '24px', padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.06)', transition: 'all 0.3s ease', height: '100%', border: `2px solid ${cardTheme.border}` 
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 15px 35px rgba(0,0,0,0.12)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0px)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.06)'; }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ color: theme.color, fontSize: '16px', fontWeight: '900', marginBottom: '8px' }}>{proj.project_name}</div>
+                    <div style={{ color: cardTheme.color, fontSize: '16px', fontWeight: '900', marginBottom: '8px' }}>{proj.project_name}</div>
                     <div style={{ fontSize: '42px', fontWeight: '900', color: '#1e293b', lineHeight: '1' }}>{count}</div>
-                    <div style={{ marginTop: '10px' }}><span style={{ background: theme.tagBg, color: '#ffffff', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>รายการ</span></div>
+                    <div style={{ marginTop: '10px' }}><span style={{ background: cardTheme.tagBg, color: '#ffffff', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>รายการ</span></div>
                   </div>
                   <div style={{ width: '50px', height: '50px', borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <ApartmentOutlined style={{ fontSize: '24px', color: theme.color }} />
+                    <ApartmentOutlined style={{ fontSize: '24px', color: cardTheme.color }} />
                   </div>
                 </div>
 
-                <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: `1px dashed ${theme.color}40`, fontSize: '13px', color: '#334155' }}>
+                <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: `1px dashed ${cardTheme.color}40`, fontSize: '13px', color: '#334155' }}>
                   <div style={{ marginBottom: '5px' }}><strong>ผู้รับจ้าง:</strong> {proj.vendor_name || '-'}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span><strong>เลขที่สัญญา:</strong> <Tag color="white" style={{ color: theme.color, border: `1px solid ${theme.color}60` }}>{proj.project_contract || '-'}</Tag></span>
+                    <span><strong>เลขที่สัญญา:</strong> <Tag color="white" style={{ color: cardTheme.color, border: `1px solid ${cardTheme.color}60` }}>{proj.project_contract || '-'}</Tag></span>
                   </div>
                 </div>
               </div>
@@ -317,6 +330,7 @@ export default function CategoryManagement() {
 
       {selectedProject ? renderCategoryTabs() : renderProjectCards()}
 
+      {/* --- Project List Modal --- */}
       <Modal 
         title={<><SettingOutlined /> จัดการรายชื่อโครงการ และ สัญญา</>} 
         open={isProjManageModalVisible} 
@@ -331,6 +345,38 @@ export default function CategoryManagement() {
         <Table columns={projManageColumns} dataSource={projects} rowKey="project_id" pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
       </Modal>
 
+      {/* --- Equipment List Modal (Fixed) --- */}
+      <Modal
+        title={<span><DesktopOutlined /> จัดการอุปกรณ์: <Text strong color="blue">{selectedCategoryForEq?.category_name}</Text></span>}
+        open={isEqListModalVisible}
+        onCancel={() => setIsEqListModalVisible(false)}
+        footer={null}
+        width={900}
+        destroyOnHidden
+      >
+        <div style={{ textAlign: 'right', marginBottom: 16 }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleEqAdd}>เพิ่มอุปกรณ์</Button>
+        </div>
+        <Table
+          dataSource={equipments.filter(e => e.category_id === selectedCategoryForEq?.category_id)}
+          rowKey="equipment_id"
+          columns={[
+            { title: 'ชื่ออุปกรณ์', dataIndex: 'equipment_name', key: 'equipment_name' },
+            { title: 'รหัสอุปกรณ์', dataIndex: 'equipment_code', key: 'equipment_code' },
+            { title: 'สถานะ', dataIndex: 'status', key: 'status', render: (status, record) => (
+              <Switch checked={status === 'Active'} onChange={(checked) => handleEqStatusChange(record.equipment_id, checked)} checkedChildren="เปิด" unCheckedChildren="ปิด" />
+            )},
+            { title: 'จัดการ', align: 'right', render: (_, r) => (
+              <Space>
+                <Button size="small" icon={<EditOutlined />} onClick={() => handleEqEdit(r)} />
+                <Popconfirm title="ลบ?" onConfirm={() => handleEqDelete(r.equipment_id)}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>
+              </Space>
+            )}
+          ]}
+        />
+      </Modal>
+
+      {/* --- Category Form Modal --- */}
       <Modal title={editingCategory ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่ใหม่"} open={isModalVisible} onCancel={() => setIsModalVisible(false)} onOk={() => catForm.submit()} destroyOnHidden>
         <Form form={catForm} layout="vertical" onFinish={handleCatSubmit}>
           <Form.Item name="project_id" label="โครงการ" rules={[{ required: true }]}><Select>{projects.map(p => <Option key={p.project_id} value={p.project_id}>{p.project_name}</Option>)}</Select></Form.Item>
@@ -340,6 +386,7 @@ export default function CategoryManagement() {
         </Form>
       </Modal>
 
+      {/* --- Project Form Modal --- */}
       <Modal title={editingProject ? "แก้ไขโครงการ" : "เพิ่มโครงการใหม่"} open={isProjModalVisible} onCancel={() => setIsProjModalVisible(false)} onOk={() => projForm.submit()} destroyOnHidden>
         <Form form={projForm} layout="vertical" onFinish={handleProjectSubmit}>
           <Form.Item name="project_name" label="ชื่อโครงการ" rules={[{ required: true }]}><Input /></Form.Item>
@@ -349,6 +396,31 @@ export default function CategoryManagement() {
           <Form.Item name="penalty_rate" label="อัตราค่าปรับต่อวัน (เช่น 0.001)"><InputNumber step={0.0001} style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
+
+      {/* --- Equipment Form Modal --- */}
+      <Modal title={editingEq ? "แก้ไขอุปกรณ์" : "เพิ่มอุปกรณ์"} open={isEqFormModalVisible} onCancel={() => setIsEqFormModalVisible(false)} onOk={() => eqForm.submit()} destroyOnHidden>
+        <Form form={eqForm} layout="vertical" onFinish={handleEqSubmit}>
+          <Form.Item name="category_id" hidden><Input /></Form.Item>
+          <Form.Item name="equipment_name" label="ชื่ออุปกรณ์" rules={[{ required: true }]}><Input /></Form.Item>
+          <Form.Item name="equipment_code" label="รหัสอุปกรณ์"><Input /></Form.Item>
+          <Form.Item name="status" label="สถานะ"><Select><Option value="Active">Active</Option><Option value="Inactive">Inactive</Option></Select></Form.Item>
+        </Form>
+      </Modal>
+
+      {/* --- Type Management Modal --- */}
+      <Modal title="จัดการประเภทหมวดหมู่" open={isTypeManageModalVisible} onCancel={() => setIsTypeManageModalVisible(false)} footer={null} destroyOnHidden>
+        <div style={{ textAlign: 'right', marginBottom: '16px' }}><Button type="primary" icon={<PlusOutlined />} onClick={handleTypeAdd}>เพิ่มประเภท</Button></div>
+        <Table dataSource={categoryTypes} rowKey="type_id" columns={typeColumns} />
+      </Modal>
+
+      {/* --- Type Form Modal --- */}
+      <Modal title={editingType ? "แก้ไขประเภท" : "เพิ่มประเภท"} open={isTypeModalVisible} onCancel={() => setIsTypeModalVisible(false)} onOk={() => typeForm.submit()} destroyOnHidden>
+        <Form form={typeForm} layout="vertical" onFinish={handleTypeSubmit}>
+          <Form.Item name="type_code" label="รหัสประเภท" rules={[{ required: true }]}><Input placeholder="เช่น HW, SW, APP" /></Form.Item>
+          <Form.Item name="type_name" label="ชื่อที่แสดง" rules={[{ required: true }]}><Input placeholder="เช่น ฮาร์ดแวร์" /></Form.Item>
+        </Form>
+      </Modal>
+
     </div>
   );
 }
