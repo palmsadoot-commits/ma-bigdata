@@ -231,9 +231,10 @@ export default function BackupManagement() {
     setGdriveLoading(true);
     setCleanupLoading(true);
     try {
-      // ✅ ดึงข้อมูลช่วงวันที่สำหรับปฏิทิน (ย้อนหลัง 30 วัน ล่วงหน้า 7 วัน) - Force Gregorian สำหรับ API
-      const start = dayjs().locale('en').subtract(30, 'day').format('YYYY-MM-DD');
-      const end = dayjs().locale('en').add(7, 'day').format('YYYY-MM-DD');
+      // ✅ ดึงข้อมูลช่วงวันที่สำหรับปฏิทิน (ย้อนหลัง 30 วัน ล่วงหน้า 15 วัน เพื่อให้สอดคล้องกับ Backend)
+      // และครอบคลุมทั้งเดือนปัจจุบันเพื่อป้องกันการกระพริบเมื่อสลับ Tab
+      const start = calendarValue.startOf('month').subtract(7, 'day').locale('en').format('YYYY-MM-DD');
+      const end = calendarValue.endOf('month').add(15, 'day').locale('en').format('YYYY-MM-DD');
 
       const [logRes, settingRes, srcLogRes, srcSettingRes, githubLogRes, githubSettingRes, gdriveLogRes, gdriveSettingRes, cleanupSettingRes, statsRes, historyRes] = await Promise.all([
         axiosInstance.get('/backup/logs'),
@@ -911,7 +912,8 @@ export default function BackupManagement() {
       await axiosInstance.post('/backup/source/manual', { 
         target_folders: folders,
         ignore_extensions: currentProfile.ignore_extensions || '',
-        ignored_folders: currentProfile.ignored_folders || ''
+        ignored_folders: currentProfile.ignored_folders || '',
+        profile_id: activeProfileId // ✅ ส่ง profile_id เพื่ออัปเดตปฏิทินให้ถูกต้อง
       });
       clearInterval(progressInterval);
       setZipProgress(100);

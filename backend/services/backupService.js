@@ -109,11 +109,11 @@ const performBackup = async (triggerBy = 'System') => {
     });
 };
 
-const performSourceBackup = async (triggerBy = 'System', targetFolders = ['frontend', 'backend'], ignoreExtensions = null) => {
+const performSourceBackup = async (triggerBy = 'System', targetFolders = ['frontend', 'backend'], ignoreExtensions = null, profileId = 0) => {
     return new Promise(async (resolve, reject) => {
         try {
             // ✅ ดึงการตั้งค่าจากฐานข้อมูล
-            const [rows] = await db.query('SELECT ignore_extensions, ignored_folders FROM source_backup_settings LIMIT 1');
+            const [rows] = await db.query('SELECT ignore_extensions, ignored_folders FROM source_backup_settings WHERE id = ?', [profileId || 1]);
             const settings = rows[0] || {};
             
             const isFullBackup = targetFolders.includes('node_modules'); // ใช้ node_modules เป็นตัวบ่งชี้ Full Backup
@@ -143,8 +143,8 @@ const performSourceBackup = async (triggerBy = 'System', targetFolders = ['front
                 const foldersStr = isFullBackup ? 'Full' : targetFolders.join(',');
                 const [logResult] = await db.query(`INSERT INTO source_backup_logs (file_name, target_folders, file_size, status, created_by) VALUES (?, ?, ?, 'Success', ?)`, [fileName, foldersStr, fileSizeMB, triggerBy]);
                 
-                // ✅ อัปเดตสถานะในประวัติแผนงาน
-                await taskHistoryService.updateTaskStatus('source', new Date(), 'success', logResult.insertId);
+                // ✅ อัปเดตสถานะในประวัติแผนงาน (ส่ง profileId เพื่อให้ระบุงานได้ถูกต้อง)
+                await taskHistoryService.updateTaskStatus('source', new Date(), 'success', logResult.insertId, profileId);
                 await sendBackupNotification('Source Code', 'สำเร็จ', fileName); // ✅ แจ้งเตือน Line
                 
                 console.log(`✅ Source Backup Success: ${fileName} (${fileSizeMB})`);

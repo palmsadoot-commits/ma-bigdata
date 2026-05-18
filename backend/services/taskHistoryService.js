@@ -35,15 +35,16 @@ const taskHistoryService = {
             const [gdriveSets] = await db.query('SELECT * FROM gdrive_settings WHERE id = 1');
 
             const tasks = [
-                { type: 'db', setting: dbSets[0] },
-                { type: 'github', setting: gitSets[0] },
-                { type: 'gdrive', setting: gdriveSets[0] }
+                { type: 'db', profile_id: 0, setting: dbSets[0] },
+                { type: 'github', profile_id: 0, setting: gitSets[0] },
+                { type: 'gdrive', profile_id: 0, setting: gdriveSets[0] }
             ];
 
-            // ✅ เพิ่ม Source Backup ตาม Profile
+            // ✅ เพิ่ม Source Backup ตาม Profile (ใช้ 'source' เสมอเพื่อให้ Frontend แสดงผลได้ และแยกด้วย profile_id)
             srcSets.forEach(set => {
                 tasks.push({ 
-                    type: set.id === 2 ? 'source_full' : 'source', 
+                    type: 'source', 
+                    profile_id: set.id,
                     setting: set 
                 });
             });
@@ -56,25 +57,25 @@ const taskHistoryService = {
                     if (isFutureOrToday) {
                         // ✅ สำหรับวันนี้และอนาคต: อัปเดตแผนงานให้ตรงกับ Setting ล่าสุดเสมอ
                         await db.query(
-                            `INSERT INTO backup_tasks_history (task_type, scheduled_date, scheduled_time, status) 
-                             VALUES (?, ?, ?, 'pending')
+                            `INSERT INTO backup_tasks_history (task_type, profile_id, scheduled_date, scheduled_time, status) 
+                             VALUES (?, ?, ?, ?, 'pending')
                              ON DUPLICATE KEY UPDATE scheduled_time = VALUES(scheduled_time)`,
-                            [task.type, dateStr, time]
+                            [task.type, task.profile_id, dateStr, time]
                         );
                     } else {
                         // ❌ สำหรับอดีต: ลงทะเบียนเฉพาะถ้ายังไม่มี (รักษาประวัติเดิมไว้ ไม่ทับค่า)
                         await db.query(
-                            `INSERT IGNORE INTO backup_tasks_history (task_type, scheduled_date, scheduled_time, status) 
-                             VALUES (?, ?, ?, 'pending')`,
-                            [task.type, dateStr, time]
+                            `INSERT IGNORE INTO backup_tasks_history (task_type, profile_id, scheduled_date, scheduled_time, status) 
+                             VALUES (?, ?, ?, ?, 'pending')`,
+                            [task.type, task.profile_id, dateStr, time]
                         );
                     }
                 } else if (isFutureOrToday) {
                     // 🗑️ ถ้า "ไม่ตรงเงื่อนไขใหม่" และ "ยังไม่ทำ (pending)": ให้ลบทิ้งทันทีสำหรับแผนในอนาคต
                     await db.query(
                         `DELETE FROM backup_tasks_history 
-                         WHERE task_type = ? AND scheduled_date = ? AND status = 'pending'`,
-                        [task.type, dateStr]
+                         WHERE task_type = ? AND profile_id = ? AND scheduled_date = ? AND status = 'pending'`,
+                        [task.type, task.profile_id, dateStr]
                     );
                 }
             }
@@ -86,14 +87,14 @@ const taskHistoryService = {
     /**
      * ✅ อัปเดตสถานะงานเมื่อทำรายการสำเร็จหรือล้มเหลว
      */
-    async updateTaskStatus(type, date, status, logId = null) {
+    async updateTaskStatus(type, date, status, logId = null, profileId = 0) {
         const dateStr = dayjs(date).format('YYYY-MM-DD');
         try {
             await db.query(
                 `UPDATE backup_tasks_history 
                  SET status = ?, completed_at = NOW(), log_id = ? 
-                 WHERE task_type = ? AND DATE(scheduled_date) = ?`,
-                [status, logId, type, dateStr]
+                 WHERE task_type = ? AND profile_id = ? AND DATE(scheduled_date) = ?`,
+                [status, logId, type, profileId, dateStr]
             );
         } catch (err) {
             console.error(`❌ updateTaskStatus Error:`, err.message);

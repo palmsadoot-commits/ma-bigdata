@@ -35,9 +35,9 @@ exports.updateBackupSettings = async (req, res) => {
         const cronService = require('../services/cronService');
         await cronService.setupCronJob();
 
-        // ✅ อัปเดตแผนงานล่วงหน้าทันที
         const dayjs = require('dayjs');
-        for (let i = 0; i <= 7; i++) {
+        const taskHistoryService = require('../services/taskHistoryService');
+        for (let i = 0; i <= 15; i++) {
             await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
         }
         
@@ -88,10 +88,10 @@ exports.restoreBackup = async (req, res) => {
 
 exports.manualSourceBackup = async (req, res) => {
     try {
-        const { target_folders, ignore_extensions } = req.body;
+        const { target_folders, ignore_extensions, profile_id } = req.body;
         const foldersToBackup = (target_folders && target_folders.length > 0) ? target_folders : ['frontend', 'backend'];
         
-        const fileName = await backupService.performSourceBackup('Admin (Manual)', foldersToBackup, ignore_extensions || null);
+        const fileName = await backupService.performSourceBackup('Admin (Manual)', foldersToBackup, ignore_extensions || null, profile_id || 0);
         res.json({ success: true, message: 'บีบอัด Source Code สำเร็จ', file_name: fileName });
     } catch (error) { 
         res.status(500).json({ error: 'การสำรองข้อมูลล้มเหลว', details: error.message }); 
@@ -143,7 +143,7 @@ exports.updateSourceBackupSettings = async (req, res) => {
 
         const dayjs = require('dayjs');
         const taskHistoryService = require('../services/taskHistoryService');
-        for (let i = 0; i <= 7; i++) {
+        for (let i = 0; i <= 15; i++) {
             await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
         }
 
@@ -209,9 +209,9 @@ exports.updateGithubSettings = async (req, res) => {
         const cronService = require('../services/cronService');
         await cronService.setupGithubCronJob();
 
-        // ✅ อัปเดตแผนงานล่วงหน้าทันที
         const dayjs = require('dayjs');
-        for (let i = 0; i <= 7; i++) {
+        const taskHistoryService = require('../services/taskHistoryService');
+        for (let i = 0; i <= 15; i++) {
             await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
         }
 
@@ -274,9 +274,9 @@ exports.updateGDriveSettings = async (req, res) => {
         const cronService = require('../services/cronService');
         await cronService.setupGDriveCronJob();
 
-        // ✅ อัปเดตแผนงานล่วงหน้าทันที
         const dayjs = require('dayjs');
-        for (let i = 0; i <= 7; i++) {
+        const taskHistoryService = require('../services/taskHistoryService');
+        for (let i = 0; i <= 15; i++) {
             await taskHistoryService.generateTasksForDate(dayjs().add(i, 'day'));
         }
 

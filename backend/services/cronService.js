@@ -84,8 +84,8 @@ const setupSourceCronJob = async () => {
 
             const job = cron.schedule(cronExp, () => {
                 const folders = setting.target_folders ? setting.target_folders.split(',') : ['frontend', 'backend'];
-                const profileName = setting.id === 2 ? 'Source Full' : 'Source Selective';
-                addToQueue(() => backupService.performSourceBackup(`Auto Schedule (${profileName})`, folders), `Source Backup (${profileName})`);
+                const profileName = setting.profile_name || (setting.id === 2 ? 'Source Full' : 'Source Selective');
+                addToQueue(() => backupService.performSourceBackup(`Auto Schedule (${profileName})`, folders, null, setting.id), `Source Backup (${profileName})`);
             });
             
             activeSourceCronJobs.push(job);
@@ -156,10 +156,10 @@ const setupCleanupCronJob = async () => {
 };
 
 const setupTaskHistoryCronJob = async () => {
-    // 1. ตรวจสอบและสร้างแผนงานล่วงหน้า 7 วัน (รันทุกวัน เวลา 00:01 น.)
+    // 1. ตรวจสอบและสร้างแผนงานล่วงหน้า 15 วัน (รันทุกวัน เวลา 00:01 น.)
     cron.schedule('1 0 * * *', async () => {
         console.log('📅 [Task History] Generating future tasks...');
-        for (let i = 0; i <= 7; i++) {
+        for (let i = 0; i <= 15; i++) {
             const targetDate = dayjs().add(i, 'day');
             await taskHistoryService.generateTasksForDate(targetDate);
         }
@@ -181,7 +181,7 @@ const setupTaskHistoryCronJob = async () => {
     console.log('🚀 [Task History] Initializing task history...');
     await backupService.takeStorageSnapshot(); // ✅ บันทึกสถิติทันทีที่เริ่มระบบ
     
-    for (let i = 0; i <= 7; i++) { // สร้างเฉพาะวันนี้และล่วงหน้า 7 วัน (ไม่ย้อนหลังเพื่อรักษาประวัติเดิม)
+    for (let i = 0; i <= 15; i++) { // สร้างเฉพาะวันนี้และล่วงหน้า 15 วัน (ไม่ย้อนหลังเพื่อรักษาประวัติเดิม)
         const targetDate = dayjs().add(i, 'day');
         await taskHistoryService.generateTasksForDate(targetDate);
     }
