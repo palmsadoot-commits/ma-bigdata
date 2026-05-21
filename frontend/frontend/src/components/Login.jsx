@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Typography, Card, Divider, Space, ConfigProvider, Flex } from 'antd';
-import { UserOutlined, LockOutlined, MessageOutlined, GoogleOutlined, RocketOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MessageOutlined, GoogleOutlined, ToolsOutlined } from '@ant-design/icons';
 import axiosInstance from '../services/api/axiosInstance';
 import Swal from 'sweetalert2'; 
 import { alertError } from '../utils/alert'; 
@@ -86,10 +86,10 @@ export default function Login({ onLoginSuccess }) {
             margin: '0 auto 20px',
             boxShadow: '0 10px 15px -3px rgba(22, 119, 255, 0.3)'
           }}>
-            <RocketOutlined style={{ fontSize: 32, color: 'white' }} />
+            <ToolsOutlined style={{ fontSize: 32, color: 'white' }} />
           </div>
-          <Title level={2} style={{ color: '#0f172a', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>LMIS Big Data</Title>
-          <Text style={{ color: '#64748b', fontSize: 15 }}>ระบบบริหารจัดการแจ้งซ่อมโครงการอัจฉริยะ</Text>
+          <Title level={2} style={{ color: '#0f172a', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>MA Big Data</Title>
+          <Text style={{ color: '#64748b', fontSize: 15 }}>ระบบแจ้งปัญหางานดูแลบำรุงรักษา</Text>
         </div>
 
         <Form name="login_form" layout="vertical" onFinish={onFinish} requiredMark={false}>
