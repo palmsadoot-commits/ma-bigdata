@@ -71,8 +71,10 @@ exports.updateSecuritySettings = async (req, res, next) => {
         notify_admin
     } = req.body;
     
+    console.log('📡 Updating Security Settings:', req.body);
+
     try {
-        await db.query(`
+        const [result] = await db.query(`
             UPDATE security_settings 
             SET 
                 auto_block_enabled = ?, 
@@ -84,14 +86,23 @@ exports.updateSecuritySettings = async (req, res, next) => {
                 notify_admin = ?
             WHERE id = 1
         `, [
-            auto_block_enabled, 
+            auto_block_enabled ? 1 : 0, 
             score_threshold, 
             attack_limit_per_hour, 
             block_duration_hours, 
             whitelist_ips,
             immediate_block_score,
-            notify_admin
+            notify_admin ? 1 : 0
         ]);
-        res.json({ success: true, message: 'Security settings updated successfully.' });
-    } catch (err) { next(err); }
+
+        console.log('✅ DB Update Result:', result);
+
+        // ✅ แจ้งเตือน Middleware ผ่าน Global Flag (เลี่ยง Circular Dependency)
+        global.securityCacheNeedsUpdate = true;
+        
+        res.json({ success: true, message: 'บันทึกการตั้งค่าความปลอดภัยเรียบร้อยแล้ว' });
+    } catch (err) { 
+        console.error('❌ Update Settings Error:', err.message);
+        next(err); 
+    }
 };

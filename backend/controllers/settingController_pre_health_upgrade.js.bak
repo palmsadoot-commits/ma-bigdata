@@ -113,86 +113,11 @@ exports.testEmailConnection = async (req, res) => {
 exports.getSystemHealth = async (req, res) => {
     try {
         const os = require('os');
-        const { execSync } = require('child_process');
         const [dbVersionRows] = await db.query('SELECT VERSION() as version');
         const dbVersion = dbVersionRows[0]?.version || 'Unknown';
 
-        // --- ⚙️ Health Scoring Logic (5 Dimensions) ---
-        let totalScore = 0;
-
-        // 1. Database Health (30%)
-        let dbScore = 30;
-        if (!dbVersion || dbVersion === 'Unknown') dbScore = 0;
-        totalScore += dbScore;
-
-        // 2. Memory Health (20%)
-        const totalMem = os.totalmem();
-        const freeMem = os.freemem();
-        const memUsagePercent = ((totalMem - freeMem) / totalMem) * 100;
-        let memScore = 20;
-        if (memUsagePercent > 95) memScore = 2;
-        else if (memUsagePercent > 85) memScore = 10;
-        else if (memUsagePercent > 70) memScore = 15;
-        totalScore += memScore;
-
-        // 3. Disk Storage Health (20%)
-        let diskInfo = { total: '0 GB', free: '0 GB', used_percent: 0 };
-        let diskScore = 20;
-        try {
-            const psOutput = execSync('powershell.exe -NoProfile -Command "Get-PSDrive C | Select-Object Used, Free | ConvertTo-Json"').toString();
-            const diskData = JSON.parse(psOutput);
-            const total = diskData.Used + diskData.Free;
-            const usedPercent = (diskData.Used / total) * 100;
-            diskInfo = {
-                total: (total / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
-                free: (diskData.Free / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
-                used_percent: parseFloat(usedPercent.toFixed(1))
-            };
-            if (usedPercent > 95) diskScore = 2;
-            else if (usedPercent > 85) diskScore = 10;
-            else if (usedPercent > 70) diskScore = 15;
-        } catch (e) { diskScore = 0; }
-        totalScore += diskScore;
-
-        // 4. Folder Permissions (20%)
-        const targetFolders = [
-            { name: 'uploads', path: path.resolve(__dirname, '..', 'uploads') },
-            { name: 'backups', path: path.resolve(__dirname, '..', '..', 'backups') }
-        ];
-        let folderScore = 0;
-        const folders = [];
-        targetFolders.forEach(folder => {
-            let status = 'Writable';
-            try { 
-                fs.accessSync(folder.path, fs.constants.W_OK); 
-                folderScore += 10; 
-            } catch (e) { status = 'Error/Read-only'; }
-            folders.push({ name: folder.name, status });
-        });
-        totalScore += folderScore;
-
-        // 5. Process & Runtime (10%)
-        let processScore = 10;
-        const heapUsed = process.memoryUsage().heapUsed / (1024 * 1024);
-        if (heapUsed > 500) processScore = 5; // Simple threshold
-        totalScore += processScore;
-
-        // --- 📊 Final Status Determination ---
-        let healthStatus = 'OPTIMIZED';
-        if (totalScore < 40) healthStatus = 'CRITICAL';
-        else if (totalScore < 70) healthStatus = 'WARNING';
-        else if (totalScore < 90) healthStatus = 'HEALTHY';
-
         const health = {
-            status: healthStatus,
-            score: totalScore,
-            score_details: {
-                database: dbScore,
-                memory: memScore,
-                disk: diskScore,
-                folders: folderScore,
-                process: processScore
-            },
+            status: 'Healthy',
             server_time: new Date().toLocaleString('th-TH'),
             node_version: process.version,
             os: {
@@ -200,10 +125,9 @@ exports.getSystemHealth = async (req, res) => {
                 release: os.release(),
                 arch: os.arch(),
                 cpus: os.cpus().length,
-                total_mem: (totalMem / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
-                free_mem: (freeMem / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
-                uptime: (process.uptime() / 3600).toFixed(2) + ' Hours',
-                disk: diskInfo
+                total_mem: (os.totalmem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+                free_mem: (os.freemem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+                uptime: (process.uptime() / 3600).toFixed(2) + ' Hours'
             },
             database: {
                 status: 'Connected',
@@ -211,11 +135,19 @@ exports.getSystemHealth = async (req, res) => {
                 pool_limit: 10
             },
             process: {
-                memory_usage: heapUsed.toFixed(2) + ' MB',
+                memory_usage: (process.memoryUsage().heapUsed / (1024 * 1024)).toFixed(2) + ' MB',
                 pid: process.pid
             },
-            folders: folders
+            folders: []
         };
+
+        const targetDirs = ['uploads', 'backups'];
+        targetDirs.forEach(dir => {
+            const fullPath = path.resolve(__dirname, '..', dir);
+            let status = 'Writable';
+            try { fs.accessSync(fullPath, fs.constants.W_OK); } catch (e) { status = 'Error/Read-only'; }
+            health.folders.push({ name: dir, status });
+        });
 
         res.json(health);
     } catch (err) { 

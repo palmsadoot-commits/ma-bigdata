@@ -1,40 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  SettingOutlined, 
-  SaveOutlined, 
-  MessageOutlined, 
-  MailOutlined, 
-  ClockCircleOutlined,
-  UploadOutlined,
-  SafetyCertificateOutlined,
-  RocketOutlined,
-  UserOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
-  SyncOutlined,
-  BgColorsOutlined,
-  FontSizeOutlined,
-  PictureOutlined,
-  BulbOutlined,
-  FileTextOutlined,
-  SecurityScanOutlined,
-  BellOutlined,
-  FileProtectOutlined,
-  EditOutlined,
-  GlobalOutlined,
-  LinkOutlined,
-  ApiOutlined,
-  DatabaseOutlined,
-  CloudServerOutlined,
-  AppstoreOutlined,
-  CodeOutlined,
-  SafetyOutlined,
-  DesktopOutlined,
-  HddOutlined,
-  CheckCircleOutlined
+  SettingOutlined,SaveOutlined,MessageOutlined,MailOutlined,ClockCircleOutlined,UploadOutlined,SafetyCertificateOutlined,RocketOutlined,UserOutlined,EyeOutlined,EyeInvisibleOutlined,SyncOutlined,BgColorsOutlined,FontSizeOutlined,PictureOutlined,BulbOutlined,FileTextOutlined,SecurityScanOutlined,BellOutlined,FileProtectOutlined,EditOutlined,GlobalOutlined,LinkOutlined,ApiOutlined,DatabaseOutlined,CloudServerOutlined,AppstoreOutlined,CodeOutlined,SafetyOutlined,DesktopOutlined,SearchOutlined,SmileOutlined,TagOutlined,InfoCircleOutlined,HddOutlined,CheckCircleOutlined,QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Card, Tabs, Form, Input, Button, Row, Col, Typography, InputNumber, Divider, Upload, Space, Spin, Switch, Tag, Select, Radio, ColorPicker, theme, message, Alert, Flex, Progress, Descriptions, Statistic } from 'antd';
+import { Card, Tabs, Form, Input, Button, Row, Col, Typography, InputNumber, Divider, Upload, Space, Spin, Switch, Tag, Select, Radio, ColorPicker, theme, message, Alert, Flex, Progress, Descriptions, Statistic, Popover, Tooltip, Modal, List } from 'antd';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError } from '../utils/alert';
 import { API_BASE_URL } from '../utils/config';
@@ -44,8 +13,138 @@ const { TextArea } = Input;
 const { useToken } = theme;
 const BACKEND_URL = API_BASE_URL;
 
-const DEFAULT_NEW_TICKET_TEMPLATE = `🔔 *มีใบงานแจ้งซ่อมใหม่: [ticket_no]*
-📌 **ระบบ/หมวดหมู่:** [category]
+/**
+ * 🛠️ Professional Template Editor with Emoji & Variables
+ */
+const TemplateEditor = ({ value, onChange, placeholder, variables = [] }) => {
+  const { token } = useToken();
+  const textAreaRef = React.useRef(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [variableOpen, setVariableOpen] = useState(false);
+
+  const emojis = ['🔔', '⚙️', '🔄', '✅', '⚠️', '🚨', '📌', '📝', '👤', '🖥️', '📱', '🚀', '⏩', '📥', '📤', '💡', '🔥', '✨', '🆕', '📋'];
+
+  const insertText = (textToInsert, type) => {
+    const el = textAreaRef.current?.resizableTextArea?.textArea;
+    
+    // ปิด Popover ทันทีหลังเลือก
+    if (type === 'emoji') setEmojiOpen(false);
+    if (type === 'variable') setVariableOpen(false);
+
+    if (!el) {
+      onChange((value || '') + textToInsert);
+      return;
+    }
+
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const currentText = value || '';
+    const newValue = currentText.substring(0, start) + textToInsert + currentText.substring(end);
+
+    onChange(newValue);
+
+    // ปรับตำแหน่ง Cursor หลังจาก State อัปเดต
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + textToInsert.length, start + textToInsert.length);
+    }, 0);
+  };
+
+  return (
+    <div style={{ 
+      border: `1px solid ${token.colorBorder}`, 
+      borderRadius: '12px', 
+      overflow: 'hidden',
+      background: token.colorBgContainer
+    }}>
+      {/* Toolbar */}
+      <div style={{ 
+        padding: '8px 12px', 
+        background: token.colorFillAlter, 
+        borderBottom: `1px solid ${token.colorBorder}`,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Space size="small">
+          <Popover
+            trigger="click"
+            open={emojiOpen}
+            onOpenChange={setEmojiOpen}
+            title={<Text strong>เลือก Emoji</Text>}
+            content={
+              <div style={{ width: 220, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                {emojis.map(e => (
+                  <Button 
+                    key={e} 
+                    type="text" 
+                    style={{ fontSize: 20, height: 40, padding: 0 }} 
+                    onClick={() => insertText(e, 'emoji')}
+                  >
+                    {e}
+                  </Button>
+                ))}
+              </div>
+            }
+          >
+            <Button icon={<SmileOutlined />} size="small">Emoji</Button>
+          </Popover>
+
+          <Popover
+            trigger="click"
+            open={variableOpen}
+            onOpenChange={setVariableOpen}
+            title={<Text strong>แทรกตัวแปร (Variables)</Text>}
+            content={
+              <div style={{ width: 250, maxHeight: 300, overflowY: 'auto' }}>
+                {variables.map((v, idx) => (
+                  <div 
+                    key={v.key}
+                    style={{ 
+                      cursor: 'pointer', 
+                      padding: '8px 12px', 
+                      borderBottom: idx === variables.length - 1 ? 'none' : `1px solid ${token.colorSplit}`,
+                      transition: 'background 0.2s'
+                    }} 
+                    className="variable-item"
+                    onClick={() => insertText(v.key, 'variable')}
+                  >
+                    <Flex align="center" gap={8}>
+                      <Tag color="blue" style={{ margin: 0 }}>{v.key}</Tag>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{v.label}</Text>
+                    </Flex>
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <Button icon={<TagOutlined />} size="small">ตัวแปร</Button>
+          </Popover>
+        </Space>
+
+        <Tooltip title="ข้อมูลจะถูกส่งไปยัง LINE / Email ตามรูปแบบนี้">
+          <Tag icon={<InfoCircleOutlined />} color="processing" style={{ margin: 0, borderRadius: 10 }}>Preview Mode</Tag>
+        </Tooltip>
+      </div>
+
+      <TextArea
+        ref={textAreaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={6}
+        style={{ border: 'none', borderRadius: 0, padding: '12px', resize: 'vertical' }}
+      />
+
+      <style>{`
+        .variable-item:hover { background-color: ${token.colorPrimary}10; }
+      `}</style>
+    </div>
+  );
+};
+
+const DEFAULT_NEW_TICKET_TEMPLATE = `🆕 *มีใบงานแจ้งซ่อมใหม่: [ticket_no]*
+🖥️ **ระบบ/หมวดหมู่:** [category]
 📝 **รายละเอียดปัญหา:** [problem]
 
 🚀 กรุณาเข้าตรวจสอบและรับงานในระบบจัดการใบงาน (LMIS)`;
@@ -129,7 +228,7 @@ export default function SystemSettings() {
           allowed_file_types: settings.allowed_file_types ? settings.allowed_file_types.split(',').map(e => e.trim()) : ['jpg', 'jpeg', 'png', 'pdf'],
           admin_email: settings.admin_email ? settings.admin_email.split(',').map(e => e.trim()) : [],
           enable_line: settings.enable_line === 1,
-          notify_backup_status: settings.notify_backup_status === 1, // ✅ เพิ่มฟิลด์ใหม่
+          notify_backup_status: settings.notify_backup_status === 1,
           enable_email: settings.enable_email === 1,
           notify_new_ticket: settings.notify_new_ticket === 1,
           notify_status_change: settings.notify_status_change === 1,
@@ -257,33 +356,27 @@ export default function SystemSettings() {
   const handleFinish = async (values) => {
     setSaving(true);
     try {
-      // ดึงค่าทั้งหมดจากฟอร์ม (รวมถึงฟิลด์ที่ซ่อนอยู่ใน Tab อื่นด้วย)
       const allValues = form.getFieldsValue(true);
       const formData = new FormData();
       
       Object.keys(allValues).forEach(key => {
         let val = allValues[key];
         
-        // จัดการ Boolean/Switch
         if (['security_strict_mode', 'notify_new_ticket', 'notify_status_change', 'enable_line', 'enable_email', 'maintenance_mode', 'error_404_active', 'error_500_active'].includes(key)) {
           val = val ? 1 : 0;
         }
         
-        // จัดการ Array (Tags)
         if ((key === 'admin_email' || key === 'allowed_file_types') && Array.isArray(val)) {
           val = val.join(',');
         }
         
-        // จัดการ ColorPicker
         if (key === 'primary_color' && typeof val === 'object' && val !== null) {
           val = val.toHexString ? val.toHexString() : val;
         }
 
-        // ตรวจสอบและส่งค่า (ถ้าเป็น undefined ให้ส่งเป็นค่าว่าง หรือค่าเดิม)
         formData.append(key, (val !== undefined && val !== null) ? val : '');
       });
 
-      // จัดการไฟล์โลโก้และ Favicon
       if (fileList.length > 0 && fileList[0].originFileObj) {
         formData.append('system_logo', fileList[0].originFileObj);
       }
@@ -476,10 +569,29 @@ export default function SystemSettings() {
           <Divider style={{ margin: '24px 0 12px 0' }} />
           <Title level={5}><EditOutlined /> รูปแบบข้อความแจ้งเตือน (Templates)</Title>
           <Form.Item name="msg_template_new" label="ข้อความแจ้งใบงานใหม่">
-            <TextArea rows={4} placeholder="รองรับ [ticket_no], [category], [problem]" />
+            <TemplateEditor 
+              placeholder="รองรับตัวแปร [ticket_no], [category], [problem], [priority], [created_at]" 
+              variables={[
+                { key: '[ticket_no]', label: 'เลขที่ใบงาน' },
+                { key: '[category]', label: 'หมวดหมู่/ระบบ' },
+                { key: '[problem]', label: 'รายละเอียดปัญหา' },
+                { key: '[priority]', label: 'ระดับความสำคัญ' },
+                { key: '[created_at]', label: 'วัน-เวลาที่แจ้ง' },
+                { key: '[agency]', label: 'หน่วยงานผู้แจ้ง' }
+              ]}
+            />
           </Form.Item>
           <Form.Item name="msg_template_update" label="ข้อความอัปเดตสถานะ">
-            <TextArea rows={4} placeholder="รองรับ [ticket_no], [status], [technician]" />
+            <TemplateEditor 
+              placeholder="รองรับตัวแปร [ticket_no], [status], [technician], [update_details]" 
+              variables={[
+                { key: '[ticket_no]', label: 'เลขที่ใบงาน' },
+                { key: '[status]', label: 'สถานะปัจจุบัน' },
+                { key: '[technician]', label: 'ชื่อผู้ดำเนินการ' },
+                { key: '[update_details]', label: 'หมายเหตุการอัปเดต' },
+                { key: '[updated_at]', label: 'วัน-เวลาที่อัปเดต' }
+              ]}
+            />
           </Form.Item>
         </Col>
         <Col xs={24} lg={12}>
@@ -487,7 +599,9 @@ export default function SystemSettings() {
             <Form.Item name="enable_line" label="เปิดใช้งาน LINE" valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Form.Item name="line_notify_token" label="Channel Access Token"><Input.Password /></Form.Item>
+            <Form.Item name="line_notify_token" label="Channel Access Token">
+              <Input.Password />
+            </Form.Item>
             <Form.Item name="line_group_id" label="Group ID / User ID (สำหรับแจ้งเตือน)"><Input placeholder="ใส่ ID ของกลุ่มหรือบอท" /></Form.Item>
             
             <div style={{ background: isDarkMode ? 'rgba(0,0,0,0.2)' : token.colorFillAlter, padding: 15, borderRadius: 8, marginTop: 15, border: isDarkMode ? '1px solid #333' : 'none' }}>
@@ -560,8 +674,22 @@ export default function SystemSettings() {
     </div>
   );
 
+  const [isHealthModalVisible, setIsHealthModalVisible] = useState(false);
+
   const renderHealthTab = () => {
     if (!healthData) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" description="กำลังรวบรวมข้อมูลระดับโลก..." /></div>;
+
+    const getStatusStyle = (status) => {
+      switch(status) {
+        case 'OPTIMIZED': return { bg: 'linear-gradient(to right, #108ee9 0%, #87d068 100%)', shadow: 'rgba(16, 142, 233, 0.3)', label: 'สมบูรณ์แบบ' };
+        case 'HEALTHY': return { bg: 'linear-gradient(to right, #00b4d8 0%, #0077b6 100%)', shadow: 'rgba(0, 180, 216, 0.3)', label: 'ปกติ' };
+        case 'WARNING': return { bg: 'linear-gradient(to right, #f59e0b 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.3)', label: 'ควรเฝ้าระวัง' };
+        case 'CRITICAL': return { bg: 'linear-gradient(to right, #ef4444 0%, #991b1b 100%)', shadow: 'rgba(239, 68, 68, 0.3)', label: 'วิกฤต' };
+        default: return { bg: 'linear-gradient(to right, #6b7280 0%, #374151 100%)', shadow: 'rgba(107, 114, 128, 0.3)', label: 'ไม่ทราบสถานะ' };
+      }
+    };
+
+    const statusStyle = getStatusStyle(healthData.status);
 
     const stackItems = [
       { name: 'React', version: '19.2.4', icon: <CodeOutlined style={{ color: '#61dafb' }} />, desc: 'Frontend Framework' },
@@ -595,14 +723,27 @@ export default function SystemSettings() {
                   </Col>
                   <Col span={24}>
                     <Divider style={{ margin: '12px 0' }} />
-                    <Text strong>Physical Memory (RAM)</Text>
-                    <Flex align="center" gap="middle" style={{ marginTop: 10 }}>
+                    
+                    <div style={{ marginBottom: 16 }}>
+                      <Text strong><DatabaseOutlined /> Storage Drive (C:)</Text>
+                      <Flex align="center" gap="middle" style={{ marginTop: 6 }}>
+                        <Progress 
+                          percent={healthData.os.disk.used_percent} 
+                          status={healthData.os.disk.used_percent > 90 ? 'exception' : 'active'} 
+                          strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }}
+                        />
+                        <Text style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{healthData.os.disk.free} free of {healthData.os.disk.total}</Text>
+                      </Flex>
+                    </div>
+
+                    <Text strong><HddOutlined /> Physical Memory (RAM)</Text>
+                    <Flex align="center" gap="middle" style={{ marginTop: 6 }}>
                       <Progress 
                         percent={parseFloat(((1 - (parseFloat(healthData.os.free_mem) / parseFloat(healthData.os.total_mem))) * 100).toFixed(1))} 
                         status="active" 
-                        strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }}
+                        strokeColor={{ '0%': '#3b82f6', '100%': '#2dd4bf' }}
                       />
-                      <Text style={{ whiteSpace: 'nowrap' }}>{healthData.os.free_mem} free of {healthData.os.total_mem}</Text>
+                      <Text style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{healthData.os.free_mem} free of {healthData.os.total_mem}</Text>
                     </Flex>
                   </Col>
                </Row>
@@ -646,17 +787,103 @@ export default function SystemSettings() {
               ))}
             </Card>
 
-            <Card style={{ marginTop: 16, textAlign: 'center', background: 'linear-gradient(135deg, #1d39c4 0%, #722ed1 100%)', borderRadius: 12, border: 'none' }}>
-               <Statistic 
-                  title={<Text style={{ color: 'rgba(255,255,255,0.8)' }}>System Overall Health</Text>} 
-                  value="OPTIMIZED" 
-                  styles={{ content: { color: '#fff', fontWeight: 'bold', fontSize: 24 } }}
-                  prefix={<SafetyCertificateOutlined style={{ color: '#52c41a' }} />}
-               />
-               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Last verified: {healthData.server_time}</Text>
+            <Card 
+              style={{ 
+                marginTop: 16, 
+                textAlign: 'center', 
+                background: statusStyle.bg, 
+                borderRadius: 16, 
+                border: 'none',
+                boxShadow: `0 10px 20px -5px ${statusStyle.shadow}`,
+                overflow: 'hidden',
+                transition: 'all 0.5s ease'
+              }}
+              styles={{ body: { padding: '20px 16px' } }}
+            >
+               <div style={{ background: 'linear-gradient(to right, #108ee9 0%, #87d068 100%)', padding: 20, borderRadius: 12, marginBottom: 16, boxShadow: '0 4px 15px rgba(16, 142, 233, 0.3)' }}>
+                 <Statistic 
+                    title={
+                      <Flex align="center" justify="center" gap={4}>
+                        <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '15px', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>ความสมบูรณ์ของระบบโดยรวม ({healthData.score}%)</div>
+                        <Button 
+                          type="text" 
+                          icon={<QuestionCircleOutlined style={{ color: '#ffffff', fontSize: '14px' }} />} 
+                          size="small" 
+                          onClick={() => setIsHealthModalVisible(true)}
+                          style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        />
+                      </Flex>
+                    } 
+                    value={healthData.status} 
+                    styles={{ content: { color: '#ffffff', fontWeight: 900, fontSize: 32, textShadow: '0 2px 10px rgba(0,0,0,0.4)', letterSpacing: '1.5px' } }}
+                    prefix={<SafetyCertificateOutlined style={{ color: '#ffffff', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))', fontSize: '28px' }} />}
+                 />
+                 <div style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '12px', marginTop: 8, fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                    <Text style={{ color: '#ffffff' }}>สถานะ: {statusStyle.label}</Text>
+                    <br />
+                    <SyncOutlined spin style={{ marginRight: 6 }} /> ตรวจสอบล่าสุดเมื่อ: {healthData.server_time}
+                 </div>
+               </div>
             </Card>
           </Col>
         </Row>
+
+        {/* ℹ️ Health Criteria Modal */}
+        <Modal
+          title={<Flex align="center" gap={12}><InfoCircleOutlined style={{ color: token.colorPrimary }} /><span>เกณฑ์การประเมินสุขภาพระบบ (5 มิติหลัก)</span></Flex>}
+          open={isHealthModalVisible}
+          onCancel={() => setIsHealthModalVisible(false)}
+          footer={[<Button key="close" type="primary" onClick={() => setIsHealthModalVisible(false)}>เข้าใจแล้ว</Button>]}
+          width={650}
+          centered
+        >
+          <div style={{ padding: '8px 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: 24, padding: 20, background: statusStyle.bg, borderRadius: 16, boxShadow: `0 8px 20px ${statusStyle.shadow}` }}>
+               <Text style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>คะแนนวิเคราะห์รวม</Text>
+               <div style={{ color: '#fff', fontSize: 48, fontWeight: 900, textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>{healthData.score}%</div>
+               <Tag color="rgba(255,255,255,0.2)" style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 10 }}>สถานะ: {statusStyle.label}</Tag>
+            </div>
+
+            <Title level={5} style={{ color: token.colorPrimary, marginBottom: 16 }}><SafetyOutlined /> ผลลัพธ์การตรวจสอบ 5 ด้านหลัก</Title>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { title: '1. ฐานข้อมูล (Database - 30%)', sub: 'MySQL Connectivity & Pool', score: healthData.score_details.database, max: 30 },
+                { title: '2. พื้นที่เก็บข้อมูล (Disk - 20%)', sub: 'พื้นที่ว่างใน Drive C:', score: healthData.score_details.disk, max: 20 },
+                { title: '3. หน่วยความจำ (Memory - 20%)', sub: 'ปริมาณ RAM คงเหลือ', score: healthData.score_details.memory, max: 20 },
+                { title: '4. ระบบไฟล์ (File System - 20%)', sub: 'สิทธิ์การเขียนโฟลเดอร์สำรองข้อมูล', score: healthData.score_details.folders, max: 20 },
+                { title: '5. เสถียรภาพโปรเซส (Process - 10%)', sub: 'Node.js Heap Memory Usage', score: healthData.score_details.process, max: 10 }
+              ].map((item, i) => (
+                <div key={i} style={{ background: '#f8fafc', padding: '10px 16px', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <Text strong style={{ fontSize: 13 }}>{item.title}</Text>
+                    <br/><Text type="secondary" style={{ fontSize: 11 }}>{item.sub}</Text>
+                  </div>
+                  <Tag color={item.score >= (item.max * 0.8) ? 'success' : (item.score >= (item.max * 0.5) ? 'warning' : 'error')} style={{ minWidth: 60, textAlign: 'center', fontWeight: 'bold' }}>
+                    {item.score} / {item.max}
+                  </Tag>
+                </div>
+              ))}
+            </div>
+
+            <Divider style={{ margin: '20px 0' }} />
+            
+            <Title level={5} style={{ color: token.colorWarning, marginBottom: 12, fontSize: 14 }}>เกณฑ์ระดับสถานะ</Title>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ padding: '6px 10px', background: 'linear-gradient(to right, #108ee9 0%, #87d068 100%)', borderRadius: 8, color: '#fff', fontSize: 10 }}>
+                <Text strong style={{ color: '#fff', fontSize: 11 }}>💎 OPTIMIZED (90-100%)</Text>
+              </div>
+              <div style={{ padding: '6px 10px', background: 'linear-gradient(to right, #00b4d8 0%, #0077b6 100%)', borderRadius: 8, color: '#fff', fontSize: 10 }}>
+                <Text strong style={{ color: '#fff', fontSize: 11 }}>✅ HEALTHY (70-89%)</Text>
+              </div>
+              <div style={{ padding: '6px 10px', background: 'linear-gradient(to right, #f59e0b 0%, #d97706 100%)', borderRadius: 8, color: '#fff', fontSize: 10 }}>
+                <Text strong style={{ color: '#fff', fontSize: 11 }}>⚠️ WARNING (40-69%)</Text>
+              </div>
+              <div style={{ padding: '6px 10px', background: 'linear-gradient(to right, #ef4444 0%, #991b1b 100%)', borderRadius: 8, color: '#fff', fontSize: 10 }}>
+                <Text strong style={{ color: '#fff', fontSize: 11 }}>🚨 CRITICAL (0-39%)</Text>
+              </div>
+            </div>
+          </div>
+        </Modal>
       </div>
     );
   };

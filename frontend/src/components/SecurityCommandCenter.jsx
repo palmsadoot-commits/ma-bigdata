@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Row, Col, Typography, Table, Button, Space, Tag, 
   Statistic, Divider, Empty, Modal, message, Badge, Tooltip,
-  Timeline, List, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover, Alert
+  Timeline, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover, Alert
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -89,12 +89,15 @@ export default function SecurityCommandCenter() {
     setSettingsLoading(true);
     try {
       const res = await axiosInstance.get('/security/settings');
-      form.setFieldsValue({
+      // ✅ แปลงค่าจาก Database (0/1) เป็น Boolean สำหรับ Switch
+      const normalizedSettings = {
         ...res.data,
-        auto_block_enabled: res.data.auto_block_enabled === 1 || res.data.auto_block_enabled === true,
-        notify_admin: res.data.notify_admin === 1 || res.data.notify_admin === true
-      });
+        auto_block_enabled: Number(res.data.auto_block_enabled) === 1,
+        notify_admin: Number(res.data.notify_admin) === 1
+      };
+      form.setFieldsValue(normalizedSettings);
     } catch (err) {
+      console.error("Fetch Settings Error:", err);
       message.error("ไม่สามารถโหลดการตั้งค่าความปลอดภัยได้");
     } finally {
       setSettingsLoading(false);
@@ -103,9 +106,10 @@ export default function SecurityCommandCenter() {
 
   useEffect(() => {
     fetchSecurityData();
+    fetchSecuritySettings();
     const interval = setInterval(fetchSecurityData, 30000); 
     return () => clearInterval(interval);
-  }, [fetchSecurityData]);
+  }, [fetchSecurityData, fetchSecuritySettings]);
 
   // --- 🛠️ Filtering Logic ---
   
@@ -141,10 +145,14 @@ export default function SecurityCommandCenter() {
   const handleUpdateSettings = async (values) => {
     setSettingsLoading(true);
     try {
-      await axiosInstance.put('/security/settings', values);
-      alertSuccess('สำเร็จ', 'บันทึกการตั้งค่า IPS แบบ Full เรียบร้อยแล้ว');
-      setIsSettingsModalVisible(false);
+      const res = await axiosInstance.put('/security/settings', values);
+      if (res.data.success) {
+        alertSuccess('สำเร็จ', 'บันทึกการตั้งค่า IPS แบบ Full เรียบร้อยแล้ว');
+        await fetchSecuritySettings(); // ✅ รีเฟรชค่าจาก DB ทันทีหลังบันทึก
+        setIsSettingsModalVisible(false);
+      }
     } catch (err) {
+      console.error("Update Settings Error:", err);
       alertError('ผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้');
     } finally {
       setSettingsLoading(false);
@@ -215,43 +223,43 @@ export default function SecurityCommandCenter() {
     return dayjs(date).format('D MMM YY HH:mm');
   };
 
-  // --- 🎨 Dynamic Efficiency Logic (4 Levels: Green, Yellow, Orange, Red) ---
+  // --- 🎨 Dynamic Efficiency Logic (Vibrant World-Class Gradients) ---
   const getEfficiencyStatus = (percent) => {
-    // 1. ปลอดภัยสูง (Green: 81-100%)
+    // 1. ปลอดภัยสูง (Emerald to Teal: 81-100%)
     if (percent >= 81) return { 
       label: 'ปลอดภัยสูง', 
       color: '#10b981', 
-      bg: 'linear-gradient(180deg, #065f46 0%, #064e3b 100%)', 
+      bg: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)', 
       text: '#ffffff', 
-      subText: '#a7f3d0',
-      description: 'ระบบทำงานได้สมบูรณ์แบบ'
+      subText: '#ecfdf5',
+      shadow: 'rgba(5, 150, 105, 0.4)'
     };
-    // 2. เฝ้าระวัง (Yellow/Amber: 51-80%)
+    // 2. เฝ้าระวัง (Amber to Yellow: 51-80%)
     if (percent >= 51) return { 
       label: 'เฝ้าระวัง', 
-      color: '#fbbf24', 
-      bg: 'linear-gradient(180deg, #92400e 0%, #78350f 100%)', 
+      color: '#f59e0b', 
+      bg: 'linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%)', 
       text: '#ffffff', 
-      subText: '#fde68a',
-      description: 'ควรเริ่มสังเกตการณ์ระบบ'
+      subText: '#fffbeb',
+      shadow: 'rgba(217, 119, 6, 0.4)'
     };
-    // 3. เสี่ยงอันตราย (Orange: 26-50%)
+    // 3. เสี่ยงอันตราย (Orange to Red-Orange: 26-50%)
     if (percent >= 26) return { 
       label: 'เสี่ยงอันตราย', 
       color: '#f97316', 
-      bg: 'linear-gradient(180deg, #9a3412 0%, #7c2d12 100%)', 
+      bg: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)', 
       text: '#ffffff', 
-      subText: '#ffedd5',
-      description: 'มีภัยคุกคามเล็ดลอดบางส่วน'
+      subText: '#fff7ed',
+      shadow: 'rgba(234, 88, 12, 0.4)'
     };
-    // 4. วิกฤต (Red: 0-25%)
+    // 4. วิกฤต (Red to Rose: 0-25%)
     return { 
       label: 'วิกฤต', 
       color: '#ef4444', 
-      bg: 'linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%)', 
+      bg: 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)', 
       text: '#ffffff', 
-      subText: '#fee2e2',
-      description: 'ระบบอยู่ในภาวะอันตรายสูงสุด'
+      subText: '#fef2f2',
+      shadow: 'rgba(220, 38, 38, 0.4)'
     };
   };
 
@@ -374,6 +382,8 @@ export default function SecurityCommandCenter() {
       title: 'Action',
       key: 'action',
       align: 'center',
+      fixed: 'right',
+      width: 120,
       render: (_, record) => (
         <Space>
           {!blockedIps.some(b => b.ip_address === record.ip_address) ? (
@@ -409,7 +419,7 @@ export default function SecurityCommandCenter() {
       minHeight: '100vh',
       backgroundImage: 'radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%)'
     }}>
-      {/* Header Section */}
+      {/* Header Section ... (omitted for brevity, will be kept in full replace) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '16px', letterSpacing: '-0.5px' }}>
@@ -573,73 +583,80 @@ export default function SecurityCommandCenter() {
               className="efficiency-card"
               style={{ 
                 borderRadius: '24px', 
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-                background: statusConfig.bg,
-                color: statusConfig.text,
-                border: `1px solid ${statusConfig.color}40`,
-                transition: 'all 0.5s ease'
+                boxShadow: `0 20px 40px -10px ${statusConfig.shadow}`,
+                overflow: 'hidden',
+                border: 'none',
+                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+              styles={{ 
+                body: { 
+                  background: statusConfig.bg, 
+                  padding: '24px',
+                  minHeight: '400px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                } 
               }}
             >
-              <Flex vertical align="center" gap={20} style={{ padding: '12px 0' }}>
-                <div style={{ color: '#ffffff !important', fontSize: '18px', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                  ประสิทธิภาพการป้องกัน
-                </div>
+              <div style={{ color: '#ffffff', fontSize: '20px', fontWeight: 800, textShadow: '0 2px 10px rgba(0,0,0,0.3)', textAlign: 'center', width: '100%', marginBottom: '10px' }}>
+                ประสิทธิภาพการป้องกัน
+              </div>
 
-                <Progress 
-                  type="circle" 
-                  percent={efficiencyPercent} 
-                  strokeColor={{
-                    '0%': statusConfig.color,
-                    '100%': '#ffffff',
-                  }}
-                  strokeWidth={12}
-                  trailColor="rgba(255,255,255,0.15)"
-                  format={(percent) => (
-                    <div style={{ color: '#ffffff', textAlign: 'center' }}>
-                      <div style={{ fontSize: '32px', fontWeight: 900, lineHeight: 1 }}>{percent}%</div>
-                      <div style={{ 
-                        fontSize: '11px', 
-                        fontWeight: 800, 
-                        color: statusConfig.subText, 
-                        marginTop: '4px',
-                        letterSpacing: '0.5px',
-                        backgroundColor: 'rgba(0,0,0,0.2)',
-                        padding: '2px 8px',
-                        borderRadius: '10px'
-                      }}>
-                        {statusConfig.label}
-                      </div>
-                    </div>
-                  )}
-                  width={160}
-                />
-
-                <div style={{ textAlign: 'center', width: '100%' }}>
-                  <div style={{ 
-                    backgroundColor: 'rgba(255,255,255,0.15)', 
-                    padding: '12px', 
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}>
+              <Progress 
+                type="circle" 
+                percent={efficiencyPercent} 
+                strokeColor={{
+                  '0%': '#ffffff',
+                  '100%': statusConfig.subText,
+                }}
+                strokeWidth={12}
+                trailColor="rgba(255,255,255,0.2)"
+                format={(percent) => (
+                  <div style={{ color: '#ffffff', textAlign: 'center' }}>
+                    <div style={{ fontSize: '36px', fontWeight: 900, lineHeight: 1, textShadow: '0 2px 15px rgba(0,0,0,0.4)' }}>{percent}%</div>
                     <div style={{ 
-                      color: '#ffffff !important', 
-                      fontSize: '18px', 
+                      fontSize: '12px', 
                       fontWeight: 800, 
-                      marginBottom: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
+                      color: '#ffffff', 
+                      marginTop: '8px',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      display: 'inline-block',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
                     }}>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: statusConfig.color, boxShadow: `0 0 10px ${statusConfig.color}` }} />
-                      สถานะระบบ: {efficiencyPercent >= 51 ? 'ปกติ' : 'ผิดปกติ'}
-                    </div>
-                    <div style={{ color: statusConfig.subText, fontSize: '14px', fontWeight: 600 }}>
-                      สกัดกั้นภัยคุกคามแล้ว <span style={{ color: '#ffffff', fontSize: '18px', fontWeight: 900 }}>{filteredThreats.length}</span> รายการ
+                      {statusConfig.label}
                     </div>
                   </div>
+                )}
+                width={180}
+              />
+
+              <div style={{ width: '100%', marginTop: '20px' }}>
+                <div style={{ 
+                  background: 'rgba(255,255,255,0.15)', 
+                  backdropFilter: 'blur(10px)',
+                  padding: '16px', 
+                  borderRadius: '20px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ 
+                    color: '#ffffff', 
+                    fontSize: '19px', 
+                    fontWeight: 800, 
+                    marginBottom: '6px',
+                    textShadow: '0 1px 5px rgba(0,0,0,0.2)'
+                  }}>
+                    สถานะระบบ: {efficiencyPercent >= 51 ? 'ปกติ' : 'ผิดปกติ'}
+                  </div>
+                  <div style={{ color: statusConfig.subText, fontSize: '14px', fontWeight: 600 }}>
+                    สกัดกั้นภัยคุกคามได้แม่นยำ <span style={{ color: '#ffffff', fontSize: '20px', fontWeight: 900, textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>{filteredThreats.length}</span> รายการ
+                  </div>
                 </div>
-              </Flex>
+              </div>
             </Card>
 
             <Card 
@@ -663,27 +680,41 @@ export default function SecurityCommandCenter() {
                 background: '#fff'
               }}
             >
-              <List
-                dataSource={filteredBlockedIps}
-                renderItem={(item) => (
-                  <List.Item 
-                    className="ip-list-item"
-                    actions={[
+              <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '8px' }}>
+                {filteredBlockedIps.length > 0 ? (
+                  filteredBlockedIps.map((item, idx) => (
+                    <div 
+                      key={item.ip_address}
+                      className="ip-list-item"
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        padding: '12px 0',
+                        borderBottom: idx === filteredBlockedIps.length - 1 ? 'none' : '1px solid #f1f5f9'
+                      }}
+                    >
+                      <Flex align="center" gap={12}>
+                        <Avatar icon={<GlobalOutlined />} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }} />
+                        <div>
+                          <div style={{ fontWeight: 700, letterSpacing: '0.5px', color: '#1e293b' }}>{item.ip_address}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>ระงับเมื่อ: {dayjs(item.created_at).format('DD MMM, HH:mm')}</div>
+                        </div>
+                      </Flex>
                       <Tooltip title="ปลดบล็อก">
-                        <Button type="text" shape="circle" icon={<SyncOutlined />} onClick={() => handleUnblockIp(item.ip_address)} />
+                        <Button 
+                          type="text" 
+                          shape="circle" 
+                          icon={<SyncOutlined />} 
+                          onClick={() => handleUnblockIp(item.ip_address)} 
+                        />
                       </Tooltip>
-                    ]}
-                    style={{ borderBottom: '1px solid #f1f5f9', padding: '12px 0' }}
-                  >
-                    <List.Item.Meta 
-                      avatar={<Avatar icon={<GlobalOutlined />} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }} />} 
-                      title={<Text strong style={{ letterSpacing: '0.5px' }}>{item.ip_address}</Text>} 
-                      description={<Text type="secondary" style={{ fontSize: '11px' }}>ระงับเมื่อ: {dayjs(item.created_at).format('DD MMM, HH:mm')}</Text>} 
-                    />
-                  </List.Item>
+                    </div>
+                  ))
+                ) : (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="ไม่มีรายการที่ถูกระงับ" />
                 )}
-                style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '8px' }}
-              />
+              </div>
             </Card>
           </Flex>
         </Col>
@@ -718,13 +749,22 @@ export default function SecurityCommandCenter() {
           <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
             <Row gutter={32}>
               <Col span={24}>
-                <Form.Item name="auto_block_enabled" label={<Text strong>โหมดระบบป้องกันการบุกรุก (IPS Mode)</Text>} valuePropName="checked">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#fff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
-                    <Switch checkedChildren="ป้องกัน (PROTECT)" unCheckedChildren="เฝ้าสังเกต (MONITOR)" />
-                    <Text type="secondary" style={{ fontSize: '13px' }}>สลับระหว่างการบล็อกอัตโนมัติหรือการบันทึกข้อมูลเพียงอย่างเดียว</Text>
-                  </div>
-                </Form.Item>
-                <Divider style={{ margin: '12px 0 24px 0' }} />
+                <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '24px' }}>
+                  <Flex align="center" justify="space-between">
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '15px', color: '#1e293b' }}>โหมดระบบป้องกันการบุกรุก (IPS Mode)</div>
+                      <div style={{ fontSize: '13px', color: '#64748b' }}>สลับระหว่างการบล็อกอัตโนมัติ (Protect) หรือการบันทึกข้อมูลเพียงอย่างเดียว (Monitor)</div>
+                    </div>
+                    <Form.Item name="auto_block_enabled" valuePropName="checked" style={{ marginBottom: 0 }}>
+                      <Switch 
+                        checkedChildren="ป้องกัน (PROTECT)" 
+                        unCheckedChildren="เฝ้าสังเกต (MONITOR)" 
+                        style={{ width: '140px' }}
+                      />
+                    </Form.Item>
+                  </Flex>
+                </div>
+                <Divider style={{ margin: '0 0 24px 0' }} />
               </Col>
 
               <Col span={12}>

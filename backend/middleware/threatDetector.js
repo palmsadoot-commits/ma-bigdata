@@ -12,13 +12,14 @@ let lastCacheUpdate = 0;
 const updateSecurityCache = async () => {
     try {
         const now = Date.now();
-        if (now - lastCacheUpdate < 30000) return; 
+        // รีเฟรชเมื่อครบ 30 วินาที หรือเมื่อมีการสั่งอัปเดตผ่าน Global Flag
+        if (now - lastCacheUpdate < 30000 && !global.securityCacheNeedsUpdate) return; 
 
         // 1. ดึง IP ที่ถูกบล็อก
         const [blockedRows] = await db.query('SELECT ip_address FROM blocked_ips WHERE expires_at IS NULL OR expires_at > NOW()');
         blockedIpCache = new Set(blockedRows.map(r => r.ip_address));
 
-        // 2. ดึงการตั้งค่าความปลอดภัย (รองรับฟีเจอร์ใหม่)
+        // 2. ดึงการตั้งค่าความปลอดภัย
         const [settingsRows] = await db.query('SELECT * FROM security_settings WHERE id = 1');
         securitySettingsCache = settingsRows[0] || {
             auto_block_enabled: true,
@@ -31,6 +32,8 @@ const updateSecurityCache = async () => {
         };
 
         lastCacheUpdate = now;
+        global.securityCacheNeedsUpdate = false; // Reset flag
+        console.log('🛡️ Security Cache Updated');
     } catch (err) {
         console.error('❌ Failed to update security cache:', err.message);
     }
@@ -57,10 +60,6 @@ const autoBlockIp = async (ip, score, reason) => {
         const totalScore = (rows[0].total_score || 0) + score;
         const attackCount = (rows[0].attack_count || 0) + 1;
 
-        // เงื่อนไขการบล็อกแบบ Full Configuration:
-        // 1. คะแนนสะสมเกินเกณฑ์ (Accumulative Score)
-        // 2. ความถี่การโจมตีเกินกำหนด (Attack Frequency)
-        // 3. เป็นการโจมตีระดับร้ายแรง (Immediate Block Score)
         if (
             totalScore >= securitySettingsCache.score_threshold || 
             attackCount >= securitySettingsCache.attack_limit_per_hour || 
@@ -149,7 +148,7 @@ const threatDetector = async (req, res, next) => {
         for (const p of attackPatterns) {
             if (p.regex.test(fullPayload)) {
                 detectedThreat = { phase: 'Execution', type: p.type };
-                score = 85; // จะถูกบล็อกทันทีหากเกณฑ์ immediate_block_score คือ 80
+                score = 85; 
                 break;
             }
         }
