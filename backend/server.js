@@ -195,21 +195,42 @@ process.on('unhandledRejection', async (reason, promise) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, async () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-    
-    // ✅ บันทึก System Startup
-    await sysLog('INFO', 'SYSTEM', `Server started on port ${PORT}`);
-    
+let server;
+
+// --- 5. Server Start (HTTP/HTTPS) ---
+const sslPath = path.join(__dirname, 'certs');
+const sslOptions = {
+    key: fs.existsSync(path.join(sslPath, 'mol.go.th.key')) ? fs.readFileSync(path.join(sslPath, 'mol.go.th.key')) : null,
+    cert: fs.existsSync(path.join(sslPath, 'star_mol_go_th.crt')) ? fs.readFileSync(path.join(sslPath, 'star_mol_go_th.crt')) : null,
+    ca: fs.existsSync(path.join(sslPath, 'RapidSSL_TLS_RSA_CA_G1.crt')) ? fs.readFileSync(path.join(sslPath, 'RapidSSL_TLS_RSA_CA_G1.crt')) : null
+};
+
+if (sslOptions.key && sslOptions.cert) {
+    const https = require('https');
+    server = https.createServer(sslOptions, app);
+    server.listen(PORT, async () => {
+        console.log(`🔒 Secure Server is running on https://ma-bigdata.mol.go.th:${PORT} (via HTTPS)`);
+        await sysLog('INFO', 'SYSTEM', `Secure server started on port ${PORT} with SSL`);
+        await initializeServices();
+    });
+} else {
+    server = app.listen(PORT, async () => {
+        console.log(`🚀 Server is running on port ${PORT} (via HTTP)`);
+        await sysLog('INFO', 'SYSTEM', `Server started on port ${PORT} (SSL missing)`);
+        await initializeServices();
+    });
+}
+
+async function initializeServices() {
     try {
         await cronService.setupCronJob();
         await cronService.setupSourceCronJob();
         await cronService.setupGithubCronJob();
         await cronService.setupGDriveCronJob();
-        await cronService.setupCleanupCronJob(); // ✅ เริ่มระบบ Cleanup อัตโนมัติ
-        await cronService.setupTaskHistoryCronJob(); // ✅ เริ่มระบบบันทึกประวัติแผนงาน
+        await cronService.setupCleanupCronJob();
+        await cronService.setupTaskHistoryCronJob();
     } catch (e) { console.error("Cron Error:", e.message); }
-});
+}
 
 // ✅ ขยายเวลา Timeout เป็น 10 นาที สำหรับงาน Backup หนักๆ
 server.timeout = 600000; 

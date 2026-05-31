@@ -2,7 +2,7 @@ const db = require('../config/db');
 const ticketService = require('../services/ticketService'); 
 const { simpleSanitize } = require('../utils/dataHelper');
 const { logAction, sysLog } = require('../utils/logger');
-const { sendLineNotify, sendEmail } = require('../services/notificationService');
+const { sendLineNotify, sendEmail, sendNewTicketFlex, sendUpdateTicketFlex } = require('../services/notificationService');
 
 /**
  * Controller handling Ticket requests
@@ -54,15 +54,14 @@ exports.createTicket = async (req, res, next) => {
         });
         await logAction(reporter_id, 'TICKET_CREATED', `Ticket ${result.ticket_number} created`, req);
 
-        if (settings.notify_new_ticket === 1) {
-            const cleanText = problem_detail.replace(/<[^>]*>?/gm, '').substring(0, 50);
-            const msg = parseTemplate(settings.msg_template_new, {
+        if (settings.notify_new_ticket === 1 && settings.enable_line === 1) {
+            const cleanText = problem_detail.replace(/<[^>]*>?/gm, '').substring(0, 100);
+            await sendNewTicketFlex({
                 no: result.ticket_number,
                 cat: result.categoryName,
                 detail: cleanText
             });
-            if (settings.enable_line === 1) sendLineNotify(msg);
-            if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔔 แจ้งซ่อมใหม่: ${result.ticket_number}`, msg);
+            if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔔 แจ้งซ่อมใหม่: ${result.ticket_number}`, cleanText);
         }
 
         res.status(201).json({ message: 'บันทึกใบแจ้งซ่อมสำเร็จ!', ticket_number: result.ticket_number });
@@ -100,20 +99,13 @@ exports.updateTicketStatus = async (req, res, next) => {
 
         await logAction(auth_user_id, 'TICKET_STATUS_UPDATED', `Ticket ${result.ticket_number} status changed to ${result.newStatusName} by ${actorFullName}`, req);
 
-        if (settings.notify_status_change === 1) {
-            let statusIcon = '🔄';
-            if (result.newStatusName.includes('รอ')) statusIcon = '⏳';
-            if (result.newStatusName.includes('กำลัง') || result.newStatusName.includes('In Progress')) statusIcon = '🛠️';
-            if (result.newStatusName.includes('เสร็จ') || result.newStatusName.includes('Resolved')) statusIcon = '✅';
-            if (result.newStatusName.includes('ปิด') || result.newStatusName.includes('Closed')) statusIcon = '🚩';
-
-            const msg = parseTemplate(settings.msg_template_update, {
+        if (settings.notify_status_change === 1 && settings.enable_line === 1) {
+            await sendUpdateTicketFlex({
                 no: result.ticket_number,
-                status: `${statusIcon} ${result.newStatusName}`,
+                status: result.newStatusName,
                 by: actorFullName
             });
-            if (settings.enable_line === 1) sendLineNotify(msg);
-            if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔧 อัปเดตใบงาน: ${result.ticket_number}`, msg);
+            if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔧 อัปเดตใบงาน: ${result.ticket_number}`, `สถานะ: ${result.newStatusName}`);
         }
 
         res.json({ success: true, message: result.isBreached ? `สำเร็จล่าช้า! ค่าปรับ: ${result.penaltyAmount.toLocaleString()} บาท` : 'อัปเดตสำเร็จ' });
@@ -156,14 +148,13 @@ exports.assignTicket = async (req, res, next) => {
         await sysLog('INFO', 'OPERATIONAL', `มอบหมายงาน Ticket ID ${ticket_id} ให้ ${techNameSnap} (${vendorNameSnap})`, { userId: req.user.user_id, req });
 
         const settings = await getNotifySettings();
-        if (settings.notify_status_change === 1) {
-            const msg = parseTemplate(settings.msg_template_update, {
+        if (settings.notify_status_change === 1 && settings.enable_line === 1) {
+            await sendUpdateTicketFlex({
                 no: ticket_number,
                 status: '🛠️ กำลังดำเนินการ (In Progress)',
                 by: techNameSnap
             });
-            if (settings.enable_line === 1) sendLineNotify(msg);
-            if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔧 รับมอบหมายงาน: ${ticket_number}`, msg);
+            if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔧 รับมอบหมายงาน: ${ticket_number}`, `ช่าง ${techNameSnap} รับงานแล้ว`);
         }
 
         res.json({ success: true, message: 'มอบหมายงานสำเร็จ' });

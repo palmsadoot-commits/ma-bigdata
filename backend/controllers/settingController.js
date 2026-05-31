@@ -224,16 +224,107 @@ exports.getSystemHealth = async (req, res) => {
     }
 };
 
-// LINE Webhook
+// LINE Webhook (Interactive Postback Support)
 exports.lineWebhook = async (req, res) => {
+    const { replyMessage, sendUpdateTicketFlex } = require('../services/notificationService');
+    const querystring = require('querystring');
+
+    console.log('--- 📨 Incoming LINE Webhook ---');
+    console.log('Method:', req.method);
+    console.log('Headers:', JSON.stringify(req.headers));
+    console.log('Body:', JSON.stringify(req.body));
+
     try {
         const events = req.body.events || [];
+        
+        if (events.length === 0) {
+            console.log('ℹ️ Webhook Verify/Empty event received');
+            return res.sendStatus(200);
+        }
+
         for (const event of events) {
             const capturedId = event.source?.groupId || event.source?.userId || event.source?.roomId;
-            if (capturedId) lastCapturedLineId = capturedId;
+            if (capturedId) {
+                lastCapturedLineId = capturedId;
+                console.log('📍 Captured ID:', capturedId);
+            }
+
+            // ... (rest of the logic) ...
+            if (event.type === 'postback') {
+                const data = querystring.parse(event.postback.data);
+                const lineUserId = event.source.userId;
+
+                if (data.action === 'accept_job' && data.ticket_no) {
+                    // ก) ค้นหาข้อมูลช่างจาก line_id
+                    const [userRows] = await db.query(
+                        'SELECT user_id, first_name, last_name, vendor_id FROM users WHERE line_id = ? AND role IN ("technician", "head_technician", "admin")',
+                        [lineUserId]
+                    );
+                    
+                    if (userRows.length === 0) {
+                        await replyMessage(event.replyToken, '❌ ไม่พบข้อมูลช่างในระบบ หรือคุณยังไม่ได้ผูกบัญชี LINE');
+                        continue;
+                    }
+
+                    const technician = userRows[0];
+                    const techName = `${technician.first_name} ${technician.last_name}`;
+
+                    // ข) อัปเดตใบงาน
+                    const [ticketRows] = await db.query('SELECT ticket_id, status_id FROM tickets WHERE ticket_number = ?', [data.ticket_no]);
+                    if (ticketRows.length === 0) {
+                        await replyMessage(event.replyToken, '❌ ไม่พบใบงานที่ระบุ');
+                        continue;
+                    }
+
+                    const ticket = ticketRows[0];
+                    if (ticket.status_id !== 1) { // 1 = Pending
+                        await replyMessage(event.replyToken, '⚠️ ใบงานนี้ถูกรับไปแล้วหรือไม่อยู่ในสถานะรอดำเนินการ');
+                        continue;
+                    }
+
+                    // ค) ดึงข้อมูล Vendor (ถ้ามี)
+                    const [vendorRows] = await db.query('SELECT vendor_name FROM vendors WHERE vendor_id = ?', [technician.vendor_id]);
+                    const vendorName = vendorRows[0]?.vendor_name || 'In-house';
+
+                    // ง) บันทึกการรับงาน
+                    await db.query(
+                        `UPDATE tickets SET 
+                            assigned_to = ?, 
+                            assigned_to_name_snap = ?, 
+                            assigned_to_vendor_snap = ?, 
+                            status_id = 2, 
+                            status = "In Progress", 
+                            acknowledged_at = NOW(), 
+                            updated_at = NOW() 
+                        WHERE ticket_id = ?`, 
+                        [technician.user_id, techName, vendorName, ticket.ticket_id]
+                    );
+
+                    // จ) ตอบกลับและแจ้งเตือนกลุ่ม
+                    await replyMessage(event.replyToken, `✅ รับงานเลขที่ ${data.ticket_no} สำเร็จ!\nผู้ดำเนินการ: ${techName}`);
+                    
+                    // แจ้งอัปเดตในกลุ่มด้วย Flex Message
+                    await sendUpdateTicketFlex({
+                        no: data.ticket_no,
+                        status: '🛠️ กำลังดำเนินการ (In Progress)',
+                        by: techName
+                    });
+                }
+            }
+
+            // --- 2. Handle Text Messages (Optional: e.g., Register) ---
+            if (event.type === 'message' && event.message.type === 'text') {
+                const text = event.message.text.trim();
+                if (text.toLowerCase() === 'id') {
+                    await replyMessage(event.replyToken, `LINE ID ของคุณคือ:\n${event.source.userId}`);
+                }
+            }
         }
         res.sendStatus(200);
-    } catch (err) { res.sendStatus(500); }
+    } catch (err) { 
+        console.error('❌ Webhook Error:', err.message);
+        res.sendStatus(500); 
+    }
 };
 
 // 📡 Ngrok Controller (Robust Spawn Method)

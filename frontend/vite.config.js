@@ -1,5 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
+import path from 'path'
+
+// Path ไปยังไฟล์ใบรับรอง SSL
+const certPath = path.resolve(__dirname, '../backend/certs')
+const httpsOptions = {
+  key: fs.existsSync(path.join(certPath, 'mol.go.th.key')) ? fs.readFileSync(path.join(certPath, 'mol.go.th.key')) : null,
+  cert: fs.existsSync(path.join(certPath, 'star_mol_go_th.crt')) ? fs.readFileSync(path.join(certPath, 'star_mol_go_th.crt')) : null,
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -8,14 +17,18 @@ export default defineConfig({
     port: 5173,
     strictPort: true, 
     host: true,
+    https: (httpsOptions.key && httpsOptions.cert) ? httpsOptions : false,
+    allowedHosts: ['ma-bigdata.mol.go.th', '.mol.go.th'],
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: (httpsOptions.key && httpsOptions.cert) ? 'https://localhost:3000' : 'http://localhost:3000',
         changeOrigin: true,
+        secure: false, // อนุญาต Self-signed certs (ถ้ามี)
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: (httpsOptions.key && httpsOptions.cert) ? 'https://localhost:3000' : 'http://localhost:3000',
         changeOrigin: true,
+        secure: false,
       }
     }
   }

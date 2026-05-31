@@ -52,6 +52,7 @@ import TicketPrint from '../components/TicketPrint';
 import VendorManagement from '../components/VendorManagement';
 import SecurityCommandCenter from '../components/SecurityCommandCenter'; // ✅ นำเข้า Security Dashboard
 import MaintenanceReportDashboard from '../components/MaintenanceReportDashboard'; // ✅ นำเข้า Report Dashboard
+import BusinessIntelligenceDashboard from '../components/BusinessIntelligenceDashboard'; // ✅ นำเข้า BI Dashboard
 import ErrorDisplay from '../components/ErrorDisplay';
 
 const { Header, Sider, Content } = Layout;
@@ -252,6 +253,7 @@ function MainLayout() {
             <Route path="/security" element={user?.role === 'admin' ? <SecurityCommandCenter /> : <Navigate to="/dashboard" replace />} />
             <Route path="/vendors" element={user?.role === 'admin' ? <VendorManagement /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports" element={user?.role === 'admin' ? <MaintenanceReportDashboard /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/bi-dashboard" element={(user?.role === 'admin' || user?.role === 'manager') ? <BusinessIntelligenceDashboard /> : <Navigate to="/dashboard" replace />} />
             <Route path="/error/:code" element={<ErrorDisplay />} />
             <Route path="/error-test" element={<ErrorDisplay allowPreview={true} />} />
             <Route path="*" element={settings?.error_404_active === 1 ? <ErrorDisplay code="404" /> : <Navigate to="/dashboard" replace />} />

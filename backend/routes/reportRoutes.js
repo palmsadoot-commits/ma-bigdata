@@ -11,5 +11,6 @@ router.get('/trend', reportController.getTrend);
 router.get('/categories', reportController.getCategoryDistribution);
 router.get('/vendors', reportController.getVendorPerformance);
 router.get('/status-breakdown', reportController.getStatusBreakdown);
+router.get('/executive-summary', reportController.getAdvancedExecutiveSummary);
 
 module.exports = router;

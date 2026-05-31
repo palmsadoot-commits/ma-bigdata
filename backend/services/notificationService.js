@@ -162,4 +162,194 @@ const sendBackupNotification = async (type, status, details) => {
     }
 };
 
-module.exports = { sendLineNotify, sendEmail, sendLineMention, sendLineToUser, sendBackupNotification };
+/**
+ * 🎨 Send a LINE Flex Message
+ * @param {string} to - Destination ID (Group or User)
+ * @param {string} altText - Alternative text for devices not supporting Flex
+ * @param {object} flexContents - The Flex Message JSON structure
+ */
+const sendLineFlex = async (to, altText, flexContents) => {
+    try {
+        const [rows] = await db.query('SELECT line_notify_token, enable_line FROM system_settings WHERE id = 1');
+        const config = rows[0];
+
+        if (!config || config.enable_line !== 1 || !config.line_notify_token || !to) return;
+
+        await axios.post('https://api.line.me/v2/bot/message/push', {
+            to: to,
+            messages: [{
+                type: 'flex',
+                altText: altText,
+                contents: flexContents
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.line_notify_token}`
+            }
+        });
+        console.log(`✅ LINE Flex Message sent to: ${to}`);
+    } catch (err) {
+        console.error('❌ Failed to send LINE Flex:', err.response?.data || err.message);
+    }
+};
+
+/**
+ * 🎫 Template: New Ticket Flex Message
+ */
+const sendNewTicketFlex = async (ticketData) => {
+    const [rows] = await db.query('SELECT line_group_id FROM system_settings WHERE id = 1');
+    const target = rows[0]?.line_group_id;
+    if (!target) return;
+
+    const flexJson = {
+        "type": "bubble",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                { "type": "text", "text": "🔔 มีใบงานแจ้งซ่อมใหม่", "weight": "bold", "color": "#ffffff", "size": "lg" }
+            ],
+            "backgroundColor": "#10b981"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                { "type": "text", "text": `เลขที่: ${ticketData.no}`, "weight": "bold", "size": "xl", "margin": "md" },
+                { "type": "separator", "margin": "lg" },
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "lg",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "baseline",
+                            "spacing": "sm",
+                            "contents": [
+                                { "type": "text", "text": "หมวดหมู่", "color": "#aaaaaa", "size": "sm", "flex": 2 },
+                                { "type": "text", "text": ticketData.cat, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "baseline",
+                            "spacing": "sm",
+                            "contents": [
+                                { "type": "text", "text": "ปัญหา", "color": "#aaaaaa", "size": "sm", "flex": 2 },
+                                { "type": "text", "text": ticketData.detail, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "height": "sm",
+                    "color": "#1e293b",
+                    "action": {
+                        "type": "postback",
+                        "label": "รับงาน (Accept Job)",
+                        "data": `action=accept_job&ticket_no=${ticketData.no}`
+                    }
+                },
+                {
+                    "type": "button",
+                    "style": "link",
+                    "height": "sm",
+                    "action": {
+                        "type": "uri",
+                        "label": "ดูรายละเอียดในระบบ",
+                        "uri": "https://ma-bigdata.mol.go.th"
+                    }
+                }
+            ],
+            "flex": 0
+        }
+    };
+
+    await sendLineFlex(target, `แจ้งซ่อมใหม่: ${ticketData.no}`, flexJson);
+};
+
+/**
+ * 🔄 Template: Status Update Flex Message
+ */
+const sendUpdateTicketFlex = async (ticketData) => {
+    const [rows] = await db.query('SELECT line_group_id FROM system_settings WHERE id = 1');
+    const target = rows[0]?.line_group_id;
+    if (!target) return;
+
+    const flexJson = {
+        "type": "bubble",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                { "type": "text", "text": "🔄 อัปเดตสถานะใบงาน", "weight": "bold", "color": "#ffffff", "size": "lg" }
+            ],
+            "backgroundColor": "#3b82f6"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                { "type": "text", "text": `เลขที่: ${ticketData.no}`, "weight": "bold", "size": "xl", "margin": "md" },
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "lg",
+                    "contents": [
+                        { "type": "text", "text": "สถานะใหม่", "color": "#aaaaaa", "size": "sm" },
+                        { "type": "text", "text": ticketData.status, "weight": "bold", "size": "md", "color": "#1e293b" }
+                    ]
+                },
+                { "type": "separator", "margin": "lg" },
+                {
+                    "type": "box",
+                    "layout": "baseline",
+                    "margin": "lg",
+                    "contents": [
+                        { "type": "text", "text": "โดย", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                        { "type": "text", "text": ticketData.by, "color": "#666666", "size": "sm", "flex": 4 }
+                    ]
+                }
+            ]
+        }
+    };
+
+    await sendLineFlex(target, `อัปเดตใบงาน: ${ticketData.no}`, flexJson);
+};
+
+/**
+ * 💬 Reply to a LINE message
+ */
+const replyMessage = async (replyToken, messages) => {
+    try {
+        const [rows] = await db.query('SELECT line_notify_token FROM system_settings WHERE id = 1');
+        const config = rows[0];
+        if (!config || !config.line_notify_token) return;
+
+        await axios.post('https://api.line.me/v2/bot/message/reply', {
+            replyToken: replyToken,
+            messages: Array.isArray(messages) ? messages : [{ type: 'text', text: messages }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.line_notify_token}`
+            }
+        });
+    } catch (err) {
+        console.error('❌ Failed to reply to LINE:', err.response?.data || err.message);
+    }
+};
+
+module.exports = { sendLineNotify, sendEmail, sendLineMention, sendLineToUser, sendBackupNotification, sendLineFlex, sendNewTicketFlex, sendUpdateTicketFlex, replyMessage };

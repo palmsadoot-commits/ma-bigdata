@@ -89,7 +89,7 @@ export default function Login({ onLoginSuccess }) {
             <ToolsOutlined style={{ fontSize: 32, color: 'white' }} />
           </div>
           <Title level={2} style={{ color: '#0f172a', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>MA Big Data</Title>
-          <Text style={{ color: '#64748b', fontSize: 15 }}>ระบบแจ้งปัญหางานดูแลบำรุงรักษา</Text>
+          <Text style={{ color: '#64748b', fontSize: 15 }}>ระบบแจ้งปัญหาและติดตามสถานะงานบำรุงรักษา</Text>
         </div>
 
         <Form name="login_form" layout="vertical" onFinish={onFinish} requiredMark={false}>
