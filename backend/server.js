@@ -98,6 +98,8 @@ const equipmentRoutes = require('./routes/equipmentRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const backupRoutes = require('./routes/backupRoutes');
+const geminiRoutes = require('./routes/geminiRoutes'); // ✅ เพิ่ม Gemini Routes
+
 const cleanupRoutes = require('./routes/cleanupRoutes'); // ✅ เพิ่มการนำเข้า Cleanup
 const statusRoutes = require('./routes/statusRoutes');
 const settingRoutes = require('./routes/settingRoutes');
@@ -124,6 +126,7 @@ app.use('/api/settings', settingRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/menus', menuRoutes);
 app.use('/api/auth', authRoutes); // ✅ ติดตั้ง Auth Routes สำหรับ Social Login
+app.use('/api/gemini', geminiRoutes); // ✅ ติดตั้ง Gemini Routes
 app.use('/api/cleanup', cleanupRoutes); // ✅ ติดตั้ง Cleanup Routes
 app.use('/api/security', securityRoutes); // ✅ ติดตั้ง Security Routes
 app.use('/api/reports', reportRoutes); // ✅ ติดตั้ง Report Routes

@@ -54,6 +54,7 @@ import SecurityCommandCenter from '../components/SecurityCommandCenter'; // ✅ 
 import MaintenanceReportDashboard from '../components/MaintenanceReportDashboard'; // ✅ นำเข้า Report Dashboard
 import BusinessIntelligenceDashboard from '../components/BusinessIntelligenceDashboard'; // ✅ นำเข้า BI Dashboard
 import ErrorDisplay from '../components/ErrorDisplay';
+import GeminiChat from '../components/GeminiChat'; // ✅ เพิ่ม Gemini Chat
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -299,6 +300,10 @@ export default function AppRouter() {
 
   if (!activeProject) {
     return <div style={{ textAlign: 'center', marginTop: '30vh' }}><Spin size="large" description="กำลังเข้าสู่โปรเจกต์..." /></div>;
+  }
+
+  if (location.pathname === '/gemini') {
+    return <GeminiChat />;
   }
 
   return <MainLayout />;
