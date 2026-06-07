@@ -10,6 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 const trafficLogger = require('./middleware/trafficLogger');
 const threatDetector = require('./middleware/threatDetector'); // ✅ นำเข้า Threat Engine
 const { sysLog } = require('./utils/logger');
+const socketUtils = require('./utils/socket'); // ✅ นำเข้า Socket Utils
 const { simpleSanitize } = require('./utils/dataHelper'); // ✅ นำเข้า Sanitizer
 const cronService = require('./services/cronService');
 const { authenticateToken, requireRole } = require('./middleware/auth');
@@ -211,6 +212,7 @@ const sslOptions = {
 if (sslOptions.key && sslOptions.cert) {
     const https = require('https');
     server = https.createServer(sslOptions, app);
+    socketUtils.init(server); // ✅ Initialize Socket.io
     server.listen(PORT, async () => {
         console.log(`🔒 Secure Server is running on https://ma-bigdata.mol.go.th:${PORT} (via HTTPS)`);
         await sysLog('INFO', 'SYSTEM', `Secure server started on port ${PORT} with SSL`);
@@ -222,6 +224,7 @@ if (sslOptions.key && sslOptions.cert) {
         await sysLog('INFO', 'SYSTEM', `Server started on port ${PORT} (SSL missing)`);
         await initializeServices();
     });
+    socketUtils.init(server); // ✅ Initialize Socket.io
 }
 
 async function initializeServices() {

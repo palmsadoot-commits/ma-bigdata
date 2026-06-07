@@ -255,6 +255,7 @@ function MainLayout() {
             <Route path="/vendors" element={user?.role === 'admin' ? <VendorManagement /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports" element={user?.role === 'admin' ? <MaintenanceReportDashboard /> : <Navigate to="/dashboard" replace />} />
             <Route path="/bi-dashboard" element={(user?.role === 'admin' || user?.role === 'manager') ? <BusinessIntelligenceDashboard /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/login-success" element={<LoginSuccess />} />
             <Route path="/error/:code" element={<ErrorDisplay />} />
             <Route path="/error-test" element={<ErrorDisplay allowPreview={true} />} />
             <Route path="*" element={settings?.error_404_active === 1 ? <ErrorDisplay code="404" /> : <Navigate to="/dashboard" replace />} />

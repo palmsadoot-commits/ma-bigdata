@@ -23,6 +23,7 @@ router.post('/test-email', authenticateToken, requireRole(['admin']), settingCon
 
 // 📡 Webhook & Ngrok Management
 router.get('/webhook-status', authenticateToken, requireRole(['admin']), settingController.getWebhookStatus);
+router.post('/webhook-reset', authenticateToken, requireRole(['admin']), settingController.resetWebhookStatus);
 router.post('/ngrok/start', authenticateToken, requireRole(['admin']), settingController.startNgrok);
 router.post('/ngrok/stop', authenticateToken, requireRole(['admin']), settingController.stopNgrok);
 

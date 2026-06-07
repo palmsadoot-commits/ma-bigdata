@@ -8,6 +8,7 @@ console.log('--- 🛡️ Social Auth Configuration Status ---');
 console.log('LINE_ID:', process.env.LINE_LOGIN_CHANNEL_ID ? '✅ Loaded' : '❌ Missing');
 console.log('GOOGLE_ID:', process.env.GOOGLE_CLIENT_ID ? '✅ Loaded' : '❌ Missing');
 console.log('GOOGLE_CALLBACK:', process.env.GOOGLE_CALLBACK_URL || '❌ Missing');
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL || '❌ Missing'); // ✅ เพิ่มการตรวจสอบ URL
 console.log('------------------------------------------');
 
 /**

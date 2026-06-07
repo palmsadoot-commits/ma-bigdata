@@ -3,10 +3,11 @@ import {
   SettingOutlined,SaveOutlined,MessageOutlined,MailOutlined,ClockCircleOutlined,UploadOutlined,SafetyCertificateOutlined,RocketOutlined,UserOutlined,EyeOutlined,EyeInvisibleOutlined,SyncOutlined,BgColorsOutlined,FontSizeOutlined,PictureOutlined,BulbOutlined,FileTextOutlined,SecurityScanOutlined,BellOutlined,FileProtectOutlined,EditOutlined,GlobalOutlined,LinkOutlined,ApiOutlined,DatabaseOutlined,CloudServerOutlined,AppstoreOutlined,CodeOutlined,SafetyOutlined,DesktopOutlined,SearchOutlined,SmileOutlined,TagOutlined,InfoCircleOutlined,HddOutlined,CheckCircleOutlined,QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Card, Tabs, Form, Input, Button, Row, Col, Typography, InputNumber, Divider, Upload, Space, Spin, Switch, Tag, Select, Radio, ColorPicker, theme, message, Alert, Flex, Progress, Descriptions, Statistic, Popover, Tooltip, Modal, List } from 'antd';
+import { Card, Tabs, Form, Input, Button, Row, Col, Typography, InputNumber, Divider, Upload, Space, Spin, Switch, Tag, Select, Radio, ColorPicker, theme, App, Alert, Flex, Progress, Descriptions, Statistic, Popover, Tooltip, Modal, List } from 'antd';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError } from '../utils/alert';
 import { API_BASE_URL } from '../utils/config';
+import { io } from 'socket.io-client';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -158,6 +159,7 @@ const DEFAULT_UPDATE_TICKET_TEMPLATE = `⚙️ *อัปเดตสถาน�
 export default function SystemSettings() {
   const navigate = useNavigate();
   const { token } = useToken();
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -180,6 +182,7 @@ export default function SystemSettings() {
   // Webhook & Ngrok states
   const [webhookInfo, setWebhookStatus] = useState({ ngrok_url: null, last_captured_id: null });
   const [loadingWebhook, setLoadingWebhook] = useState(false);
+  const socketRef = React.useRef(null);
 
   // Test notification states
   const [loadingTestLine, setLoadingTestLine] = useState(false);
@@ -277,10 +280,29 @@ export default function SystemSettings() {
   };
 
   const fetchWebhookStatus = async () => {
+    setLoadingWebhook(true);
     try {
       const res = await axiosInstance.get('/settings/webhook-status');
       setWebhookStatus(res.data);
-    } catch (err) {}
+      message.success('อัปเดตสถานะ Webhook แล้ว');
+    } catch (err) {
+      console.error("Webhook status error:", err);
+    } finally {
+      setLoadingWebhook(false);
+    }
+  };
+
+  const handleResetWebhook = async () => {
+    setLoadingWebhook(true);
+    try {
+      await axiosInstance.post('/settings/webhook-reset');
+      setWebhookStatus(prev => ({ ...prev, last_captured_id: null }));
+      message.info('ล้างค่า ID เรียบร้อยแล้ว');
+    } catch (err) {
+      alertError('ไม่สามารถล้างค่าได้');
+    } finally {
+      setLoadingWebhook(false);
+    }
   };
 
   useEffect(() => {
@@ -288,50 +310,31 @@ export default function SystemSettings() {
     fetchHealth();
     fetchWebhookStatus();
 
+    // ✅ [Socket.io] เชื่อมต่อเพื่อรับข้อมูล Real-time
+    socketRef.current = io(BACKEND_URL);
+    socketRef.current.on('line_id_captured', (data) => {
+      setWebhookStatus(prev => ({ ...prev, last_captured_id: data.id }));
+      message.success('ตรวจพบ ID ใหม่จาก LINE!');
+    });
+
     const handleScroll = () => {
       localStorage.setItem('system_settings_scroll_y', window.scrollY);
     };
     window.addEventListener('scroll', handleScroll);
 
-    const interval = setInterval(fetchWebhookStatus, 5000); 
+    // ✅ [Optimization] Polling ทุก 10 วินาที และหยุดเมื่อไม่อยู่หน้าจอ
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchWebhookStatus();
+      }
+    }, 10000); 
+
     return () => {
+      if (socketRef.current) socketRef.current.disconnect();
       clearInterval(interval);
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
-
-  const handleStartNgrok = async () => {
-    setLoadingWebhook(true);
-    try {
-      const authtoken = form.getFieldValue('ngrok_authtoken');
-      if (!authtoken) {
-        alertError('กรุณาใส่ Authtoken', 'คุณต้องใส่ Authtoken ก่อนกดเริ่มทำงาน');
-        setLoadingWebhook(false);
-        return;
-      }
-      const res = await axiosInstance.post('/settings/ngrok/start', { authtoken });
-      setWebhookStatus(prev => ({ ...prev, ngrok_url: res.data.url }));
-      alertSuccess('Ngrok เริ่มทำงานแล้ว!', 'กรุณานำ URL ไปใส่ใน LINE Developers Console');
-    } catch (err) {
-      const backendError = err.response?.data;
-      alertError('เริ่ม Ngrok ไม่สำเร็จ', backendError?.tip || backendError?.details || 'กรุณาตรวจสอบความถูกต้องของ Token');
-    } finally {
-      setLoadingWebhook(false);
-    }
-  };
-
-  const handleStopNgrok = async () => {
-    setLoadingWebhook(true);
-    try {
-      await axiosInstance.post('/settings/ngrok/stop');
-      setWebhookStatus(prev => ({ ...prev, ngrok_url: null }));
-      message.info('หยุดการเชื่อมต่อ Ngrok แล้ว');
-    } catch (err) {
-      alertError('หยุด Ngrok ไม่สำเร็จ');
-    } finally {
-      setLoadingWebhook(false);
-    }
-  };
 
   const handleUploadChange = ({ fileList: newFileList }) => {
     setFileList(newFileList);
@@ -605,39 +608,43 @@ export default function SystemSettings() {
             <Form.Item name="line_group_id" label="Group ID / User ID (สำหรับแจ้งเตือน)"><Input placeholder="ใส่ ID ของกลุ่มหรือบอท" /></Form.Item>
             
             <div style={{ background: isDarkMode ? 'rgba(0,0,0,0.2)' : token.colorFillAlter, padding: 15, borderRadius: 8, marginTop: 15, border: isDarkMode ? '1px solid #333' : 'none' }}>
-                <Title level={5} style={{ fontSize: 14 }}><ApiOutlined /> Webhook Generator (Capture Group ID)</Title>
-                <Text type="secondary" style={{ fontSize: 12 }}>ใช้ Ngrok เพื่อสร้าง Webhook ชั่วคราวสำหรับดึง Group ID จาก LINE</Text>
+                <Title level={5} style={{ fontSize: 14 }}><ApiOutlined /> Webhook Configuration (Capture Group ID)</Title>
+                <Text type="secondary" style={{ fontSize: 12 }}>ใช้โดเมนจริงของคุณเพื่อสร้าง Webhook สำหรับดึง Group ID จาก LINE Messaging API</Text>
                 
-                {!webhookInfo.ngrok_url ? (
-                    <div style={{ marginTop: 10 }}>
-                        <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 5 }}>1. ใส่ Authtoken จาก ngrok.com</Text>
-                        <Form.Item name="ngrok_authtoken" noStyle>
-                            <Input.Password 
-                                placeholder="ใส่ Ngrok Authtoken" 
-                                size="small" 
-                                style={{ marginBottom: 8 }}
-                            />
-                        </Form.Item>
-                        <Button type="primary" block icon={<SyncOutlined />} onClick={handleStartNgrok} loading={loadingWebhook}>
-                            2. สร้าง Webhook URL (Start Ngrok)
+                <div style={{ marginTop: 10 }}>
+                    <Alert 
+                        type="info" 
+                        title="Webhook URL สำหรับ LINE"
+                        description={
+                            <div>
+                                <Text copyable strong>https://ma-bigdata.mol.go.th/api/line/webhook</Text>
+                                <br/><Text style={{ fontSize: 12 }} type="secondary">นำ URL นี้ไปใส่ใน LINE Developers &gt; Messaging API &gt; Webhook URL</Text>
+                            </div>
+                        }
+                        style={{ marginBottom: 10 }}
+                    />
+                    <Flex gap="small">
+                        <Button 
+                            type="primary" 
+                            ghost 
+                            block 
+                            icon={<SyncOutlined />} 
+                            onClick={fetchWebhookStatus}
+                            loading={loadingWebhook}
+                        >
+                            ตรวจสอบสถานะ (Verify)
                         </Button>
-                    </div>
-                ) : (
-                    <div style={{ marginTop: 10 }}>
-                        <Alert 
-                            type="success" 
-                            message="Webhook กำลังทำงาน"
-                            description={
-                                <div>
-                                    <Text copyable strong>{webhookInfo.ngrok_url}</Text>
-                                    <br/><Text style={{ fontSize: 12 }} type="secondary">นำ URL นี้ไปใส่ใน LINE Developers &gt; Messaging API &gt; Webhook URL</Text>
-                                </div>
-                            }
-                            style={{ marginBottom: 10 }}
-                        />
-                        <Button danger block onClick={handleStopNgrok} loading={loadingWebhook}>หยุด Ngrok</Button>
-                    </div>
-                )}
+                        <Button 
+                            danger 
+                            ghost
+                            block 
+                            onClick={handleResetWebhook}
+                            loading={loadingWebhook}
+                        >
+                            ล้างค่า ID (Reset)
+                        </Button>
+                    </Flex>
+                </div>
 
                 <div style={{ marginTop: 15, padding: 10, background: token.colorBgContainer, borderRadius: 6, border: `1px dashed ${token.colorBorder}` }}>
                     <Text strong style={{ fontSize: 12 }}>ID ล่าสุดที่จับได้ (Group/User):</Text>

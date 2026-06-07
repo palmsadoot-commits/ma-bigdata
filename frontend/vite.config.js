@@ -21,12 +21,12 @@ export default defineConfig({
     allowedHosts: ['ma-bigdata.mol.go.th', '.mol.go.th'],
     proxy: {
       '/api': {
-        target: (httpsOptions.key && httpsOptions.cert) ? 'https://localhost:3000' : 'http://localhost:3000',
+        target: (httpsOptions.key && httpsOptions.cert) ? 'https://localhost' : 'http://localhost:443',
         changeOrigin: true,
         secure: false, // อนุญาต Self-signed certs (ถ้ามี)
       },
       '/uploads': {
-        target: (httpsOptions.key && httpsOptions.cert) ? 'https://localhost:3000' : 'http://localhost:3000',
+        target: (httpsOptions.key && httpsOptions.cert) ? 'https://localhost' : 'http://localhost:443',
         changeOrigin: true,
         secure: false,
       }

@@ -247,6 +247,10 @@ exports.lineWebhook = async (req, res) => {
             if (capturedId) {
                 lastCapturedLineId = capturedId;
                 console.log('📍 Captured ID:', capturedId);
+                
+                // ✅ ส่งข้อมูลไปยัง Frontend ผ่าน Socket ทันที
+                const socketUtils = require('../utils/socket');
+                socketUtils.emit('line_id_captured', { id: capturedId });
             }
 
             // ... (rest of the logic) ...
@@ -385,4 +389,9 @@ exports.stopNgrok = async (req, res) => {
 
 exports.getWebhookStatus = (req, res) => {
     res.json({ ngrok_url: currentNgrokUrl ? `${currentNgrokUrl}/api/settings/webhook` : null, last_captured_id: lastCapturedLineId });
+};
+
+exports.resetWebhookStatus = (req, res) => {
+    lastCapturedLineId = null;
+    res.json({ success: true, message: 'ID ล้างค่าเรียบร้อยแล้ว' });
 };
