@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Card, Table, Typography, Tag, Space, Button, Input, Select, 
-  Row, Col, Statistic, Tooltip, Badge, Modal, Empty, Descriptions
+  Row, Col, Statistic, Tooltip, Badge, Modal, Empty, Descriptions, Flex
 } from 'antd';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend
@@ -11,7 +11,7 @@ import {
   SearchOutlined, SyncOutlined, HistoryOutlined, WarningOutlined,
   EyeOutlined, GlobalOutlined, FieldTimeOutlined, DownloadOutlined,
   EditOutlined, SwapRightOutlined, CheckCircleOutlined, ExclamationCircleOutlined,
-  SettingOutlined, ToolOutlined, DatabaseOutlined, InfoCircleOutlined
+  SettingOutlined, ToolOutlined, DatabaseOutlined, InfoCircleOutlined, EnvironmentOutlined
 } from '@ant-design/icons';
 import axiosInstance from '../services/api/axiosInstance';
 import { formatThaiDate } from '../utils/dateUtils';
@@ -30,18 +30,27 @@ export default function SystemLogDashboard() {
 
   const exportToCSV = () => {
     if (logs.length === 0) return;
-    const headers = ['Timestamp', 'Level', 'Category', 'Message', 'User', 'IP Address', 'Method', 'Path', 'Duration (ms)'];
-    const csvData = logs.map(log => [
-      `"${formatThaiDate(log.timestamp)}"`,
-      `"${log.level}"`,
-      `"${log.category}"`,
-      `"${log.message.replace(/"/g, '""')}"`,
-      `"${log.fullname || log.username || 'System'}"`,
-      `"${log.ip_address}"`,
-      `"${log.method || ''}"`,
-      `"${log.path || ''}"`,
-      `"${log.duration || 0}"`
-    ]);
+    const headers = ['Timestamp', 'Level', 'Category', 'Message', 'User', 'IP Address', 'Location', 'Method', 'Path', 'Duration (ms)'];
+    const csvData = logs.map(log => {
+      let geoStr = 'Unknown';
+      try {
+        const meta = log.metadata ? JSON.parse(log.metadata) : {};
+        if (meta.geo) geoStr = meta.geo.country === 'Local' ? 'Internal' : `${meta.geo.city}, ${meta.geo.country}`;
+      } catch(e) {}
+      
+      return [
+        `"${formatThaiDate(log.timestamp)}"`,
+        `"${log.level}"`,
+        `"${log.category}"`,
+        `"${log.message.replace(/"/g, '""')}"`,
+        `"${log.fullname || log.username || 'System'}"`,
+        `"${log.ip_address}"`,
+        `"${geoStr}"`,
+        `"${log.method || ''}"`,
+        `"${log.path || ''}"`,
+        `"${log.duration || 0}"`
+      ];
+    });
     const csvContent = [headers, ...csvData].map(e => e.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -222,7 +231,32 @@ export default function SystemLogDashboard() {
   };
 
   const columns = [
-    { title: 'Timestamp', dataIndex: 'timestamp', key: 'timestamp', width: 180, render: (t) => <Text style={{ fontSize: 12 }}>{formatThaiDate(t)}</Text> },
+    { 
+      title: 'IP / Location', 
+      key: 'ip_location', 
+      width: 180, 
+      render: (_, record) => {
+        let geo = null;
+        try { 
+          const meta = record.metadata ? JSON.parse(record.metadata) : {}; 
+          geo = meta.geo;
+        } catch(e) {}
+        
+        return (
+          <Flex vertical gap={0}>
+            <Space size={4}>
+              <GlobalOutlined style={{ color: '#94a3b8', fontSize: '11px' }} />
+              <Text strong style={{ fontSize: '12px' }}>{record.ip_address}</Text>
+            </Space>
+            {geo && geo.country !== 'Local' && (
+              <Text type="secondary" style={{ fontSize: '10px' }}>
+                <EnvironmentOutlined style={{ fontSize: '9px' }} /> {geo.city}, {geo.country}
+              </Text>
+            )}
+          </Flex>
+        );
+      } 
+    },
     { title: 'Level', dataIndex: 'level', key: 'level', width: 100, render: (l) => getLevelTag(l) },
     { title: 'Category', dataIndex: 'category', key: 'category', width: 120, render: (c) => <Space>{getCategoryIcon(c)} <Text strong style={{ fontSize: 12 }}>{c}</Text></Space> },
     { title: 'Message', dataIndex: 'message', key: 'message', render: (m) => <Text ellipsis={{ tooltip: m }}>{m}</Text> },
@@ -335,10 +369,26 @@ export default function SystemLogDashboard() {
         <Table columns={columns} dataSource={logs} rowKey="id" loading={loading} pagination={{ pageSize: pageSize, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], onShowSizeChange: (current, size) => setPageSize(size) }} scroll={{ x: 1000 }} size="small" />
       </Card>
 
-      <Modal title={<Title level={4} style={{ margin: 0 }}><EyeOutlined /> รายละเอียดการวิเคราะห์ Log อัจฉริยะ</Title>} open={modalVisible} onCancel={() => setModalVisible(false)} footer={[<Button key="close" type="primary" onClick={() => setModalVisible(false)}>ปิดหน้าต่าง</Button>]} width={700}>
+      <Modal title={<Title level={4} style={{ margin: 0 }}><EyeOutlined /> รายละเอียดการวิเคราะห์ Log อัจฉริยะ</Title>} open={modalVisible} onCancel={() => setModalVisible(false)} footer={[<Button key="close" type="primary" onClick={() => setModalVisible(false)}>ปิดหน้าต่าง</Button>]} width={750}>
         {selectedLog && (
           <div style={{ padding: '10px' }}>
-            <Row gutter={[16, 16]}><Col span={12}><Statistic title="วันเวลาที่เกิดเหตุการณ์" value={formatThaiDate(selectedLog.timestamp)} styles={{ content: { fontSize: 14 } }} /></Col><Col span={6}><Statistic title="ระดับความรุนแรง" value={selectedLog.level} styles={{ content: { fontSize: 14 } }} /></Col><Col span={6}><Statistic title="ที่อยู่ IP (IP Address)" value={selectedLog.ip_address} styles={{ content: { fontSize: 14 } }} /></Col></Row>
+            <Row gutter={[16, 16]}>
+              <Col span={8}><Statistic title="วันเวลาที่เกิดเหตุการณ์" value={formatThaiDate(selectedLog.timestamp)} styles={{ content: { fontSize: 14 } }} /></Col>
+              <Col span={4}><Statistic title="ความรุนแรง" value={selectedLog.level} styles={{ content: { fontSize: 14 } }} /></Col>
+              <Col span={6}><Statistic title="ที่อยู่ IP (IP Address)" value={selectedLog.ip_address} styles={{ content: { fontSize: 14 } }} /></Col>
+              <Col span={6}>
+                <Statistic 
+                  title="ตำแหน่ง (Geo)" 
+                  value={(() => {
+                    try {
+                      const meta = JSON.parse(selectedLog.metadata);
+                      return meta.geo ? (meta.geo.country === 'Local' ? 'Internal' : `${meta.geo.city}, ${meta.geo.country}`) : 'N/A';
+                    } catch(e) { return 'N/A'; }
+                  })()} 
+                  styles={{ content: { fontSize: 14 } }} 
+                />
+              </Col>
+            </Row>
             
             <Row gutter={[16, 16]} style={{ marginTop: 15, padding: '15px', background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
               <Col span={12}><Text type="secondary" style={{ fontSize: '11px' }}>👤 ผู้ดำเนินการ (Full Name):</Text><br /><Text strong style={{ fontSize: '14px' }}>{selectedLog.fullname || 'ระบบอัตโนมัติ (System)'}</Text>{selectedLog.username && <div style={{ fontSize: '11px', color: '#8c8c8c' }}>Username: <Text code style={{ fontSize: '10px' }}>{selectedLog.username}</Text></div>}</Col>

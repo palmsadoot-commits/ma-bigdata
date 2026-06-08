@@ -161,13 +161,12 @@ export default function TicketDashboard({ project }) {
   const currentMonth = dayjs().format('YYYY-MM');
 
   const stats = [
-    { title: 'ใบงานทั้งหมด', value: tickets.length, bg: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)', shadow: 'rgba(59, 130, 246, 0.4)', icon: <FileTextOutlined />, bgIcon: <AppstoreOutlined />, anim: '' },
-    { title: 'ใบงานเดือนนี้', value: tickets.filter(t => t.created_at?.startsWith(currentMonth)).length, bg: 'linear-gradient(135deg, #34d399 0%, #059669 100%)', shadow: 'rgba(16, 185, 129, 0.4)', icon: <CalendarOutlined />, bgIcon: <CalendarOutlined />, anim: 'icon-float' },
-    // ✅ ปรับใช้ status_id
-    { title: 'กำลังดำเนินการ', value: tickets.filter(t => t.status_id === 1 || t.status_id === 2).length, bg: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.4)', icon: <HourglassOutlined />, bgIcon: <SyncOutlined />, anim: 'icon-spin-slow' },
-    { title: 'รอตรวจ / ปิดเคส', value: tickets.filter(t => t.status_id === 3 || t.status_id === 4).length, bg: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', shadow: 'rgba(139, 92, 246, 0.4)', icon: <CheckSquareOutlined />, bgIcon: <CheckSquareOutlined />, anim: '' },
-    { title: 'เปิดใหม่วันนี้', value: tickets.filter(t => t.created_at?.startsWith(today)).length, bg: 'linear-gradient(135deg, #f472b6 0%, #db2777 100%)', shadow: 'rgba(236, 72, 153, 0.4)', icon: <PlusCircleOutlined />, bgIcon: <PlusCircleOutlined />, anim: 'icon-pulse' },
-    { title: 'อัปเดตวันนี้', value: tickets.filter(t => t.created_at?.startsWith(today)).length, bg: 'linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%)', shadow: 'rgba(20, 184, 166, 0.4)', icon: <SyncOutlined />, bgIcon: <ClockCircleOutlined />, anim: 'icon-spin-normal' },
+    { title: 'TOTAL TICKETS', value: tickets.length, bg: '#1e293b', border: '#334155', color: '#f8fafc', icon: <FileTextOutlined /> },
+    { title: 'MONTHLY VOLUME', value: tickets.filter(t => t.created_at?.startsWith(currentMonth)).length, bg: '#1e293b', border: '#334155', color: '#f8fafc', icon: <CalendarOutlined /> },
+    { title: 'IN PROGRESS', value: tickets.filter(t => t.status_id === 1 || t.status_id === 2).length, bg: '#1e293b', border: '#f59e0b', color: '#f59e0b', icon: <HourglassOutlined /> },
+    { title: 'RESOLVED / CLOSED', value: tickets.filter(t => t.status_id === 3 || t.status_id === 4).length, bg: '#1e293b', border: '#10b981', color: '#10b981', icon: <CheckSquareOutlined /> },
+    { title: 'NEW TODAY', value: tickets.filter(t => t.created_at?.startsWith(today)).length, bg: '#0f172a', border: '#2563eb', color: '#3b82f6', icon: <PlusCircleOutlined /> },
+    { title: 'RECENT UPDATES', value: tickets.filter(t => t.created_at?.startsWith(today)).length, bg: '#0f172a', border: '#14b8a6', color: '#2dd4bf', icon: <SyncOutlined /> },
   ];
 
   const boardColumns = statuses.length > 0 ? statuses.map(s => ({
@@ -407,42 +406,41 @@ const renderSLATimer = (ticket) => {
         .kanban-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
       `}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <Title level={isMobile ? 4 : 3} style={{ color: 'var(--text-main)', margin: 0 }}><DashboardOutlined /> แดชบอร์ดภาพรวม</Title>
-        <Button type="primary" icon={<SyncOutlined />} onClick={fetchData} loading={loading} size={isMobile ? "middle" : "large"} style={{ borderRadius: 8 }}>รีเฟรช</Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
+        <Title level={isMobile ? 4 : 2} style={{ color: 'var(--text-main)', margin: 0, fontWeight: 700, letterSpacing: '-0.02em' }}>SYSTEM OVERVIEW</Title>
+        <Button type="primary" icon={<SyncOutlined />} onClick={fetchData} loading={loading} size={isMobile ? "middle" : "large"} style={{ borderRadius: 6, fontWeight: 600 }}>REFRESH</Button>
       </div>
 
-      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
         {stats.map(s => (
           <Col xs={12} sm={8} lg={4} key={s.title}>
             <div className="stat-card" style={{ 
               position: 'relative', overflow: 'hidden',
-              background: s.bg, borderRadius: 12, padding: isMobile ? '12px 8px' : '16px 12px', color: 'white', textAlign: 'center',
-              boxShadow: `0 4px 12px ${s.shadow}`, transition: 'transform 0.3s ease', cursor: 'default',
-              minHeight: isMobile ? '100px' : '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center'
+              background: s.bg, borderRadius: 12, padding: '24px 16px', color: s.color, textAlign: 'center',
+              border: `1px solid ${s.border}`,
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
             }}>
-              <div className={`stat-icon-bg ${s.anim}`}>{s.bgIcon}</div>
-              <div style={{ opacity: 0.9, marginBottom: 2, position: 'relative', zIndex: 1 }}>{React.cloneElement(s.icon, { style: { fontSize: isMobile ? 18 : 22 } })}</div>
-              <Title level={3} style={{ color: 'white', margin: 0, fontWeight: 900, position: 'relative', zIndex: 1 }}><AnimatedNumber value={s.value} /></Title>
-              <Text style={{ color: 'white', fontSize: isMobile ? 10 : 12, opacity: 0.95, fontWeight: 500, position: 'relative', zIndex: 1 }}>{s.title}</Text>
+              <div style={{ opacity: 0.6, marginBottom: 8 }}>{React.cloneElement(s.icon, { style: { fontSize: 20 } })}</div>
+              <Title level={2} style={{ color: s.color, margin: 0, fontWeight: 800, letterSpacing: '-0.02em' }}><AnimatedNumber value={s.value} /></Title>
+              <Text style={{ color: s.color, fontSize: 10, opacity: 0.7, fontWeight: 700, letterSpacing: '0.05em' }}>{s.title}</Text>
             </div>
           </Col>
         ))}
       </Row>
 
       {(currentUser?.role === 'admin' || currentUser?.role === 'head_technician' || currentUser?.role === 'technician') && (
-        <Card style={{ borderRadius: 16, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', marginBottom: 20 }} styles={{ body: { padding: isMobile ? '12px' : '20px' } }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 12, marginBottom: 15, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
-            <Title level={isMobile ? 5 : 4} style={{ color: 'var(--text-main)', margin: 0 }}>
-              <AlertOutlined style={{ color: '#ef4444', marginRight: 8 }}/> 
-              SLA Monitor {isMobile ? '' : '(ค่าปรับ)'}
+        <Card style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', marginBottom: 32 }} styles={{ body: { padding: isMobile ? '16px' : '24px' } }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border-color)', paddingBottom: 16 }}>
+            <Title level={isMobile ? 5 : 4} style={{ color: 'var(--text-main)', margin: 0, fontWeight: 700, letterSpacing: '-0.01em' }}>
+              SLA PERFORMANCE MONITOR
             </Title>
             <Space orientation={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
-              <Text strong style={{ fontSize: 13, color: 'var(--text-main)' }}>งวดประเมิน:</Text>
-              <Select value={selectedPeriod} onChange={setSelectedPeriod} style={{ width: isMobile ? '100%' : 180, borderRadius: 8 }} size="small">
-                <Option value="all">รวมทั้งหมด</Option>
+              <Text strong style={{ fontSize: 11, color: '#64748b', letterSpacing: '0.05em' }}>EVALUATION PERIOD:</Text>
+              <Select value={selectedPeriod} onChange={setSelectedPeriod} style={{ width: isMobile ? '100%' : 180 }} size="small" variant="filled">
+                <Option value="all">ALL TIME</Option>
                 {availablePeriods.map(p => (
-                  <Option key={p} value={p}>{dayjs(p).format('MMM YYYY')}</Option>
+                  <Option key={p} value={p}>{dayjs(p).format('MMM YYYY').toUpperCase()}</Option>
                 ))}
               </Select>
             </Space>
@@ -492,52 +490,51 @@ const renderSLATimer = (ticket) => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
       ) : (
-        <Card styles={{ body: { padding: isMobile ? '8px' : '10px 20px 20px' } }} style={{ borderRadius: 16, backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', border: 'none' }}>
+        <Card styles={{ body: { padding: isMobile ? '8px' : '24px' } }} style={{ borderRadius: 12, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
           <Tabs 
             className="custom-tabs" 
             activeKey={activeTab}
             onChange={setActiveTab}
-            type="card"
             size={isMobile ? "small" : "large"}
-            tabBarStyle={{ marginBottom: 15 }}
+            tabBarStyle={{ marginBottom: 24 }}
             items={[
               {
                 key: '1',
                 label: (
-                  <div style={{ padding: isMobile ? '2px 4px' : '4px 16px', fontSize: isMobile ? '12px' : '14px', fontWeight: 'bold' }}>
-                    <BarChartOutlined style={{ marginRight: 4 }} /> สถิติและรายการ
+                  <div style={{ padding: isMobile ? '2px 4px' : '4px 16px', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
+                    ANALYTICS & LIST
                   </div>
                 ),
                 children: (
-                  <Row gutter={[16, 16]} style={{ marginTop: 5 }}>
+                  <Row gutter={[24, 24]} style={{ marginTop: 8 }}>
                     <Col xs={24} lg={9}>
                       <Card 
-                        title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📊 สัดส่วนใบงาน</span>} 
+                        title={<span style={{ color: 'var(--text-main)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>TICKET DISTRIBUTION</span>} 
                         variant="borderless" 
                         style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}
-                        styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 12 } }}
+                        styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '12px 16px' }, body: { padding: 16 } }}
                       >
                         {chartData.length > 0 ? (
                           <div style={{ width: '100%', height: isMobile ? 300 : 400, minHeight: 300 }}>
                             <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={300}>
                               <PieChart>
-                                <Pie data={chartData} cx="50%" cy="45%" innerRadius={isMobile ? 50 : 70} outerRadius={isMobile ? 80 : 100} paddingAngle={5} dataKey="value">
+                                <Pie data={chartData} cx="50%" cy="45%" innerRadius={isMobile ? 60 : 80} outerRadius={isMobile ? 90 : 110} paddingAngle={4} dataKey="value">
                                   {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                                 </Pie>
                                 <RechartsTooltip />
-                                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10, paddingTop: 10 }}/>
+                                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 11, paddingTop: 20 }}/>
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
-                        ) : <Empty description="ไม่มีข้อมูล" />}
+                        ) : <Empty description="NO DATA AVAILABLE" />}
                       </Card>
                     </Col>
                     <Col xs={24} lg={15}>
                       <Card 
-                        title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📋 รายการใบงานล่าสุด</span>} 
+                        title={<span style={{ color: 'var(--text-main)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>LATEST ENTRIES</span>} 
                         variant="borderless" 
                         style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}
-                        styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 0 } }}
+                        styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '12px 16px' }, body: { padding: 0 } }}
                       >
                         <Table columns={tableColumns} dataSource={activeRecentTickets} rowKey="ticket_id" pagination={false} size="small" scroll={{ x: 600 }} />
                       </Card>
@@ -548,49 +545,50 @@ const renderSLATimer = (ticket) => {
               {
                 key: '2',
                 label: (
-                  <div style={{ padding: isMobile ? '2px 4px' : '4px 16px', fontSize: isMobile ? '12px' : '14px', fontWeight: 'bold' }}>
-                    <AppstoreOutlined style={{ marginRight: 4 }} /> กระดานใบงาน
+                  <div style={{ padding: isMobile ? '2px 4px' : '4px 16px', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
+                    KANBAN BOARD
                   </div>
                 ),
                 children: (
                   <div style={{ 
                     display: 'flex', 
                     width: '100%', 
-                    gap: isMobile ? '12px' : '20px', 
-                    paddingBottom: 15, 
-                    overflowX: 'auto',
+                    gap: isMobile ? '16px' : '24px', 
+                    paddingBottom: 8, 
+                    overflowX: isMobile ? 'auto' : 'hidden',
+                    flexWrap: isMobile ? 'nowrap' : 'nowrap',
                     WebkitOverflowScrolling: 'touch'
                   }} className="kanban-container">
                     {boardColumns.map(column => {
-                      // ✅ กรองตาม status_id
                       const columnTickets = tickets.filter(t => t.status_id === column.id);
                       const isDark = document.body.classList.contains('dark-mode');
-                      const colBg = isDark ? `${column.color}25` : column.bgColor;
+                      const colBg = isDark ? `${column.color}15` : column.bgColor;
                       return (
                         <div key={column.id} style={{ 
-                          flex: isMobile ? '0 0 280px' : 1, 
-                          minWidth: 260, 
+                          flex: isMobile ? '0 0 85%' : `1 1 ${100 / boardColumns.length}%`, 
+                          minWidth: isMobile ? '280px' : '240px', 
                           backgroundColor: colBg, 
-                          borderRadius: 16, 
-                          padding: '12px', 
+                          borderRadius: 12, 
+                          padding: '16px', 
                           display: 'flex', 
                           flexDirection: 'column', 
                           border: `1px solid ${column.borderColor}`,
-                          maxHeight: '70vh'
+                          maxHeight: '75vh',
+                          transition: 'flex 0.3s ease'
                         }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <Space size={4}>
-                              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: column.color }}></div>
-                              <Text strong style={{ margin: 0, color: column.color, fontSize: 14 }}>{column.title}</Text>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Space size={8}>
+                              <div style={{ width: 8, height: 8, borderRadius: '2px', backgroundColor: column.color }}></div>
+                              <Text strong style={{ margin: 0, color: column.color, fontSize: 12, letterSpacing: '0.05em' }}>{column.title.toUpperCase()}</Text>
                             </Space>
-                            <Badge count={columnTickets.length} style={{ backgroundColor: column.color, fontSize: 10 }} />
+                            <Badge count={columnTickets.length} showZero style={{ backgroundColor: column.color, fontSize: 10, boxShadow: 'none' }} />
                           </div>
                           
-                          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }} className="kanban-container">
+                          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }} className="kanban-scroll">
                             {columnTickets.length > 0 ? (
                               columnTickets.map(t => <TicketCard key={t.ticket_id} ticket={t} colorTheme={column.color} />)
                             ) : (
-                              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="ไม่มีรายการ" style={{ margin: '20px 0' }} />
+                              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text type="secondary" style={{ fontSize: 11 }}>NO ENTRIES</Text>} style={{ margin: '40px 0' }} />
                             )}
                           </div>
                         </div>

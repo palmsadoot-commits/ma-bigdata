@@ -1,78 +1,93 @@
 :root {
-  /* Light Mode Variables */
-  --bg-app: #f4f7f6;
+  /* --- Light Mode: Frost Engineering --- */
+  --bg-app: #f8fafc;
   --bg-card: #ffffff;
   --bg-elevated: #ffffff;
-  --text-main: #1e293b;
-  --text-sub: #64748b;
+  --text-main: #0f172a;
+  --text-sub: #475569;
   --border-color: #e2e8f0;
-  --primary-color: #1677ff;
-  --card-shadow: 0 8px 30px rgba(0,0,0,0.06);
-  --card-shadow-hover: 0 15px 35px rgba(0,0,0,0.12);
+  --primary-color: #2563eb; 
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 body.dark-mode {
-  /* High Clarity Dark Mode Variables - Updated to Neutral Gray */
-  --bg-app: #3b4149;        /* พื้นหลังแอปตามที่ต้องการ */
-  --bg-card: #4a515a;       /* พื้นหลัง Card (สว่างกว่าพื้นหลัง) */
-  --bg-elevated: #565f69;   /* พื้นหลัง Modal */
-  --text-main: #ffffff;     /* ตัวอักษรขาวบริสุทธิ์ */
-  --text-sub: #e2e8f0;      /* ตัวอักษรรอง */
-  --border-color: #64748b;  /* เส้นขอบสว่างขึ้นเพื่อให้เห็นกรอบชัดเจน */
-  --card-shadow: 0 8px 30px rgba(0,0,0,0.3);
-  --card-shadow-hover: 0 15px 35px rgba(0,0,0,0.4);
+  /* --- Dark Mode: Clinical Slate --- */
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;
+  --bg-elevated: #1e293b;
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
+  --border-color: #334155;
+  --primary-color: #3b82f6;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Global Styles */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
   background-color: var(--bg-app);
   color: var(--text-main);
-  transition: background-color 0.3s, color 0.3s;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-#root {
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: left;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* Hardening Components - Impeccable Standard */
+.ant-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--card-shadow) !important;
 }
 
-/* UI Helper Classes */
-.ticket-kanban-card, .old-style-card, .ant-card {
-  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s !important;
+.ant-layout {
+  background: var(--bg-app) !important;
 }
 
-/* Custom Scrollbar for modern look */
+.ant-layout-header {
+  background: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 0 24px !important;
+}
+
+.ant-layout-sider {
+  background: var(--bg-app) !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+/* Eliminate AI Slop Globally */
+* {
+  background-image: none !important;
+  border-radius: 6px;
+}
+
+/* Clinical Typography */
+h1, h2, h3, h4, .ant-typography {
+  color: var(--text-main) !important;
+  letter-spacing: -0.01em !important;
+  font-weight: 700 !important;
+}
+
+.ant-menu {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Scrollbar Optimization */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Responsive Table Fixes */
-.ant-table-wrapper {
-  background: transparent !important;
-}
-
-/* Overwrite Ant Design Dark Mode for better visuals */
-.ant-layout-header {
-  border-bottom: 1px solid var(--border);
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }

@@ -81,6 +81,9 @@ exports.updateTicketStatus = async (req, res, next) => {
     try {
         if (root_cause_and_solution) root_cause_and_solution = simpleSanitize(root_cause_and_solution);
         
+        // จัดการไฟล์แนบ (ถ้ามีส่งมาด้วย)
+        const uploadedFiles = req.files ? req.files.map(f => f.filename) : [];
+
         const result = await ticketService.updateTicketStatus(ticket_id, {
             status_id, technician_id, root_cause_and_solution
         });
@@ -108,7 +111,11 @@ exports.updateTicketStatus = async (req, res, next) => {
             if (settings.enable_email === 1 && settings.admin_email) sendEmail(`🔧 อัปเดตใบงาน: ${result.ticket_number}`, `สถานะ: ${result.newStatusName}`);
         }
 
-        res.json({ success: true, message: result.isBreached ? `สำเร็จล่าช้า! ค่าปรับ: ${result.penaltyAmount.toLocaleString()} บาท` : 'อัปเดตสำเร็จ' });
+        res.json({ 
+            success: true, 
+            files: uploadedFiles, // ส่งรายชื่อไฟล์กลับไปให้ Frontend
+            message: result.isBreached ? `สำเร็จล่าช้า! ค่าปรับ: ${result.penaltyAmount.toLocaleString()} บาท` : 'อัปเดตสำเร็จ' 
+        });
     } catch (err) { next(err); }
 };
 

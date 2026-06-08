@@ -122,6 +122,14 @@ exports.sendMessage = async (req, res) => {
             const { name, args } = call.functionCall;
             console.log(`🤖 Agent calling tool: ${name}`, args);
 
+            // ✅ ส่งสถานะการทำงานไปยัง Frontend เรียลไทม์
+            const socketUtils = require('../utils/socket');
+            socketUtils.emit('agent_activity', { 
+                status: 'executing', 
+                tool: name, 
+                args: args 
+            });
+
             let toolResult;
             if (name === 'run_command') toolResult = await agentTools.runCommand(args.command);
             if (name === 'read_file') toolResult = agentTools.readFile(args.filePath);
@@ -138,6 +146,10 @@ exports.sendMessage = async (req, res) => {
             response = result.response;
             call = response.candidates[0].content.parts.find(p => p.functionCall);
         }
+
+        // ✅ แจ้งว่าทำงานเสร็จสิ้น
+        const socketUtils = require('../utils/socket');
+        socketUtils.emit('agent_activity', { status: 'completed' });
 
         const responseText = response.text();
 

@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Typography, Tag, Button, Spin, Result, Form, Select, Input, Row, Col, Divider, Space, Steps, Upload, Timeline, Card, Avatar, theme, App, Alert, Tooltip, Popover } from 'antd'; 
-import { ArrowLeftOutlined, ClockCircleOutlined, OrderedListOutlined, PrinterOutlined, FileImageOutlined, UserOutlined, UploadOutlined, DesktopOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, QuestionCircleOutlined, BulbOutlined, RocketOutlined } from '@ant-design/icons';
+import { Typography, Tag, Button, Spin, Result, Form, Select, Input, Row, Col, Divider, Space, Steps, Upload, Timeline, Card, Avatar, theme, App, Alert, Tooltip, Popover, Modal } from 'antd'; 
+import { 
+  ArrowLeftOutlined, ClockCircleOutlined, OrderedListOutlined, PrinterOutlined, 
+  FileImageOutlined, FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FilePptOutlined, FileOutlined,
+  UserOutlined, UploadOutlined, DesktopOutlined, CheckCircleOutlined, 
+  CloseCircleOutlined, InfoCircleOutlined, QuestionCircleOutlined, BulbOutlined, RocketOutlined,
+  DownloadOutlined
+} from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError, alertConfirm } from '../utils/alert';
@@ -35,6 +41,36 @@ export default function TicketDetail() {
   const [rejectForm] = Form.useForm();
 
   const [elapsedTime, setElapsedTime] = useState('กำลังคำนวณ...');
+
+  // --- Document Preview States ---
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewType, setPreviewType] = useState(''); // 'office', 'pdf', 'image'
+  const [previewFilename, setPreviewFilename] = useState('');
+
+  const handlePreviewFile = (filename) => {
+    if (!filename) return;
+    const fileUrl = `${BACKEND_URL}/uploads/${filename}`;
+    const ext = filename.split('.').pop().toLowerCase();
+    
+    setPreviewFilename(filename);
+    
+    if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+      setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`);
+      setPreviewType('office');
+      setPreviewModalVisible(true);
+    } else if (ext === 'pdf') {
+      setPreviewUrl(fileUrl);
+      setPreviewType('pdf');
+      setPreviewModalVisible(true);
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+      setPreviewUrl(fileUrl);
+      setPreviewType('image');
+      setPreviewModalVisible(true);
+    } else {
+      window.open(fileUrl);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -116,9 +152,20 @@ export default function TicketDetail() {
     } catch (err) { console.error('Failed to save log'); }
   };
 
+  const getFileIcon = (filename) => {
+    if (!filename) return <FileOutlined />;
+    const ext = filename.split('.').pop().toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return <FileImageOutlined style={{ color: '#1677ff' }} />;
+    if (ext === 'pdf') return <FilePdfOutlined style={{ color: '#ff4d4f' }} />;
+    if (['doc', 'docx'].includes(ext)) return <FileWordOutlined style={{ color: '#2b579a' }} />;
+    if (['xls', 'xlsx'].includes(ext)) return <FileExcelOutlined style={{ color: '#217346' }} />;
+    if (['ppt', 'pptx'].includes(ext)) return <FilePptOutlined style={{ color: '#d24726' }} />;
+    return <FileOutlined style={{ color: '#8c8c8c' }} />;
+  };
+
   const renderLogDetailWithFiles = (detailText) => {
     if (!detailText) return null;
-    const fileRegex = /\[แนบไฟล์(?:เพิ่มเติม)?:\s*(.*?)\]/;
+    const fileRegex = /\[แนบไฟล์(?:เพิ่มเติม|.*?)?:\s*(.*?)\]/;
     const match = detailText.match(fileRegex);
     let textWithoutFiles = detailText;
     let files = [];
@@ -138,8 +185,8 @@ export default function TicketDetail() {
         {files.length > 0 && (
           <Space wrap style={{ marginTop: 10 }}>
             {files.map((file, idx) => (
-              <Button key={idx} size="small" type="dashed" icon={<FileImageOutlined style={{ color: token.colorPrimary }} />} onClick={() => window.open(`${BACKEND_URL}/uploads/${file}`)}>
-                {file}
+              <Button key={idx} size="small" type="dashed" icon={getFileIcon(file)} onClick={() => handlePreviewFile(file)}>
+                {file.length > 25 ? `${file.substring(0, 25)}...` : file}
               </Button>
             ))}
           </Space>
@@ -186,8 +233,13 @@ export default function TicketDetail() {
   const handleSubmitFix = async (values) => {
     try {
       const formData = new FormData();
-      const targetStatus = Number(ticket.status_id) >= 4 ? 5 : 4;
-      
+      // ✅ Logic ใหม่: ถ้า Status เป็น 5 (ตรวจสอบแล้ว/รอคู่มือ) ให้อัปโหลดแล้วปิดเคสเลย (Status 6)
+      // ถ้าเป็น Status 4 (หรือต่ำกว่า) แล้วกดส่งงาน ให้เป็น 4 (หรือ 5 ถ้าอัปโหลดคู่มือล่วงหน้า ตาม logic backend)
+      let targetStatus = 4;
+      if (Number(ticket.status_id) >= 4) {
+          targetStatus = Number(ticket.status_id) === 5 ? 6 : 5;
+      }
+
       formData.append('status_id', targetStatus.toString());
       if (values.root_cause_and_solution) {
           formData.append('root_cause_and_solution', values.root_cause_and_solution);
@@ -197,11 +249,12 @@ export default function TicketDetail() {
       const res = await axiosInstance.put(`/tickets/${id}/update-status`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const savedFiles = res.data.files || [];
       const attachMsg = savedFiles.length > 0 ? `\n[แนบไฟล์/คู่มือ: ${savedFiles.join(',')}]` : '';
-      
-      const logActionName = Number(ticket.status_id) >= 4 ? 'อัปโหลดคู่มือการแก้ไข' : 'ส่งตรวจสอบ';
+
+      const logActionName = targetStatus === 6 ? 'อัปโหลดคู่มือและปิดเคสสมบูรณ์' : (Number(ticket.status_id) >= 4 ? 'อัปโหลดคู่มือการแก้ไข' : 'ส่งตรวจสอบ');
       await addLog(logActionName, `วิธีแก้ไข/รายละเอียด: ${values.root_cause_and_solution || 'อัปโหลดไฟล์คู่มือ'}${attachMsg}`);
-      await alertSuccess('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อยแล้ว');
-      setFileList([]); fetchData(); 
+
+      await alertSuccess('สำเร็จ!', targetStatus === 6 ? 'อัปโหลดคู่มือและปิดเคสอัตโนมัติเรียบร้อยแล้ว' : 'บันทึกข้อมูลเรียบร้อยแล้ว');
+      setFileList([]); fetchData();
     } catch (error) { alertError('เกิดข้อผิดพลาด!'); }
   };
 
@@ -343,7 +396,7 @@ export default function TicketDetail() {
             </div>
             <div style={{ marginTop: 20 }}>
               <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 5 }}><FileImageOutlined /> ไฟล์แนบ (ตอนเปิดใบงาน)</Text>
-              {ticket.attachment ? <Button type="dashed" style={{ borderRadius: 6 }} onClick={() => window.open(`${BACKEND_URL}/uploads/${ticket.attachment}`)}>{ticket.attachment}</Button> : <Text type="secondary">ไม่มีไฟล์แนบ</Text>}
+              {ticket.attachment ? <Button type="dashed" style={{ borderRadius: 6 }} onClick={() => handlePreviewFile(ticket.attachment)}>{ticket.attachment}</Button> : <Text type="secondary">ไม่มีไฟล์แนบ</Text>}
             </div>
           </Card>
 
@@ -380,7 +433,7 @@ export default function TicketDetail() {
 
               {(Number(ticket.status_id) >= 2 && Number(ticket.status_id) <= 5) && (
                 <div style={{ marginTop: 20 }}>
-                  {(ticket.assigned_to === currentUser?.user_id || currentUser?.role === 'head_technician' || currentUser?.role === 'admin') ? (
+                  {(ticket.assigned_to === currentUser?.user_id || currentUser?.role === 'head_technician') ? (
                     <Form form={updateForm} layout="vertical" onFinish={handleSubmitFix} initialValues={{ root_cause_and_solution: ticket.root_cause_and_solution || '' }}>
                       {(Number(ticket.status_id) === 2 || Number(ticket.status_id) === 3) && (
                         <>
@@ -389,6 +442,11 @@ export default function TicketDetail() {
                           </Popover>
                           <Form.Item name="root_cause_and_solution" label="บันทึกวิธีแก้ไขปัญหา" rules={[{ required: true, message: 'กรุณาระบุวิธีแก้ไข!' }]}>
                             <TextArea rows={4} placeholder="ระบุสิ่งที่ได้ดำเนินการแก้ไข..." style={{ borderRadius: 8, marginTop: 10 }} />
+                          </Form.Item>
+                          <Form.Item label="แนบไฟล์ยืนยันการแก้ไข (ถ้ามี)">
+                            <Upload multiple beforeUpload={() => false} fileList={fileList} onChange={handleUploadChange}>
+                              <Button icon={<UploadOutlined />} style={{ borderRadius: 8 }}>เลือกไฟล์ (รูปภาพ/เอกสาร)</Button>
+                            </Upload>
                           </Form.Item>
                         </>
                       )}
@@ -426,6 +484,40 @@ export default function TicketDetail() {
                     <Title level={4} style={{ color: token.colorSuccessText, margin: 0 }}>ช่างดำเนินการแก้ไขเรียบร้อยแล้ว!</Title>
                     <Text strong style={{ color: token.colorSuccessText, display: 'block', marginTop: 5 }}>✨ กรุณาตรวจสอบการใช้งานและยืนยันการปิดเคส</Text>
                   </div>
+
+                  {ticket.root_cause_and_solution && (
+                    <div style={{ backgroundColor: '#fafafa', padding: 20, borderRadius: 12, marginBottom: 25, borderLeft: `4px solid ${token.colorPrimary}` }}>
+                      <Text strong style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, marginBottom: 10 }}>
+                        <InfoCircleOutlined style={{ color: token.colorPrimary }} /> บันทึกผลการแก้ไขจากช่าง:
+                      </Text>
+                      <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{ticket.root_cause_and_solution}</Paragraph>
+                      
+                      {/* ตรวจหาไฟล์แนบจาก Log เพื่อดึงมาแสดงให้ผู้แจ้งเห็นง่ายๆ */}
+                      {(() => {
+                         const manualLogs = logs.filter(l => l.detail && l.detail.includes('[แนบไฟล์/คู่มือ:'));
+                         if (manualLogs.length === 0) return null;
+                         const latestLog = manualLogs[0]; // Log ล่าสุดที่อัปโหลดคู่มือ
+                         const fileRegex = /\[แนบไฟล์\/คู่มือ:\s*(.*?)\]/;
+                         const match = latestLog.detail.match(fileRegex);
+                         if (!match) return null;
+                         const uploadedFiles = match[1].split(',').map(f => f.trim());
+                         
+                         return (
+                            <div style={{ marginTop: 15 }}>
+                              <Text strong style={{ display: 'block', marginBottom: 8 }}><FileOutlined /> ไฟล์คู่มือ/รายละเอียดแนบ:</Text>
+                              <Space wrap>
+                                {uploadedFiles.map((file, idx) => (
+                                  <Button key={idx} size="small" type="dashed" icon={getFileIcon(file)} onClick={() => handlePreviewFile(file)}>
+                                    {file.length > 25 ? `${file.substring(0, 25)}...` : file}
+                                  </Button>
+                                ))}
+                              </Space>
+                            </div>
+                         );
+                      })()}
+                    </div>
+                  )}
+
                   {!isRejecting ? (
                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
                       <Button type="primary" size="large" block style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: 10, height: 60, fontSize: 20, fontWeight: 'bold' }} onClick={handleApproveTicket}>✅ ใช้งานได้ปกติ (ปิดเคส)</Button>
@@ -519,6 +611,54 @@ export default function TicketDetail() {
           )}
         </Col>
       </Row>
+
+      {/* --- Document Preview Modal --- */}
+      <Modal
+        title={<><FileOutlined /> ตัวอย่างเอกสาร: {previewFilename}</>}
+        open={previewModalVisible}
+        onCancel={() => {
+          setPreviewModalVisible(false);
+          setPreviewUrl('');
+        }}
+        footer={[
+          <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={() => window.open(`${BACKEND_URL}/uploads/${previewFilename}`)}>
+            ดาวน์โหลดไฟล์ต้นฉบับ
+          </Button>,
+          <Button key="close" onClick={() => setPreviewModalVisible(false)}>
+            ปิดหน้าต่าง
+          </Button>
+        ]}
+        width={900}
+        style={{ top: 20 }}
+        styles={{ body: { height: '75vh', padding: 0 } }}
+        destroyOnHidden
+      >
+        {previewType === 'image' && (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5' }}>
+            <img src={previewUrl} alt={previewFilename} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
+        {(previewType === 'pdf' || previewType === 'office') && (
+          <iframe 
+            src={previewUrl} 
+            title="Document Preview" 
+            width="100%" 
+            height="100%" 
+            style={{ border: 'none' }} 
+            allowFullScreen 
+          />
+        )}
+        {previewType === 'office' && (
+          <Alert 
+            title="หมายเหตุการแสดงผล Office (Word/Excel/PowerPoint)" 
+            description="หากท่านทดสอบระบบนี้ผ่านเครือข่ายภายใน (Localhost) เอกสารอาจไม่แสดงผลเนื่องจากบริการ Microsoft Online ไม่สามารถเข้าถึงไฟล์ภายในเครื่องท่านได้ ในกรณีนี้กรุณากด 'ดาวน์โหลดไฟล์ต้นฉบับ' ด้านล่าง" 
+            type="info" 
+            showIcon 
+            banner
+            style={{ margin: 0, borderTop: '1px solid #91caff' }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

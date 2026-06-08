@@ -11,22 +11,14 @@ const trafficLogger = require('./middleware/trafficLogger');
 const threatDetector = require('./middleware/threatDetector'); // ✅ นำเข้า Threat Engine
 const { sysLog } = require('./utils/logger');
 const socketUtils = require('./utils/socket'); // ✅ นำเข้า Socket Utils
-const { simpleSanitize, getRealIp } = require('./utils/dataHelper'); // ✅ นำเข้า Utils
-
+const { simpleSanitize } = require('./utils/dataHelper'); // ✅ นำเข้า Sanitizer
 const cronService = require('./services/cronService');
 const { authenticateToken, requireRole } = require('./middleware/auth');
 
 const app = express();
 
 // ✅ ตั้งค่า Trust Proxy สำหรับการรันหลัง Proxy (เช่น ngrok, Nginx, Cloudflare)
-app.set('trust proxy', true);
-
-// ✅ [Global] Real IP Resolver Middleware
-// ทำหน้าที่ระบุ IP จริงตั้งแต่จุดเริ่มต้น และส่งต่อให้ทุก Middleware ใช้งานร่วมกัน
-app.use((req, res, next) => {
-    req.realIp = getRealIp(req);
-    next();
-});
+app.set('trust proxy', 1);
 
 // --- 1. Basic Middlewares ---
 app.use(threatDetector); // ✅ เปิดใช้งานระบบตรวจจับและป้องกันภัยคุกคาม (First Priority)

@@ -106,10 +106,15 @@ export default function SecurityCommandCenter() {
 
   useEffect(() => {
     fetchSecurityData();
-    fetchSecuritySettings();
     const interval = setInterval(fetchSecurityData, 30000); 
     return () => clearInterval(interval);
-  }, [fetchSecurityData, fetchSecuritySettings]);
+  }, [fetchSecurityData]);
+
+  useEffect(() => {
+    if (isSettingsModalVisible) {
+      fetchSecuritySettings();
+    }
+  }, [isSettingsModalVisible, fetchSecuritySettings]);
 
   // --- 🛠️ Filtering Logic ---
   
@@ -293,7 +298,7 @@ export default function SecurityCommandCenter() {
       title: <ColumnHeader title="ผู้โจมตี" desc="ที่อยู่ IP ของผู้ที่พยายามกระทำการอันตราย" />,
       dataIndex: 'ip_address',
       key: 'who',
-      render: (text) => (
+      render: (text, record) => (
         <Flex vertical gap={0}>
           <Space>
             <GlobalOutlined style={{ color: token.colorPrimary }} />
@@ -302,6 +307,9 @@ export default function SecurityCommandCenter() {
               <Badge status="error" text={<Text type="danger" style={{ fontSize: '10px', fontWeight: 'bold' }}>BLOCKED</Text>} />
             )}
           </Space>
+          <Text type="secondary" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <EnvironmentOutlined style={{ fontSize: '10px' }} /> {record.location || 'Unknown'}
+          </Text>
           <Button type="link" size="small" onClick={() => showTimeline(text)} style={{ padding: 0, fontSize: '12px', textAlign: 'left', width: 'fit-content' }}>
             <ClockCircleOutlined /> ดูไทม์ไลน์เชิงลึก
           </Button>
@@ -316,10 +324,9 @@ export default function SecurityCommandCenter() {
         const info = killChainPhases.find(p => p.key === phase);
         return (
           <Tag 
-            bordered={false}
+            variant="filled"
+            color={info?.color}
             style={{ 
-              background: `${info?.color}15`, 
-              color: info?.color,
               borderRadius: '6px', 
               padding: '4px 12px',
               fontWeight: 600,
@@ -497,7 +504,7 @@ export default function SecurityCommandCenter() {
                   }}>
                     {React.cloneElement(phase.icon, { style: { fontSize: '24px' } })}
                   </div>
-                  <Tag color={phase.color} bordered={false} style={{ borderRadius: '10px', fontSize: '10px', fontWeight: 'bold' }}>เรียลไทม์</Tag>
+                  <Tag color={phase.color} variant="filled" style={{ borderRadius: '10px', fontSize: '10px', fontWeight: 'bold' }}>เรียลไทม์</Tag>
                 </div>
                 <Statistic 
                   title={<Text type="secondary" style={{ fontWeight: 500 }}>{phase.title}</Text>} 
@@ -612,7 +619,7 @@ export default function SecurityCommandCenter() {
                   '100%': statusConfig.subText,
                 }}
                 strokeWidth={12}
-                trailColor="rgba(255,255,255,0.2)"
+                railColor="rgba(255,255,255,0.2)"
                 format={(percent) => (
                   <div style={{ color: '#ffffff', textAlign: 'center' }}>
                     <div style={{ fontSize: '36px', fontWeight: 900, lineHeight: 1, textShadow: '0 2px 15px rgba(0,0,0,0.4)' }}>{percent}%</div>
@@ -631,7 +638,7 @@ export default function SecurityCommandCenter() {
                     </div>
                   </div>
                 )}
-                width={180}
+                size={180}
               />
 
               <div style={{ width: '100%', marginTop: '20px' }}>
@@ -833,10 +840,17 @@ export default function SecurityCommandCenter() {
         footer={[<Button key="close" onClick={() => setIsTimelineModalVisible(false)} size="large" style={{ borderRadius: '10px' }}>Close Analysis</Button>]}
         width={1100}
         centered
-        styles={{ body: { padding: '0px', overflow: 'hidden' } }}
+        styles={{ 
+          body: { 
+            padding: '0px', 
+            maxHeight: 'calc(100vh - 300px)', 
+            overflowY: 'auto',
+            overflowX: 'hidden'
+          } 
+        }}
       >
-        <Row style={{ height: '70vh' }}>
-          <Col xs={24} md={9} style={{ borderRight: '1px solid #f1f5f9', padding: '24px', overflowY: 'auto', background: '#fafafa' }}>
+        <Row style={{ minHeight: '400px' }}>
+          <Col xs={24} md={9} style={{ borderRight: '1px solid #f1f5f9', padding: '24px', background: '#fafafa' }}>
             <Title level={5} style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ClockCircleOutlined /> Kill Chain Progression
             </Title>
@@ -883,11 +897,11 @@ export default function SecurityCommandCenter() {
             ) : <Empty />}
           </Col>
 
-          <Col xs={24} md={15} style={{ padding: '32px', overflowY: 'auto', background: '#fff' }}>
+          <Col xs={24} md={15} style={{ padding: '32px', background: '#fff' }}>
             {selectedThreat ? (
               <div className="analysis-detail">
                 <Title level={4} style={{ marginTop: 0, marginBottom: '24px', color: '#1e293b' }}>Forensic Evidence (5W1H)</Title>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', marginBottom: '32px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '32px' }}>
                   <div className="info-box">
                     <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>WHO</Text>
                     <Text strong copyable>{selectedThreat.ip_address}</Text>

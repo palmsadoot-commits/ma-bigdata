@@ -205,8 +205,17 @@ export default function SystemSettings() {
     } catch (err) {
       console.error("Webhook status error:", err);
     } finally {
-      if (isManual) setLoadingWebhook(false);
+      if (manual) setLoadingWebhook(false);
     }
+  };
+
+  const handleResetWebhook = async () => {
+    setLoadingWebhook(true);
+    try {
+      await axiosInstance.post('/settings/webhook-reset');
+      setWebhookStatus(prev => ({ ...prev, last_captured_id: null }));
+      message.info('ล้างค่า ID เรียบร้อยแล้ว');
+    } catch (err) { alertError('ไม่สามารถล้างค่าได้'); } finally { setLoadingWebhook(false); }
   };
 
   // จัดการ Dynamic Polling Interval
@@ -253,12 +262,12 @@ export default function SystemSettings() {
   // ตัวรัน Polling แยกตาม Interval
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && activeTab === '2') {
         fetchWebhookStatus();
       }
     }, pollingInterval);
     return () => clearInterval(interval);
-  }, [pollingInterval]);
+  }, [pollingInterval, activeTab]);
 
   const handleUploadChange = ({ fileList: newFileList }) => {
     setFileList(newFileList);
@@ -304,51 +313,48 @@ export default function SystemSettings() {
   };
 
   const renderGeneralTab = () => (
-    <div style={{ padding: '10px 0' }}>
-      <Row gutter={[32, 32]}>
+    <div style={{ padding: '8px 0' }}>
+      <Row gutter={[48, 32]}>
         <Col xs={24} lg={12}>
-          <div style={{ marginBottom: 32 }}>
-            <Title level={5}><FileTextOutlined /> ข้อมูลระบบพื้นฐาน</Title>
-            <Divider style={{ margin: '12px 0' }} />
-            <Form.Item name="system_name" label="ชื่อระบบ (Browser Title)" rules={[{ required: true }]}><Input size="large" placeholder="เช่น LMIS Big Data" /></Form.Item>
-            <Form.Item name="agency_name" label="ชื่อหน่วยงานที่แสดงในระบบ"><Input size="large" placeholder="เช่น บริษัท/หน่วยงานของคุณ" /></Form.Item>
-            <Card variant="borderless" style={{ background: isDarkMode ? 'rgba(255, 120, 0, 0.12)' : '#fff7e6', border: `1px solid ${isDarkMode ? '#fa8c16' : '#ffd591'}`, borderRadius: 12 }}>
-                <Text strong style={{ color: isDarkMode ? '#ffa940' : '#d46b08' }}><SafetyCertificateOutlined /> ความพร้อมใช้งาน (Availability Control)</Text>
-                <Flex justify="space-around" wrap="wrap" gap="middle" style={{ marginTop: 15 }}>
-                    <div style={{ textAlign: 'center' }}><Text style={{ fontSize: 12, display: 'block', marginBottom: 8, color: isDarkMode ? '#ffbb96' : 'inherit' }}>ปิดปรับปรุง</Text><Form.Item name="maintenance_mode" valuePropName="checked" noStyle><Switch checkedChildren="ON" unCheckedChildren="OFF" /></Form.Item></div>
-                    <div style={{ textAlign: 'center' }}><Text style={{ fontSize: 12, display: 'block', marginBottom: 8, color: isDarkMode ? '#ffbb96' : 'inherit' }}>กลุ่มปัญหาฝั่งผู้ใช้ (4xx)</Text><Form.Item name="error_404_active" valuePropName="checked" noStyle><Switch checkedChildren="ON" unCheckedChildren="OFF" /></Form.Item></div>
-                    <div style={{ textAlign: 'center' }}><Text style={{ fontSize: 12, display: 'block', marginBottom: 8, color: isDarkMode ? '#ffbb96' : 'inherit' }}>กลุ่มปัญหาฝั่งระบบ (5xx)</Text><Form.Item name="error_500_active" valuePropName="checked" noStyle><Switch checkedChildren="ON" unCheckedChildren="OFF" /></Form.Item></div>
+          <div style={{ marginBottom: 40 }}>
+            <Title level={4} style={{ fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 24, textTransform: 'uppercase' }}>System Identity</Title>
+            <Form.Item name="system_name" label={<Text strong style={{ fontSize: 11, letterSpacing: '0.05em', color: '#64748b' }}>PLATFORM IDENTIFIER</Text>} rules={[{ required: true }]}><Input size="large" placeholder="e.g. LMIS BIG DATA" style={{ borderRadius: 8 }} /></Form.Item>
+            <Form.Item name="agency_name" label={<Text strong style={{ fontSize: 11, letterSpacing: '0.05em', color: '#64748b' }}>ORGANIZATION ENTITY</Text>}><Input size="large" placeholder="e.g. MINISTRY OF LABOUR" style={{ borderRadius: 8 }} /></Form.Item>
+            
+            <div style={{ background: isDarkMode ? '#1e293b' : '#f8fafc', padding: 24, borderRadius: 12, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, marginTop: 32 }}>
+                <Text strong style={{ color: token.colorPrimary, fontSize: 10, letterSpacing: '0.1em', display: 'block', marginBottom: 20 }}>AVAILABILITY PARAMETERS</Text>
+                <Flex justify="space-between" align="center" gap="large">
+                    <div style={{ textAlign: 'center' }}><Text strong style={{ fontSize: 10, display: 'block', marginBottom: 12, color: '#64748b', letterSpacing: '0.05em' }}>MAINTENANCE</Text><Form.Item name="maintenance_mode" valuePropName="checked" noStyle><Switch size="small" /></Form.Item></div>
+                    <div style={{ textAlign: 'center' }}><Text strong style={{ fontSize: 10, display: 'block', marginBottom: 12, color: '#64748b', letterSpacing: '0.05em' }}>USER ERRORS (4XX)</Text><Form.Item name="error_404_active" valuePropName="checked" noStyle><Switch size="small" /></Form.Item></div>
+                    <div style={{ textAlign: 'center' }}><Text strong style={{ fontSize: 10, display: 'block', marginBottom: 12, color: '#64748b', letterSpacing: '0.05em' }}>SYSTEM ERRORS (5XX)</Text><Form.Item name="error_500_active" valuePropName="checked" noStyle><Switch size="small" /></Form.Item></div>
                 </Flex>
-                <Divider style={{ margin: '15px 0' }} />
-                <Button block icon={<EyeOutlined />} onClick={() => navigate('/error-test?mode=preview')} style={{ borderRadius: 8 }}>พรีวิวหน้า Error ทั้งหมด (2xx, 4xx, 5xx)</Button>
-            </Card>
+                <Button block ghost type="primary" onClick={() => navigate('/error-test?mode=preview')} style={{ marginTop: 24, borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.02em' }}>PREVIEW SYSTEM RESPONSES</Button>
+            </div>
           </div>
           <div>
-            <Title level={5}><BgColorsOutlined /> ธีมและการแสดงผล</Title>
-            <Divider style={{ margin: '12px 0' }} />
-            <Row gutter={16}>
-              <Col span={12}><Form.Item name="theme_mode" label="โหมดสีพื้นฐาน"><Radio.Group buttonStyle="solid" style={{ width: '100%' }}><Radio.Button value="light" style={{ width: '50%', textAlign: 'center' }}><BulbOutlined /> Light</Radio.Button><Radio.Button value="dark" style={{ width: '50%', textAlign: 'center' }}><BulbOutlined style={{ color: '#fadb14' }} /> Dark</Radio.Button></Radio.Group></Form.Item></Col>
-              <Col span={12}><Form.Item name="primary_color" label="สีหลัก"><ColorPicker showText style={{ width: '100%', justifyContent: 'flex-start' }} /></Form.Item></Col>
-              <Col span={24}><Form.Item name="system_font" label="ฟอนต์ระบบ"><Select size="large" suffixIcon={<FontSizeOutlined />}><Select.Option value="Inter">Inter (Standard)</Select.Option><Select.Option value="Sarabun">Sarabun (ทางการ)</Select.Option><Select.Option value="Kanit">Kanit (ทันสมัย)</Select.Option><Select.Option value="Prompt">Prompt (สะอาดตา)</Select.Option></Select></Form.Item></Col>
+            <Title level={4} style={{ fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 24, textTransform: 'uppercase' }}>Visual Interface</Title>
+            <Row gutter={24}>
+              <Col span={12}><Form.Item name="theme_mode" label={<Text strong style={{ fontSize: 11, letterSpacing: '0.05em', color: '#64748b' }}>INTERFACE MODE</Text>}><Radio.Group buttonStyle="solid" style={{ width: '100%' }}><Radio.Button value="light" style={{ width: '50%', textAlign: 'center', fontSize: 12, fontWeight: 600 }}>LIGHT</Radio.Button><Radio.Button value="dark" style={{ width: '50%', textAlign: 'center', fontSize: 12, fontWeight: 600 }}>DARK</Radio.Button></Radio.Group></Form.Item></Col>
+              <Col span={12}><Form.Item name="primary_color" label={<Text strong style={{ fontSize: 11, letterSpacing: '0.05em', color: '#64748b' }}>ACCENT TONE</Text>}><ColorPicker showText style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={24}><Form.Item name="system_font" label={<Text strong style={{ fontSize: 11, letterSpacing: '0.05em', color: '#64748b' }}>PRIMARY TYPEFACE</Text>}><Select size="large"><Select.Option value="Inter">INTER (ENGINEERING)</Select.Option><Select.Option value="Sarabun">SARABUN (FORMAL)</Select.Option><Select.Option value="Kanit">KANIT (MODERN)</Select.Option></Select></Form.Item></Col>
             </Row>
           </div>
         </Col>
         <Col xs={24} lg={12}>
-          <div style={{ background: token.colorBgContainer, padding: 24, borderRadius: 20, border: `1px solid ${token.colorBorderSecondary}` }}>
-            <Title level={5}><PictureOutlined /> สื่อและอัตลักษณ์</Title>
-            <Divider style={{ margin: '12px 0' }} />
-            <div style={{ marginBottom: 32 }}>
-              <Text strong style={{ display: 'block', marginBottom: 12 }}>โลโก้ระบบ</Text>
-              <Flex align="start" gap="large">
-                <div style={{ textAlign: 'center', width: 120 }}><div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: token.colorBgContainer, borderRadius: 12, border: `1px dashed ${token.colorBorder}`, padding: 8, marginBottom: 8 }}>{(previewUrl || currentLogo) ? (<img src={previewUrl || `${BACKEND_URL}/uploads/${currentLogo}`} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />) : <PictureOutlined style={{ fontSize: 32, color: token.colorTextQuaternary }} />}</div></div>
-                <div style={{ paddingTop: 10 }}><Upload beforeUpload={() => false} showUploadList={false} onChange={handleUploadChange} maxCount={1} accept="image/*"><Button icon={<UploadOutlined />} size="large">อัปโหลดโลโก้</Button></Upload></div>
+          <div style={{ background: isDarkMode ? '#0f172a' : '#fff', padding: 32, borderRadius: 16, border: `1px solid ${isDarkMode ? '#1e293b' : '#f1f5f9'}` }}>
+            <Title level={4} style={{ fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 24 }}>Brand Assets</Title>
+            <div style={{ marginBottom: 40 }}>
+              <Text strong style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 16, letterSpacing: '0.05em' }}>PLATFORM LOGMARK</Text>
+              <Flex align="start" gap={24}>
+                <div style={{ height: 120, width: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDarkMode ? '#1e293b' : '#f8fafc', borderRadius: 8, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, padding: 16 }}>{(previewUrl || currentLogo) ? (<img src={previewUrl || `${BACKEND_URL}/uploads/${currentLogo}`} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />) : <PictureOutlined style={{ fontSize: 32, color: '#94a3b8' }} />}</div>
+                <div style={{ paddingTop: 8 }}><Upload beforeUpload={() => false} showUploadList={false} onChange={handleUploadChange} maxCount={1} accept="image/*"><Button icon={<UploadOutlined />} style={{ borderRadius: 6 }}>UPLOAD ASSET</Button></Upload></div>
               </Flex>
             </div>
             <div>
-              <Text strong style={{ display: 'block', marginBottom: 12 }}>Favicon</Text>
-              <Flex align="start" gap="large">
-                <div style={{ textAlign: 'center', width: 64 }}><div style={{ height: 64, width: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', background: token.colorBgContainer, borderRadius: 8, border: `1px dashed ${token.colorBorder}`, padding: 4, marginBottom: 8 }}>{(faviconPreviewUrl || currentFavicon) ? (<img src={faviconPreviewUrl || `${BACKEND_URL}/uploads/${currentFavicon}`} alt="Favicon" style={{ width: 32, height: 32 }} />) : <RocketOutlined style={{ fontSize: 24, color: token.colorTextQuaternary }} />}</div></div>
-                <div style={{ paddingTop: 4 }}><Upload beforeUpload={() => false} showUploadList={false} onChange={handleFaviconUploadChange} maxCount={1} accept="image/x-icon,image/png"><Button icon={<UploadOutlined />} size="middle">เปลี่ยน Favicon</Button></Upload></div>
+              <Text strong style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 16, letterSpacing: '0.05em' }}>SYSTEM FAVICON</Text>
+              <Flex align="start" gap={24}>
+                <div style={{ height: 64, width: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDarkMode ? '#1e293b' : '#f8fafc', borderRadius: 8, border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, padding: 8 }}>{(faviconPreviewUrl || currentFavicon) ? (<img src={faviconPreviewUrl || `${BACKEND_URL}/uploads/${currentFavicon}`} alt="Favicon" style={{ width: 32, height: 32 }} />) : <RocketOutlined style={{ fontSize: 24, color: '#94a3b8' }} />}</div>
+                <div style={{ paddingTop: 8 }}><Upload beforeUpload={() => false} showUploadList={false} onChange={handleFaviconUploadChange} maxCount={1} accept="image/x-icon,image/png"><Button size="small" icon={<UploadOutlined />} style={{ borderRadius: 6 }}>REPLACE</Button></Upload></div>
               </Flex>
             </div>
           </div>
@@ -395,7 +401,7 @@ export default function SystemSettings() {
                 <div style={{ marginTop: 10 }}>
                     <Alert type="info" title="Webhook URL สำหรับ LINE" description={<div><Text copyable strong>https://ma-bigdata.mol.go.th/api/line/webhook</Text><br/><Text style={{ fontSize: 12 }} type="secondary">นำ URL นี้ไปใส่ใน LINE Developers &gt; Messaging API &gt; Webhook URL</Text></div>} style={{ marginBottom: 10 }} />
                     <Flex gap="small">
-                        <Button type="primary" ghost block icon={<SyncOutlined />} onClick={fetchWebhookStatus} loading={loadingWebhook}>ตรวจสอบสถานะ (Verify)</Button>
+                        <Button type="primary" ghost block icon={<SyncOutlined />} onClick={() => fetchWebhookStatus(true)} loading={loadingWebhook}>ตรวจสอบสถานะ (Verify)</Button>
                         <Button danger ghost block onClick={handleResetWebhook} loading={loadingWebhook}>ล้างค่า ID (Reset)</Button>
                     </Flex>
                 </div>

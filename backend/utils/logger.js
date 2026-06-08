@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { broadcastAlert } = require('./sse');
+const { getRealIp, getGeoLocation } = require('./dataHelper');
 
 /**
  * Enterprise System Logger
@@ -10,18 +11,26 @@ const { broadcastAlert } = require('./sse');
  */
 const sysLog = async (level, category, message, options = {}) => {
     try {
-        const { userId, req, duration, metadata, traceId } = options;
+        const { userId, req, duration, metadata = {}, traceId } = options;
         let ipAddress = 'unknown';
         let method = null;
         let path = null;
         let activeTraceId = traceId || null;
+        let geoInfo = null;
 
         if (req) {
-            ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+            ipAddress = req.realIp || getRealIp(req);
+            geoInfo = getGeoLocation(ipAddress);
             method = req.method;
             path = req.originalUrl || req.url;
             if (!activeTraceId && req.traceId) activeTraceId = req.traceId;
         }
+
+        // ✅ รวม Geo Location เข้ากับ Metadata
+        const finalMetadata = {
+            ...metadata,
+            geo: geoInfo
+        };
 
         const sql = `
             INSERT INTO system_logs (level, category, message, trace_id, user_id, ip_address, method, path, duration, metadata)
@@ -38,11 +47,11 @@ const sysLog = async (level, category, message, options = {}) => {
             method,
             path,
             duration || null,
-            metadata ? JSON.stringify(metadata) : null
+            finalMetadata ? JSON.stringify(finalMetadata) : null
         ]);
 
         // ✅ กระจายสัญญาณไปยังหน้าจอ Admin ทันที (Live Notification)
-        broadcastAlert(level, category, message, metadata);
+        broadcastAlert(level, category, message, finalMetadata);
 
         // ✅ สำหรับ CRITICAL Error ให้ส่ง Alert ทาง Email & LINE
         if (level === 'CRITICAL') {
@@ -71,7 +80,7 @@ const logAction = async (userId, action, detail, req = null) => {
     let traceId = null;
 
     if (req) { 
-        ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'; 
+        ipAddress = getRealIp(req); 
         traceId = req.traceId || null;
     }
 

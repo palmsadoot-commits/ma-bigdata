@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { sysLog } = require('../utils/logger');
+const { getRealIp } = require('../utils/dataHelper');
 
 // Cache สำหรับ IP ที่ถูกบล็อก และการตั้งค่าความปลอดภัย
 let blockedIpCache = new Set();
@@ -91,7 +92,8 @@ const autoBlockIp = async (ip, score, reason) => {
 const threatDetector = async (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
 
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    // ✅ ดึง Real IP จาก Global Middleware หรือฟังก์ชันกลาง
+    const ip = req.realIp || getRealIp(req);
     
     await updateSecurityCache();
     
@@ -173,12 +175,22 @@ const threatDetector = async (req, res, next) => {
         if (detectedThreat && !isWhitelisted(ip)) {
             try {
                 const isBlocked = await autoBlockIp(ip, score, detectedThreat.type);
+                const geo = getGeoLocation(ip);
+                
+                // ✅ ใช้รูปแบบที่สวยงาม: City, Country (เช่น Bangkok, Thailand)
+                let locationStr = 'Unknown';
+                if (geo.country === 'Local') {
+                    locationStr = 'Internal Network';
+                } else if (geo.country !== 'Unknown') {
+                    locationStr = `${geo.city}, ${geo.country}`;
+                }
+                
                 const sql = `
-                    INSERT INTO threat_logs (ip_address, kill_chain_phase, attack_type, target_url, method, payload, headers, threat_score, status_code, is_blocked)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO threat_logs (ip_address, location, kill_chain_phase, attack_type, target_url, method, payload, headers, threat_score, status_code, is_blocked)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 await db.query(sql, [
-                    ip, detectedThreat.phase, detectedThreat.type, url, req.method,
+                    ip, locationStr, detectedThreat.phase, detectedThreat.type, url, req.method,
                     fullPayload.substring(0, 1000), JSON.stringify(req.headers), score,
                     res.statusCode, isBlocked
                 ]);

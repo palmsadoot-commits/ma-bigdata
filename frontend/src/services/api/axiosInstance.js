@@ -5,11 +5,31 @@ const API_BASE_URL = `${BASE}/api`;
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 600000, // ✅ รอได้นานถึง 10 นาที (สำหรับงาน Backup)
+  timeout: 600000, 
 });
 
-// ✅ แนบ Token อัตโนมัติในทุก Request
-axiosInstance.interceptors.request.use(config => {
+// ✅ แคช IP ไว้ในตัวแปรเพื่อไม่ให้ต้องถาม API ภายนอกทุกครั้งที่ยิง Request
+let cachedPublicIp = null;
+
+const getPublicIp = async () => {
+  if (cachedPublicIp) return cachedPublicIp;
+  try {
+    const res = await axios.get('https://api.ipify.org?format=json', { timeout: 3000 });
+    cachedPublicIp = res.data.ip;
+    return cachedPublicIp;
+  } catch (e) {
+    return null;
+  }
+};
+
+// ✅ แนบ Token และ Public IP อัตโนมัติในทุก Request
+axiosInstance.interceptors.request.use(async config => {
+  // 1. ดึง Public IP (ถ้ายังไม่มี)
+  const publicIp = await getPublicIp();
+  if (publicIp) {
+    config.headers['X-Client-Public-IP'] = publicIp;
+  }
+
   const savedUser = localStorage.getItem('user');
   if (savedUser) {
     try {

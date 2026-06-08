@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Typography, Card, Divider, Space, ConfigProvider, Flex } from 'antd';
-import { UserOutlined, LockOutlined, MessageOutlined, GoogleOutlined, ToolsOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MessageOutlined, GoogleOutlined, ToolOutlined } from '@ant-design/icons';
 import axiosInstance from '../services/api/axiosInstance';
 import Swal from 'sweetalert2'; 
 import { alertError } from '../utils/alert'; 
@@ -54,117 +54,113 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      background: '#020617', // Deepest Navy
       padding: '20px'
     }}>
-      <Card 
-        style={{ 
-          width: 440, 
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', 
-          borderRadius: 20, 
-          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
+      <Card
+        style={{
+          width: 440,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          borderRadius: 12,
+          backgroundColor: '#0f172a',
+          border: '1px solid #1e293b',
           overflow: 'hidden'
         }}
-        styles={{ body: { padding: '40px 32px' } }}
+        styles={{ body: { padding: '48px 40px' } }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{ 
-            width: 64, 
-            height: 64, 
-            backgroundColor: '#1677ff', 
-            borderRadius: 16, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            margin: '0 auto 20px',
-            boxShadow: '0 10px 15px -3px rgba(22, 119, 255, 0.3)'
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            backgroundColor: '#2563eb',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            boxShadow: '0 0 20px rgba(37, 99, 235, 0.2)'
           }}>
-            <ToolsOutlined style={{ fontSize: 32, color: 'white' }} />
+            <ToolOutlined style={{ fontSize: 28, color: 'white' }} />
           </div>
-          <Title level={2} style={{ color: '#0f172a', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>MA Big Data</Title>
-          <Text style={{ color: '#64748b', fontSize: 15 }}>ระบบแจ้งปัญหาและติดตามสถานะงานบำรุงรักษา</Text>
+          <Title level={2} style={{ color: '#f8fafc', margin: 0, fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>MA Big Data</Title>
+          <Text style={{ color: '#94a3b8', fontSize: 13, letterSpacing: '0.02em', display: 'block', marginTop: 8 }}>ENGINEERING ACCESS PORTAL</Text>
         </div>
 
         <Form name="login_form" layout="vertical" onFinish={onFinish} requiredMark={false}>
-          <Form.Item 
-            name="username" 
-            rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้งาน!' }]}
+          <Form.Item
+            name="username"
+            rules={[{ required: true, message: 'INPUT REQUIRED' }]}
           >
-            <Input 
-              prefix={<UserOutlined style={{ color: '#94a3b8' }} />} 
-              placeholder="Username" 
-              size="large" 
-              style={{ borderRadius: 10, height: 50, border: '1px solid #e2e8f0' }}
+            <Input
+              prefix={<UserOutlined style={{ color: '#64748b' }} />}
+              placeholder="USERNAME"
+              size="large"
+              style={{ borderRadius: 6, height: 48, background: '#1e293b', border: '1px solid #334155', color: '#fff' }}
             />
           </Form.Item>
 
-          <Form.Item 
-            name="password" 
-            rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน!' }]}
+          <Form.Item
+            name="password"
+            rules={[{ required: true, message: 'INPUT REQUIRED' }]}
           >
-            <Input.Password 
-              prefix={<LockOutlined style={{ color: '#94a3b8' }} />} 
-              placeholder="Password" 
-              size="large" 
-              style={{ borderRadius: 10, height: 50, border: '1px solid #e2e8f0' }}
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#64748b' }} />}
+              placeholder="PASSWORD"
+              size="large"
+              style={{ borderRadius: 6, height: 48, background: '#1e293b', border: '1px solid #334155', color: '#fff' }}
             />
           </Form.Item>
 
-          <Form.Item style={{ marginTop: 10, marginBottom: 0 }}>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              size="large" 
-              block 
-              loading={loading} 
-              style={{ 
-                borderRadius: 10, 
-                height: 50, 
-                fontWeight: 600, 
-                fontSize: 16,
-                boxShadow: '0 4px 6px -1px rgba(22, 119, 255, 0.2)'
+          <Form.Item style={{ marginTop: 24, marginBottom: 0 }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              block
+              loading={loading}
+              style={{
+                borderRadius: 6,
+                height: 48,
+                fontWeight: 700,
+                fontSize: 14,
+                letterSpacing: '0.05em',
+                background: '#2563eb',
+                border: 'none',
+                textTransform: 'uppercase'
               }}
             >
-              เข้าสู่ระบบ
+              AUTHENTICATE
             </Button>
           </Form.Item>
         </Form>
-
         <Divider plain>
-          <Text style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>หรือเข้าใช้งานผ่านช่องทางอื่น</Text>
+          <Text style={{ fontSize: 11, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>OR CONTINUE WITH</Text>
         </Divider>
 
-        <Flex vertical gap={16} style={{ width: '100%' }}>
+        <Flex vertical gap={12} style={{ width: '100%' }}>
           {/* LINE Button */}
           <Button 
             block 
             size="large" 
             onClick={handleLineLogin}
             style={{ 
-              backgroundColor: '#06C755', 
+              backgroundColor: '#05c46b', 
               color: 'white', 
               border: 'none', 
-              borderRadius: 12,
+              borderRadius: 6,
               fontWeight: 700,
-              height: 54,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 4px 6px -1px rgba(6, 199, 85, 0.2)'
+              height: 48,
+              fontSize: 13,
+              letterSpacing: '0.02em'
             }}
-            className="social-btn-line"
           >
-            <img src="/images/line.png" alt="LINE" style={{ width: 24, height: 24 }} />
-            Sign in with LINE
+            LINE ACCESS
           </Button>
 
           {/* Google Button */}
@@ -174,42 +170,19 @@ export default function Login({ onLoginSuccess }) {
             onClick={handleGoogleLogin}
             style={{ 
               backgroundColor: '#ffffff', 
-              color: '#374151', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: 12,
+              color: '#0f172a', 
+              border: '1px solid #1e293b', 
+              borderRadius: 6,
               fontWeight: 700,
-              height: 54,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+              height: 48,
+              fontSize: 13,
+              letterSpacing: '0.02em'
             }}
-            className="social-btn-google"
           >
-            <img src="/images/google.png" alt="Google" style={{ width: 20, height: 20 }} />
-            Sign in with Google
+            GOOGLE ID
           </Button>
         </Flex>
       </Card>
-
-      <style>{`
-        .social-btn-line:hover {
-          background-color: #05b34c !important;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 15px -3px rgba(6, 199, 85, 0.3) !important;
-        }
-        .social-btn-google:hover {
-          background-color: #f9fafb !important;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-          border-color: #d1d5db !important;
-        }
-        .social-btn-line:active, .social-btn-google:active {
-          transform: translateY(0);
-        }
-      `}</style>
     </div>
   );
 }

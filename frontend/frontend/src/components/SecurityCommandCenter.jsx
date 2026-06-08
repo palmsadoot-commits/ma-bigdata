@@ -35,6 +35,7 @@ const { Title, Text, Paragraph } = Typography;
  */
 export default function SecurityCommandCenter() {
   const { token } = theme.useToken();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [threats, setThreats] = useState([]);
   const [stats, setStats] = useState([]);
   const [blockedIps, setBlockedIps] = useState([]);
@@ -56,7 +57,7 @@ export default function SecurityCommandCenter() {
       setBlockedIps(blockedRes.data || []);
     } catch (err) {
       console.error("Fetch Security Data Error:", err);
-      message.error("ไม่สามารถโหลดข้อมูลความปลอดภัยได้");
+      message.error("NETWORK ERROR: SECURITY DATA FETCH FAILED");
     } finally {
       setLoading(false);
     }
@@ -64,8 +65,13 @@ export default function SecurityCommandCenter() {
 
   useEffect(() => {
     fetchSecurityData();
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
     const interval = setInterval(fetchSecurityData, 30000); // Live refresh ทุก 30 วินาที
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearInterval(interval);
+    };
   }, [fetchSecurityData]);
 
   // --- 🛠️ Logic & Calculations ---
@@ -81,14 +87,14 @@ export default function SecurityCommandCenter() {
   }, [threats]);
 
   const handleBlockIp = async (ip) => {
-    const result = await alertConfirm('ยืนยันการปิดกั้น IP?', `คุณแน่ใจหรือไม่ว่าต้องการบล็อก IP: ${ip} ทันที? ผู้ใช้จาก IP นี้จะไม่สามารถเข้าถึงระบบได้อีก`);
+    const result = await alertConfirm('CONFIRM IP BLOCK', `Are you sure you want to block IP: ${ip} immediately? Access will be terminated.`);
     if (result.isConfirmed) {
       try {
         await axiosInstance.post('/security/block-ip', { ip_address: ip, reason: 'Detected malicious activity' });
-        alertSuccess('ปิดกั้นสำเร็จ', `IP ${ip} ถูกระงับการใช้งานแล้ว`);
+        alertSuccess('BLOCK SUCCESS', `IP ${ip} suspended.`);
         fetchSecurityData();
       } catch (err) {
-        alertError('ผิดพลาด', 'ไม่สามารถปิดกั้น IP ได้');
+        alertError('ERROR', 'Failed to block IP.');
       }
     }
   };
@@ -96,10 +102,10 @@ export default function SecurityCommandCenter() {
   const handleUnblockIp = async (ip) => {
     try {
       await axiosInstance.post('/security/unblock-ip', { ip_address: ip });
-      alertSuccess('ยกเลิกสำเร็จ', `ปลดบล็อก IP ${ip} เรียบร้อยแล้ว`);
+      alertSuccess('UNBLOCK SUCCESS', `IP ${ip} reinstated.`);
       fetchSecurityData();
     } catch (err) {
-      alertError('ผิดพลาด', 'ไม่สามารถยกเลิกการปิดกั้นได้');
+      alertError('ERROR', 'Failed to unblock IP.');
     }
   };
 
@@ -115,15 +121,15 @@ export default function SecurityCommandCenter() {
   // --- 🎨 UI Components ---
 
   const killChainPhases = [
-    { key: 'Reconnaissance', title: 'การสอดแนม (Recon)', desc: 'ค้นหาช่องโหว่และรวบรวมข้อมูลระบบ', color: '#3b82f6', icon: <EyeOutlined /> },
-    { key: 'Access', title: 'การพยายามเข้าถึง', desc: 'พยายามข้ามระบบตรวจสอบสิทธิ์', color: '#f59e0b', icon: <ThunderboltOutlined /> },
-    { key: 'Execution', title: 'การโจมตีระบบ', desc: 'การส่งคำสั่งอันตราย (SQLi, XSS)', color: '#ef4444', icon: <WarningOutlined /> },
-    { key: 'Persistence', title: 'การฝังตัว', desc: 'พยายามยึดครองระบบในระยะยาว', color: '#8b5cf6', icon: <LockOutlined /> }
+    { key: 'Reconnaissance', title: 'RECONNAISSANCE', desc: 'Active scanning and system mapping.', color: '#3b82f6', icon: <EyeOutlined /> },
+    { key: 'Access', title: 'ACCESS ATTEMPT', desc: 'Authentication bypass efforts.', color: '#f59e0b', icon: <ThunderboltOutlined /> },
+    { key: 'Execution', title: 'ATTACK EXECUTION', desc: 'Malicious payload injection (SQLi, XSS).', color: '#ef4444', icon: <WarningOutlined /> },
+    { key: 'Persistence', title: 'PERSISTENCE', desc: 'Long-term foothold attempt.', color: '#8b5cf6', icon: <LockOutlined /> }
   ];
 
   const columns = [
     {
-      title: 'ผู้โจมตี (Attacker)',
+      title: 'ATTACKER',
       dataIndex: 'ip_address',
       key: 'who',
       render: (text) => (
@@ -134,58 +140,58 @@ export default function SecurityCommandCenter() {
             {blockedIps.some(b => b.ip_address === text) && <Tag color="error">BLOCKED</Tag>}
           </Space>
           <Button type="link" size="small" onClick={() => showTimeline(text)} style={{ padding: 0, fontSize: '12px' }}>
-            <ClockCircleOutlined /> ดูไทม์ไลน์การโจมตี
+            VIEW ATTACK JOURNEY
           </Button>
         </Flex>
       )
     },
     {
-      title: 'ขั้นตอน (Kill Chain)',
+      title: 'KILL CHAIN PHASE',
       dataIndex: 'kill_chain_phase',
       key: 'phase',
       render: (phase) => {
         const info = killChainPhases.find(p => p.key === phase);
         return (
-          <Tag color={info?.color} style={{ borderRadius: '20px', padding: '2px 12px' }}>
-            {info?.icon} {info?.title || phase}
+          <Tag color={info?.color} style={{ borderRadius: '4px', padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>
+            {info?.title || phase}
           </Tag>
         );
       }
     },
     {
-      title: 'รายละเอียด (Attack Type)',
+      title: 'ATTACK TYPE',
       dataIndex: 'attack_type',
       key: 'what',
-      render: (text) => <Text strong style={{ color: 'var(--text-main)' }}>{text}</Text>
+      render: (text) => <Text strong style={{ color: 'var(--text-main)', fontSize: 13 }}>{text.toUpperCase()}</Text>
     },
     {
-      title: 'เป้าหมาย (Target)',
+      title: 'TARGET',
       dataIndex: 'target_url',
       key: 'where',
       render: (text, record) => (
         <Tooltip title={`Method: ${record.method}`}>
           <div style={{ maxWidth: '200px' }}>
-            <Text code ellipsis style={{ fontSize: '12px' }}>{text}</Text>
+            <Text code ellipsis style={{ fontSize: '11px' }}>{text}</Text>
           </div>
         </Tooltip>
       )
     },
     {
-      title: 'วัน-เวลา',
+      title: 'TIMESTAMP',
       dataIndex: 'created_at',
       key: 'when',
-      render: (date) => <Text type="secondary" style={{ fontSize: '12px' }}>{dayjs(date).format('DD/MM/YYYY HH:mm:ss')}</Text>
+      render: (date) => <Text type="secondary" style={{ fontSize: '11px', fontFamily: 'monospace' }}>{dayjs(date).format('DD/MM/YY HH:mm:ss')}</Text>
     },
     {
-      title: 'ดำเนินการ',
+      title: 'ACTION',
       key: 'action',
       align: 'center',
       render: (_, record) => (
         <Space>
           {!blockedIps.some(b => b.ip_address === record.ip_address) ? (
-            <Button danger ghost size="small" icon={<StopOutlined />} onClick={() => handleBlockIp(record.ip_address)}>ระงับ IP</Button>
+            <Button danger ghost size="small" icon={<StopOutlined />} onClick={() => handleBlockIp(record.ip_address)}>TERMINATE</Button>
           ) : (
-            <Button size="small" icon={<SyncOutlined />} onClick={() => handleUnblockIp(record.ip_address)}>ปลดบล็อก</Button>
+            <Button size="small" icon={<SyncOutlined />} onClick={() => handleUnblockIp(record.ip_address)}>REINSTATE</Button>
           )}
         </Space>
       )
@@ -193,19 +199,18 @@ export default function SecurityCommandCenter() {
   ];
 
   return (
-    <div style={{ padding: 'clamp(12px, 3vw, 24px)', backgroundColor: 'var(--bg-app)', minHeight: '100vh' }}>
+    <div style={{ padding: 'clamp(16px, 3vw, 32px)', backgroundColor: 'var(--bg-app)', minHeight: '100vh' }}>
       {/* Header Section */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <SafetyCertificateOutlined style={{ color: '#10b981' }} />
-            <span>ศูนย์ควบคุมความปลอดภัยไซเบอร์</span>
+          <Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            SECURITY COMMAND CENTER
           </Title>
-          <Text type="secondary">ระบบวิเคราะห์พฤติกรรมการโจมตีและปิดกั้นภัยคุกคามแบบเรียลไทม์</Text>
+          <Text type="secondary" style={{ letterSpacing: '0.02em' }}>REAL-TIME THREAT ANALYSIS AND PERIMETER CONTROL</Text>
         </div>
         <Space>
-          <Button icon={<DownloadOutlined />} onClick={() => message.info("Feature Export จะพร้อมใช้งานในเวอร์ชันถัดไป")}>ส่งออกรายงาน</Button>
-          <Button type="primary" icon={<SyncOutlined />} onClick={fetchSecurityData} loading={loading}>รีเฟรชข้อมูล</Button>
+          <Button icon={<DownloadOutlined />} onClick={() => message.info("EXPORT CAPABILITY: PENDING NEXT UPDATE")}>EXPORT DATA</Button>
+          <Button type="primary" icon={<SyncOutlined />} onClick={fetchSecurityData} loading={loading} style={{ fontWeight: 600 }}>REFRESH INTEL</Button>
         </Space>
       </div>
 
@@ -317,20 +322,26 @@ export default function SecurityCommandCenter() {
         title={
           <Space>
             <HistoryOutlined style={{ color: token.colorPrimary }} />
-            <span>การวิเคราะห์เส้นทางการโจมตีเชิงลึก: <Text strong type="danger">{selectedIp}</Text></span>
+            <span>ATTACK ANALYSIS: <Text strong type="danger">{selectedIp}</Text></span>
           </Space>
         }
         open={isTimelineModalVisible}
         onCancel={() => setIsTimelineModalVisible(false)}
-        footer={[<Button key="close" onClick={() => setIsTimelineModalVisible(false)}>ปิดหน้าต่าง</Button>]}
-        width={1000}
+        footer={[<Button key="close" onClick={() => setIsTimelineModalVisible(false)}>CLOSE</Button>]}
+        width={isMobile ? '95%' : 1000}
         centered
-        styles={{ body: { padding: '24px', backgroundColor: 'var(--bg-app)' } }}
+        styles={{ body: { padding: isMobile ? '12px' : '24px', backgroundColor: 'var(--bg-app)' } }}
       >
-        <Row gutter={24}>
+        <Row gutter={[24, 24]}>
           {/* Left: Timeline Summary */}
-          <Col xs={24} md={10} style={{ borderRight: '1px solid var(--border-color)', maxHeight: '65vh', overflowY: 'auto' }}>
-            <Title level={5} style={{ marginBottom: '20px' }}><ClockCircleOutlined /> ลำดับเหตุการณ์ (Kill Chain)</Title>
+          <Col xs={24} md={10} style={{ 
+            borderRight: isMobile ? 'none' : '1px solid var(--border-color)', 
+            borderBottom: isMobile ? '1px solid var(--border-color)' : 'none',
+            paddingBottom: isMobile ? 24 : 0,
+            maxHeight: isMobile ? '40vh' : '65vh', 
+            overflowY: 'auto' 
+          }}>
+            <Title level={5} style={{ marginBottom: '20px', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>KILL CHAIN SEQUENCE</Title>
             {selectedIp && attackerJourneys[selectedIp] ? (
               <Timeline
                 mode="start"
@@ -346,26 +357,26 @@ export default function SecurityCommandCenter() {
 
                   return {
                     color: phaseInfo?.color,
-                    title: <Text type="secondary" style={{ fontSize: '11px' }}>{dayjs(t.created_at).format('HH:mm:ss')}</Text>,
+                    title: <Text type="secondary" style={{ fontSize: '10px', fontFamily: 'monospace' }}>{dayjs(t.created_at).format('HH:mm:ss')}</Text>,
                     content: (
                       <div 
                         onClick={() => setSelectedThreat(t)}
                         style={{ 
                           cursor: 'pointer',
                           padding: '12px', 
-                          borderRadius: '10px', 
+                          borderRadius: '8px', 
                           backgroundColor: isSelected ? `${phaseInfo?.color}15` : 'var(--bg-card)',
                           border: isSelected ? `1px solid ${phaseInfo?.color}` : '1px solid var(--border-color)',
                           boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                          transition: 'all 0.3s ease'
+                          transition: 'all 0.2s ease'
                         }}
                       >
                         <Flex vertical gap={2} style={{ width: '100%' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Tag color={severity.color} style={{ fontSize: '10px', fontWeight: 'bold' }}>{severity.label}</Tag>
-                            <Text type="secondary" style={{ fontSize: '10px' }}>{phaseInfo?.title}</Text>
+                            <Tag color={severity.color} style={{ fontSize: '9px', fontWeight: 'bold' }}>{severity.label}</Tag>
+                            <Text type="secondary" style={{ fontSize: '9px', fontWeight: 600 }}>{phaseInfo?.title}</Text>
                           </div>
-                          <Text strong style={{ fontSize: '13px', display: 'block' }}>{t.attack_type}</Text>
+                          <Text strong style={{ fontSize: '12px', display: 'block' }}>{t.attack_type.toUpperCase()}</Text>
                         </Flex>
                       </div>
                     )
@@ -378,12 +389,12 @@ export default function SecurityCommandCenter() {
           {/* Right: 5W1H & Raw Log Analysis */}
           <Col xs={24} md={14}>
             {selectedThreat ? (
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', height: '100%', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.02)' }}>
-                <Title level={4} style={{ marginTop: 0, color: token.colorPrimary }}>รายละเอียดเหตุการณ์ (5W1H Analysis)</Title>
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: isMobile ? '16px' : '24px', borderRadius: '12px', height: '100%', border: '1px solid var(--border-color)' }}>
+                <Title level={4} style={{ marginTop: 0, color: token.colorPrimary, fontSize: 16, fontWeight: 800 }}>EVENT ANALYSIS (5W1H)</Title>
                 <div style={{ marginBottom: '20px' }}>
-                  <Tag color="processing">สถานะ: ตรวจพบ (Detected)</Tag>
-                  <Tag color={killChainPhases.find(p => p.key === selectedThreat.kill_chain_phase)?.color}>
-                    เฟสการโจมตี: {killChainPhases.find(p => p.key === selectedThreat.kill_chain_phase)?.title}
+                  <Tag color="processing" style={{ fontSize: 10 }}>STATUS: DETECTED</Tag>
+                  <Tag color={killChainPhases.find(p => p.key === selectedThreat.kill_chain_phase)?.color} style={{ fontSize: 10 }}>
+                    PHASE: {killChainPhases.find(p => p.key === selectedThreat.kill_chain_phase)?.title}
                   </Tag>
                 </div>
 
@@ -391,45 +402,45 @@ export default function SecurityCommandCenter() {
                   column={1} 
                   size="small" 
                   bordered={false}
-                  styles={{ label: { width: '120px', fontWeight: 'bold', color: 'var(--text-main)' } }}
+                  styles={{ label: { width: isMobile ? '80px' : '120px', fontWeight: 'bold', color: 'var(--text-main)', fontSize: 12 } }}
                 >
-                  <Descriptions.Item label={<Space><UserOutlined /> Who (ใคร)</Space>}>
-                    <Text copyable>IP: {selectedThreat.ip_address}</Text>
+                  <Descriptions.Item label="WHO">
+                    <Text copyable style={{ fontSize: 12 }}>{selectedThreat.ip_address}</Text>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<Space><ThunderboltOutlined /> What (ทำอะไร)</Space>}>
-                    {`${selectedThreat.method} ส่งข้อมูลอันตราย (${selectedThreat.attack_type})`}
+                  <Descriptions.Item label="WHAT">
+                    <Text style={{ fontSize: 12 }}>{`${selectedThreat.method} MALICIOUS PAYLOAD (${selectedThreat.attack_type.toUpperCase()})`}</Text>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<Space><EnvironmentOutlined /> Where (ที่ไหน)</Space>}>
-                    {`Endpoint: ${selectedThreat.target_url}`}
+                  <Descriptions.Item label="WHERE">
+                    <Text code style={{ fontSize: 11 }}>{selectedThreat.target_url}</Text>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<Space><ClockCircleOutlined /> When (เมื่อไหร่)</Space>}>
-                    {dayjs(selectedThreat.created_at).format('DD/MM/YYYY HH:mm:ss.SSS')}
+                  <Descriptions.Item label="WHEN">
+                    <Text style={{ fontSize: 11, fontFamily: 'monospace' }}>{dayjs(selectedThreat.created_at).format('DD/MM/YYYY HH:mm:ss.SSS')}</Text>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<Space><InfoCircleOutlined /> How (อย่างไร)</Space>}>
-                    {`พยายามใช้เทคนิค ${selectedThreat.attack_type} ผ่าน HTTP ${selectedThreat.method} Request`}
+                  <Descriptions.Item label="HOW">
+                    <Text style={{ fontSize: 11 }}>{`PROTOCOL ABUSE VIA HTTP ${selectedThreat.method}`}</Text>
                   </Descriptions.Item>
                 </Descriptions>
 
-                <Divider style={{ margin: '16px 0' }} />
+                <Divider style={{ margin: '20px 0' }} />
                 
-                <Title level={5}><CodeOutlined /> Raw Log Data (บันทึกข้อมูลดิบ)</Title>
+                <Title level={5} style={{ fontSize: 12, fontWeight: 700 }}>RAW TELEMETRY DATA</Title>
                 <div style={{ 
-                  backgroundColor: '#1e293b', 
-                  color: '#e2e8f0', 
+                  backgroundColor: '#020617', 
+                  color: '#94a3b8', 
                   padding: '16px', 
-                  borderRadius: '8px', 
-                  fontSize: '12px',
+                  borderRadius: '6px', 
+                  fontSize: '11px',
                   fontFamily: 'monospace',
-                  maxHeight: '200px',
+                  maxHeight: '180px',
                   overflowY: 'auto',
-                  border: '1px solid #334155'
+                  border: '1px solid #1e293b'
                 }}>
-                  {dayjs(selectedThreat.created_at).format('HH:mm:ss')} [SECURITY] {selectedThreat.method} {selectedThreat.target_url} - IP: {selectedThreat.ip_address} - Payload: {selectedThreat.payload}
+                  {dayjs(selectedThreat.created_at).format('HH:mm:ss')} [SEC_INTEL] {selectedThreat.method} {selectedThreat.target_url} - PAYLOAD: {selectedThreat.payload}
                 </div>
               </div>
             ) : (
-              <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Empty description="เลือกเหตุการณ์จากไทม์ไลน์เพื่อวิเคราะห์" />
+              <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                <Empty description="SELECT EVENT FOR ANALYSIS" />
               </div>
             )}
           </Col>
