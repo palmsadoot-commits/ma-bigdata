@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Typography, Tag, Button, Spin, Result, Form, Select, Input, Row, Col, Divider, Space, Steps, Upload, Timeline, Card, Avatar, theme, App, Alert, Tooltip, Popover, Modal } from 'antd'; 
+import { Typography, Tag, Button, Spin, Result, Form, Select, Input, Row, Col, Divider, Space, Steps, Upload, Timeline, Card, Avatar, theme, App, Alert, Tooltip, Popover, Modal, Grid } from 'antd'; 
 import { 
   ArrowLeftOutlined, ClockCircleOutlined, OrderedListOutlined, PrinterOutlined, 
   FileImageOutlined, FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FilePptOutlined, FileOutlined,
@@ -24,6 +24,7 @@ export default function TicketDetail() {
   const { message } = App.useApp();
   const { user: currentUser } = useAuth();
   const { token } = useToken();
+  const screens = Grid.useBreakpoint();
   const { id } = useParams();
   const navigate = useNavigate();
   const [ticket, setTicket] = useState(null);
@@ -51,12 +52,15 @@ export default function TicketDetail() {
   const handlePreviewFile = (filename) => {
     if (!filename) return;
     const fileUrl = `${BACKEND_URL}/uploads/${filename}`;
+    // ✅ บังคับใช้ Public Domain เสมอ เพื่อให้ Microsoft Server วิ่งมาดึงไฟล์จากเซิร์ฟเวอร์จริงได้
+    const publicFileUrl = `https://ma-bigdata.mol.go.th/uploads/${filename}`;
+    
     const ext = filename.split('.').pop().toLowerCase();
     
     setPreviewFilename(filename);
     
     if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-      setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`);
+      setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicFileUrl)}`);
       setPreviewType('office');
       setPreviewModalVisible(true);
     } else if (ext === 'pdf') {
@@ -339,7 +343,7 @@ export default function TicketDetail() {
   const modernCardStyle = { borderRadius: 12, boxShadow: token.boxShadowTertiary, border: 'none', marginBottom: 20 };
 
   return (
-    <div style={{ width: '100%', padding: '10px 20px', margin: '0 auto', backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
+    <div style={{ width: '100%', padding: screens.xs ? '10px 12px' : '10px 24px', margin: '0 auto', backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ borderRadius: 8 }}>ย้อนกลับ</Button>
         <Space>
@@ -357,34 +361,39 @@ export default function TicketDetail() {
         </Space>
       </div>
 
-      <Card style={modernCardStyle} styles={{ body: { padding: '24px 40px' } }}>
-        <Steps current={getStepCurrent()} size="small" items={stepItems} status={isRejected ? 'error' : 'process'} />
+      <Card style={modernCardStyle} styles={{ body: { padding: screens.xs ? '16px 12px' : '24px 40px' } }}>
+        <Steps current={getStepCurrent()} size="small" items={stepItems} status={isRejected ? 'error' : 'process'} style={screens.xs ? { gap: '4px' } : {}} />
       </Card>
 
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={15}>
-          <Card style={modernCardStyle} styles={{ body: { padding: '30px' } }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 20, borderBottom: `2px solid ${token.colorBorderSecondary}` }}>
-              <Title level={3} style={{ margin: 0 }}>รหัสใบงาน {ticket.ticket_number}</Title>
+          <Card style={modernCardStyle} styles={{ body: { padding: screens.xs ? '16px' : '30px' } }}>
+            <div style={{ display: 'flex', flexDirection: screens.xs ? 'column' : 'row', justifyContent: 'space-between', alignItems: screens.xs ? 'flex-start' : 'center', gap: screens.xs ? 12 : 0, marginBottom: 20, paddingBottom: 20, borderBottom: `2px solid ${token.colorBorderSecondary}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: screens.xs ? '100%' : 'auto', alignItems: 'center' }}>
+                <Title level={screens.xs ? 4 : 3} style={{ margin: 0 }}>รหัสใบงาน {ticket.ticket_number}</Title>
+                {screens.xs && getStatusTag(ticket.status_id)}
+              </div>
               <Title level={5} style={{ margin: 0 }}>วันเวลาที่แจ้ง <Text>{formatThaiDate(ticket.created_at)}</Text></Title>
-              {getStatusTag(ticket.status_id)}
+              {!screens.xs && getStatusTag(ticket.status_id)}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-              <Avatar size={55} icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary, marginRight: 15 }} />
-              <div>
+            <div style={{ display: 'flex', alignItems: screens.xs ? 'flex-start' : 'center', marginBottom: 20 }}>
+              <Avatar size={55} icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary, marginRight: 15, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <Title level={5} style={{ display: 'flex', alignItems: 'left', marginBottom: -2 }}>ผู้แจ้ง </Title>
-                <Text type="secondary">
-                  ชื่อ: {ticket.reporter_name_snap || ticket.reporter_name} | หน่วยงาน: {ticket.reporter_agency_snap || 'ไม่ระบุหน่วยงาน'}
+                <Text type="secondary" style={{ display: 'block', wordBreak: 'break-word' }}>
+                  ชื่อ: {ticket.reporter_name_snap || ticket.reporter_name} | หน่วยงาน: {ticket.reporter_agency_snap || ticket.agency || 'ไม่ระบุ'}
                 </Text>
               </div>
             </div>
             <Space size="large" style={{ marginBottom: 15, display: 'flex', flexWrap: 'wrap' }}>
-              <div>
-                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>หมวดหมู่ระบบ</Text>
-                <Tag color="blue" icon={<DesktopOutlined />} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 6 }}>{ticket.category_name}</Tag>
+              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 5 }}>หมวดหมู่ระบบ</Text>
+                <Tag color="blue" icon={<DesktopOutlined />} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 6, whiteSpace: 'normal', height: 'auto', display: 'inline-flex', alignItems: 'flex-start', maxWidth: '100%' }}>
+                  <span style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{ticket.category_name}</span>
+                </Tag>
               </div>
               <div>
-                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>เลขครุภัณฑ์ / อุปกรณ์</Text>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 5 }}>เลขครุภัณฑ์ / อุปกรณ์</Text>
                 <Text strong>{ticket.equipment_no || '-'}</Text>
               </div>
             </Space>
@@ -550,6 +559,25 @@ export default function TicketDetail() {
         </Col>
 
         <Col xs={24} lg={9}>
+          {logs.filter(log => ['ส่งตรวจสอบ', 'ตีกลับให้แก้ไขใหม่', 'อัปโหลดคู่มือการแก้ไข'].includes(log.action)).length > 0 && (
+            <Card title={<><OrderedListOutlined style={{ fontSize: '30px', color: token.colorError }} />  ประวัติการแก้ไข</>} style={{ ...modernCardStyle, marginBottom: 24 }} styles={{ header: { borderBottom: `1px solid ${token.colorBorderSecondary}`, backgroundColor: token.colorFillAlter } }}>
+              {[...logs].filter(log => ['ส่งตรวจสอบ', 'ตีกลับให้แก้ไขใหม่', 'อัปโหลดคู่มือการแก้ไข'].includes(log.action)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(log => {
+                const isTech = log.action === 'ส่งตรวจสอบ' || log.action === 'อัปโหลดคู่มือการแก้ไข';
+                const avatarColor = isTech ? token.colorInfo : token.colorPrimary; 
+                return (
+                  <div key={log.log_id} style={{ display: 'flex', marginBottom: 20, flexDirection: isTech ? 'row-reverse' : 'row' }}>
+                     <Avatar size={45} icon={<UserOutlined />} style={{ backgroundColor: avatarColor, margin: isTech ? '0 0 0 15px' : '0 15px 0 0', flexShrink: 0 }} />
+                     <div style={{ width: screens.xs ? '90%' : '45%', minWidth: screens.xs ? 'auto' : '300px', backgroundColor: isTech ? token.colorInfoBg : token.colorErrorBg, border: `1px solid ${isTech ? token.colorInfoBorder : token.colorErrorBorder}`, padding: screens.xs ? '12px 15px' : '15px 20px', borderRadius: 12 }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' }}><Text strong style={{ color: isTech ? token.colorInfoText : token.colorErrorText, fontSize: '15px' }}>{log.actor_name} {isTech ? '(ช่าง)' : '(ผู้แจ้ง)'}</Text></div>
+                       {renderLogDetailWithFiles(log.detail)}
+                       <div style={{ textAlign: 'right' }}><Text type="secondary" style={{ fontSize: 11 }}>{formatThaiDate(log.created_at)}</Text></div>
+                     </div>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+
           <Card title={<><ClockCircleOutlined spin style={{ fontSize: '30px', color: token.colorPrimary }} /> Timeline & SLA</>} style={modernCardStyle} styles={{ header: { borderBottom: `1px solid ${token.colorBorderSecondary}` } }}>
             <div style={{ backgroundColor: Number(ticket.is_cm) === 1 ? (ticket.is_sla_breached === 1 ? token.colorErrorBg : token.colorSuccessBg) : token.colorBgLayout, padding: 15, borderRadius: 8, marginBottom: 20, textAlign: 'center', border: `1px solid ${Number(ticket.is_cm) === 1 ? (ticket.is_sla_breached === 1 ? token.colorErrorBorder : token.colorSuccessBorder) : token.colorBorderSecondary}` }}>
               <Text type="secondary">{(Number(ticket.status_id) >= 4) ? 'เวลาที่ใช้ในการแก้ไข' : 'เวลาที่ใช้ไปแล้ว (ขณะนี้)'}</Text><br/>
@@ -590,25 +618,6 @@ export default function TicketDetail() {
               ].sort((a, b) => a.timestamp - b.timestamp)}
             />
           </Card>
-
-          {logs.filter(log => ['ส่งตรวจสอบ', 'ตีกลับให้แก้ไขใหม่', 'อัปโหลดคู่มือการแก้ไข'].includes(log.action)).length > 0 && (
-            <Card title={<><OrderedListOutlined style={{ fontSize: '30px', color: token.colorError }} />  ประวัติการแก้ไข</>} style={modernCardStyle} styles={{ header: { borderBottom: `1px solid ${token.colorBorderSecondary}`, backgroundColor: token.colorFillAlter } }}>
-              {[...logs].filter(log => ['ส่งตรวจสอบ', 'ตีกลับให้แก้ไขใหม่', 'อัปโหลดคู่มือการแก้ไข'].includes(log.action)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(log => {
-                const isTech = log.action === 'ส่งตรวจสอบ' || log.action === 'อัปโหลดคู่มือการแก้ไข';
-                const avatarColor = isTech ? token.colorInfo : token.colorPrimary; 
-                return (
-                  <div key={log.log_id} style={{ display: 'flex', marginBottom: 20, flexDirection: isTech ? 'row-reverse' : 'row' }}>
-                     <Avatar size={45} icon={<UserOutlined />} style={{ backgroundColor: avatarColor, margin: isTech ? '0 0 0 15px' : '0 15px 0 0' }} />
-                     <div style={{ width: '45%', minWidth: '300px', backgroundColor: isTech ? token.colorInfoBg : token.colorErrorBg, border: `1px solid ${isTech ? token.colorInfoBorder : token.colorErrorBorder}`, padding: '15px 20px', borderRadius: 12 }}>
-                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' }}><Text strong style={{ color: isTech ? token.colorInfoText : token.colorErrorText, fontSize: '15px' }}>{log.actor_name} {isTech ? '(ช่าง)' : '(ผู้แจ้ง)'}</Text></div>
-                       {renderLogDetailWithFiles(log.detail)}
-                       <div style={{ textAlign: 'right' }}><Text type="secondary" style={{ fontSize: 11 }}>{formatThaiDate(log.created_at)}</Text></div>
-                     </div>
-                  </div>
-                );
-              })}
-            </Card>
-          )}
         </Col>
       </Row>
 
@@ -628,9 +637,9 @@ export default function TicketDetail() {
             ปิดหน้าต่าง
           </Button>
         ]}
-        width={900}
+        width="80vw"
         style={{ top: 20 }}
-        styles={{ body: { height: '75vh', padding: 0 } }}
+        styles={{ body: { height: '80vh', padding: 0 } }}
         destroyOnHidden
       >
         {previewType === 'image' && (
@@ -646,16 +655,6 @@ export default function TicketDetail() {
             height="100%" 
             style={{ border: 'none' }} 
             allowFullScreen 
-          />
-        )}
-        {previewType === 'office' && (
-          <Alert 
-            title="หมายเหตุการแสดงผล Office (Word/Excel/PowerPoint)" 
-            description="หากท่านทดสอบระบบนี้ผ่านเครือข่ายภายใน (Localhost) เอกสารอาจไม่แสดงผลเนื่องจากบริการ Microsoft Online ไม่สามารถเข้าถึงไฟล์ภายในเครื่องท่านได้ ในกรณีนี้กรุณากด 'ดาวน์โหลดไฟล์ต้นฉบับ' ด้านล่าง" 
-            type="info" 
-            showIcon 
-            banner
-            style={{ margin: 0, borderTop: '1px solid #91caff' }}
           />
         )}
       </Modal>

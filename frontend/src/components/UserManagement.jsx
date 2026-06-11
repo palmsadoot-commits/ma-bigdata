@@ -39,7 +39,14 @@ export default function UserManagement() {
   useEffect(() => {
     if (isModalVisible && editingUser) {
       form.setFieldsValue({
-        ...editingUser,
+        username: editingUser.username,
+        first_name: editingUser.first_name,
+        last_name: editingUser.last_name,
+        email: editingUser.email,
+        agency: editingUser.agency,
+        role: editingUser.role,
+        project_id: editingUser.project_id,
+        is_active: editingUser.is_active,
         new_password: '' 
       });
     } else if (isModalVisible && !editingUser) {

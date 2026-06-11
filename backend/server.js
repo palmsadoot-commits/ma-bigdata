@@ -16,6 +16,8 @@ const { simpleSanitize, getRealIp } = require('./utils/dataHelper'); // ✅ น�
 const cronService = require('./services/cronService');
 const { authenticateToken, requireRole } = require('./middleware/auth');
 
+const projectRoutes = require('./routes/projectRoutes');
+
 const app = express();
 
 // ✅ ตั้งค่า Trust Proxy สำหรับการรันหลัง Proxy (เช่น ngrok, Nginx, Cloudflare)
@@ -104,7 +106,6 @@ const userRoutes = require('./routes/userRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
-const projectRoutes = require('./routes/projectRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const geminiRoutes = require('./routes/geminiRoutes'); // ✅ เพิ่ม Gemini Routes
@@ -128,7 +129,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/equipments', equipmentRoutes);
-app.use('/api/projects', projectRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/statuses', statusRoutes);
 app.use('/api/settings', settingRoutes);
@@ -139,6 +139,7 @@ app.use('/api/gemini', geminiRoutes); // ✅ ติดตั้ง Gemini Routes
 app.use('/api/cleanup', cleanupRoutes); // ✅ ติดตั้ง Cleanup Routes
 app.use('/api/security', securityRoutes); // ✅ ติดตั้ง Security Routes
 app.use('/api/reports', reportRoutes); // ✅ ติดตั้ง Report Routes
+app.use('/api/projects', projectRoutes); // ✅ ระบบติดตามความคืบหน้าโครงการ (Plural)
 
 // ✅ [New] Health Check Endpoint
 app.get('/api/health', async (req, res) => {

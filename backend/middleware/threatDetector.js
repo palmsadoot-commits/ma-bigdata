@@ -1,6 +1,6 @@
 const db = require('../config/db');
 const { sysLog } = require('../utils/logger');
-const { getRealIp } = require('../utils/dataHelper');
+const { getRealIp, getGeoLocation } = require('../utils/dataHelper');
 
 // Cache สำหรับ IP ที่ถูกบล็อก และการตั้งค่าความปลอดภัย
 let blockedIpCache = new Set();

@@ -53,6 +53,7 @@ import VendorManagement from '../components/VendorManagement';
 import SecurityCommandCenter from '../components/SecurityCommandCenter'; // ✅ นำเข้า Security Dashboard
 import MaintenanceReportDashboard from '../components/MaintenanceReportDashboard'; // ✅ นำเข้า Report Dashboard
 import BusinessIntelligenceDashboard from '../components/BusinessIntelligenceDashboard'; // ✅ นำเข้า BI Dashboard
+import ProjectTracker from '../components/ProjectTracker'; // ✅ นำเข้าระบบติดตามโครงการ
 import ErrorDisplay from '../components/ErrorDisplay';
 import GeminiChat from '../components/GeminiChat'; // ✅ เพิ่ม Gemini Chat
 
@@ -255,6 +256,7 @@ function MainLayout() {
             <Route path="/vendors" element={user?.role === 'admin' ? <VendorManagement /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports" element={user?.role === 'admin' ? <MaintenanceReportDashboard /> : <Navigate to="/dashboard" replace />} />
             <Route path="/bi-dashboard" element={(user?.role === 'admin' || user?.role === 'manager') ? <BusinessIntelligenceDashboard /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/project-tracker" element={<ProjectTracker />} />
             <Route path="/login-success" element={<LoginSuccess />} />
             <Route path="/error/:code" element={<ErrorDisplay />} />
             <Route path="/error-test" element={<ErrorDisplay allowPreview={true} />} />

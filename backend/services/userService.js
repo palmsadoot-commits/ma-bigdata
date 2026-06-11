@@ -32,7 +32,7 @@ const userService = {
      * ดึงรายการผู้ใช้งานทั้งหมด
      */
     async getAllUsers() {
-        const sql = `SELECT u.user_id, u.username, u.first_name, u.last_name, u.role, u.agency, u.project_id, u.user_photo, p.project_name FROM users u LEFT JOIN projects p ON u.project_id = p.project_id ORDER BY u.created_at DESC`;
+        const sql = `SELECT u.user_id, u.username, u.first_name, u.last_name, u.role, u.agency, u.project_id, u.email, u.is_active, u.user_photo, p.project_name FROM users u LEFT JOIN projects p ON u.project_id = p.project_id ORDER BY u.created_at DESC`;
         const [rows] = await db.query(sql);
         return rows;
     },

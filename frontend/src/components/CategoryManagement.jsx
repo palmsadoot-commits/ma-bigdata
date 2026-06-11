@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Table, Button, Space, Typography, Tag, Modal, Form, 
   Input, Select, Popconfirm, Row, Col, Tabs, InputNumber, 
-  Switch, message, Divider, Badge, theme, Empty 
+  Switch, message, Divider, Badge, theme, Empty, Flex
 } from 'antd';
 import { 
   AppstoreOutlined, PlusOutlined, EditOutlined, DeleteOutlined, 
@@ -291,32 +291,32 @@ export default function CategoryManagement() {
         .modern-tabs .ant-tabs-tab-active .ant-tabs-tab-btn, .modern-tabs .ant-tabs-tab-active .ant-tabs-tab-btn span { color: #ffffff !important; }
       `}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
-        <div>
+      <Flex wrap="wrap" gap="middle" justify="space-between" align="center" style={{ marginBottom: 30 }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           {selectedProject ? (
-            <Space align="center" size="middle">
+            <Flex wrap="wrap" gap="middle" align="center">
               <Button icon={<ArrowLeftOutlined />} onClick={() => setSelectedProject(null)} style={{ borderRadius: '10px', height: '40px' }}>ย้อนกลับ</Button>
-              <Title level={3} style={{ color: '#1e293b', margin: 0 }}>
+              <Title level={3} style={{ color: '#1e293b', margin: 0, wordBreak: 'break-word' }}>
                 <DatabaseOutlined style={{ color: '#0ea5e9', marginRight: '8px' }}/> โครงการ: {selectedProject.project_name}
               </Title>
-            </Space>
+            </Flex>
           ) : (
-            <Space size="large">
-              <Title level={3} style={{ color: '#1e293b', margin: 0 }}>
+            <Flex wrap="wrap" gap="middle" align="center">
+              <Title level={3} style={{ color: '#1e293b', margin: 0, wordBreak: 'break-word', flex: '1 1 auto', minWidth: '250px' }}>
                 <AppstoreOutlined style={{ color: '#0ea5e9', marginRight: '10px' }}/> จัดการโครงการและหมวดหมู่
               </Title>
               <Search 
                 placeholder="ค้นหาชื่อโครงการ, ผู้รับจ้าง หรือสัญญา..." 
                 allowClear 
-                style={{ width: 350 }} 
+                style={{ width: '100%', maxWidth: 350, flex: '1 1 auto' }} 
                 onSearch={v => setSearchText(v)}
                 onChange={e => setSearchText(e.target.value)}
                 prefix={<SearchOutlined />}
               />
-            </Space>
+            </Flex>
           )}
         </div>
-        <Space>
+        <Space wrap style={{ justifyContent: 'flex-end', flex: '1 1 auto' }}>
           {!selectedProject ? (
             <Button type="primary" icon={<SettingOutlined />} size="large" style={{ backgroundColor: '#2a1a4a', borderRadius: '10px' }} onClick={handleProjectManage}>จัดการโครงการ & สัญญา</Button>
           ) : (
@@ -326,7 +326,7 @@ export default function CategoryManagement() {
             </>
           )}
         </Space>
-      </div>
+      </Flex>
 
       {selectedProject ? renderCategoryTabs() : renderProjectCards()}
 

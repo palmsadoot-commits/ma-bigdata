@@ -41,14 +41,15 @@ const ticketService = {
      */
     async getTicketById(id) {
         const [rows] = await db.query(`
-            SELECT 
-                t.*, ts.status_name, ts.status_color, c.category_name, 
+            SELECT
+                t.*, ts.status_name, ts.status_color, c.category_name,
                 CONCAT(u.first_name, ' ', u.last_name) AS reporter_name,
-                CONCAT(tech.first_name, ' ', tech.last_name) AS assigned_to_name 
-            FROM tickets t 
+                u.agency AS agency,
+                CONCAT(tech.first_name, ' ', tech.last_name) AS assigned_to_name
+            FROM tickets t
             LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
-            LEFT JOIN categories c ON t.category_id = c.category_id 
-            LEFT JOIN users u ON t.reporter_id = u.user_id 
+            LEFT JOIN categories c ON t.category_id = c.category_id
+            LEFT JOIN users u ON t.reporter_id = u.user_id
             LEFT JOIN users tech ON t.assigned_to = tech.user_id
             WHERE t.ticket_id = ?`, [id]);
         return rows[0] || null;
