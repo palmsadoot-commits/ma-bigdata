@@ -66,14 +66,6 @@ exports.getSLALogs = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-exports.getDeliverables = async (req, res, next) => {
-    try {
-        const { milestone_id } = req.query;
-        const items = await projectService.getDeliverables(milestone_id);
-        res.json(items);
-    } catch (err) { next(err); }
-};
-
 exports.getTORScope = async (req, res, next) => {
     try {
         const scope = await projectService.getTORScope();
@@ -81,11 +73,79 @@ exports.getTORScope = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+exports.createTORClause = async (req, res, next) => {
+    try {
+        const newId = await projectService.createTORClause(req.body);
+        res.json({ success: true, message: 'เพิ่มขอบเขตงานเรียบร้อย', clause_id: newId });
+    } catch (err) { next(err); }
+};
+
+exports.updateTORClause = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await projectService.updateTORClause(id, req.body);
+        res.json({ success: true, message: 'อัปเดตขอบเขตงานเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
+exports.deleteTORClause = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await projectService.deleteTORClause(id);
+        res.json({ success: true, message: 'ลบขอบเขตงานเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
 exports.updateMilestone = async (req, res, next) => {
     try {
         const { id } = req.params;
         await projectService.updateMilestone(id, req.body);
-        res.json({ success: true, message: 'อัปเดตข้อมูลงวดงานและการเบิกจ่ายเรียบร้อย' });
+        res.json({ success: true, message: 'อัปเดตข้อมูลงวดงานเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
+exports.createMilestone = async (req, res, next) => {
+    try {
+        const newId = await projectService.createMilestone(req.body);
+        res.json({ success: true, message: 'สร้างงวดงานใหม่เรียบร้อย', milestone_id: newId });
+    } catch (err) { next(err); }
+};
+
+exports.deleteMilestone = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await projectService.deleteMilestone(id);
+        res.json({ success: true, message: 'ลบงวดงานเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
+exports.getDeliverables = async (req, res, next) => {
+    try {
+        const deliverables = await projectService.getDeliverables(req.query.milestone_id);
+        res.json(deliverables);
+    } catch (err) { next(err); }
+};
+
+exports.createDeliverable = async (req, res, next) => {
+    try {
+        const newId = await projectService.createDeliverable(req.body);
+        res.json({ success: true, message: 'เพิ่มสิ่งส่งมอบเรียบร้อย', deliverable_id: newId });
+    } catch (err) { next(err); }
+};
+
+exports.updateDeliverable = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await projectService.updateDeliverable(id, req.body);
+        res.json({ success: true, message: 'อัปเดตสิ่งส่งมอบเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
+exports.deleteDeliverable = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await projectService.deleteDeliverable(id);
+        res.json({ success: true, message: 'ลบสิ่งส่งมอบเรียบร้อย' });
     } catch (err) { next(err); }
 };
 

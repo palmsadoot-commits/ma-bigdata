@@ -88,16 +88,80 @@ const projectService = {
     },
 
     /**
-     * อัปเดตข้อมูลงวดงาน (สำหรับการเบิกจ่ายเงิน)
+     * อัปเดตข้อมูลงวดงาน (สำหรับการเบิกจ่ายเงินและข้อมูลทั่วไป)
      */
     async updateMilestone(milestoneId, data) {
-        const { payment_amount, payment_status } = data;
+        const fields = [];
+        const values = [];
+        
+        const allowedFields = ['title', 'description', 'installment_no', 'start_date', 'end_date', 'payment_amount', 'payment_status'];
+        
+        allowedFields.forEach(field => {
+            if (data[field] !== undefined) {
+                fields.push(`${field} = ?`);
+                values.push(data[field] === '' ? null : data[field]);
+            }
+        });
+
+        if (fields.length > 0) {
+            values.push(milestoneId);
+            const sql = `UPDATE project_milestones SET ${fields.join(', ')} WHERE milestone_id = ?`;
+            await db.query(sql, values);
+        }
+    },
+
+    /**
+     * สร้างงวดงานใหม่
+     */
+    async createMilestone(data) {
+        const { project_id, installment_no, title, description, start_date, end_date } = data;
         const sql = `
-            UPDATE project_milestones 
-            SET payment_amount = ?, payment_status = ? 
-            WHERE milestone_id = ?
+            INSERT INTO project_milestones (project_id, installment_no, title, description, start_date, end_date, progress_percent, status) 
+            VALUES (?, ?, ?, ?, ?, ?, 0, 'Pending')
         `;
-        await db.query(sql, [payment_amount || 0.00, payment_status || 'Pending', milestoneId]);
+        const [result] = await db.query(sql, [project_id || 1, installment_no || 1, title, description || null, start_date || null, end_date || null]);
+        return result.insertId;
+    },
+
+    /**
+     * ลบงวดงาน
+     */
+    async deleteMilestone(milestoneId) {
+        await db.query('DELETE FROM project_milestones WHERE milestone_id = ?', [milestoneId]);
+    },
+
+    /**
+     * ดึงข้อมูลสิ่งส่งมอบ
+     */
+    async getDeliverablesByMilestone(milestoneId) {
+        const [rows] = await db.query('SELECT * FROM project_deliverables WHERE milestone_id = ? ORDER BY created_at ASC', [milestoneId]);
+        return rows;
+    },
+
+    /**
+     * เพิ่มสิ่งส่งมอบใหม่
+     */
+    async createDeliverable(data) {
+        const { milestone_id, name, status } = data;
+        const sql = `INSERT INTO project_deliverables (milestone_id, name, status) VALUES (?, ?, ?)`;
+        const [result] = await db.query(sql, [milestone_id, name, status || 'Pending']);
+        return result.insertId;
+    },
+
+    /**
+     * แก้ไขสิ่งส่งมอบ
+     */
+    async updateDeliverable(id, data) {
+        const { name, status } = data;
+        const sql = `UPDATE project_deliverables SET name = ?, status = ? WHERE deliverable_id = ?`;
+        await db.query(sql, [name, status, id]);
+    },
+
+    /**
+     * ลบสิ่งส่งมอบ
+     */
+    async deleteDeliverable(id) {
+        await db.query('DELETE FROM project_deliverables WHERE deliverable_id = ?', [id]);
     },
 
     /**
@@ -143,6 +207,35 @@ const projectService = {
     async getDeliverables(milestoneId) {
         const [rows] = await db.query('SELECT * FROM project_deliverables WHERE milestone_id = ?', [milestoneId]);
         return rows;
+    },
+
+    /**
+     * เพิ่มหัวข้อ TOR ใหม่
+     */
+    async createTORClause(data) {
+        const { clause_no, title, description, parent_no, is_group } = data;
+        const sql = `INSERT INTO project_tor_clauses (clause_no, title, description, parent_no, is_group) VALUES (?, ?, ?, ?, ?)`;
+        const [result] = await db.query(sql, [clause_no, title, description || null, parent_no || null, is_group || 0]);
+        return result.insertId;
+    },
+
+    /**
+     * แก้ไขหัวข้อ TOR
+     */
+    async updateTORClause(id, data) {
+        const { clause_no, title, description, parent_no, is_group } = data;
+        const sql = `UPDATE project_tor_clauses SET clause_no = ?, title = ?, description = ?, parent_no = ?, is_group = ? WHERE clause_id = ?`;
+        await db.query(sql, [clause_no, title, description || null, parent_no || null, is_group || 0, id]);
+    },
+
+    /**
+     * ลบหัวข้อ TOR
+     */
+    async deleteTORClause(id) {
+        // ต้องลบ Mapping ที่เกี่ยวข้องก่อน
+        await db.query('DELETE FROM project_tor_mapping WHERE clause_id = ?', [id]);
+        await db.query('DELETE FROM project_tor_milestones WHERE clause_id = ?', [id]);
+        await db.query('DELETE FROM project_tor_clauses WHERE clause_id = ?', [id]);
     },
 
     /**

@@ -21,7 +21,9 @@ import {
   BarChartOutlined,
   LineChartOutlined,
   EditOutlined,
-  SaveOutlined
+  SaveOutlined,
+  DeleteOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area
@@ -60,6 +62,21 @@ export default function ProjectTracker() {
   const [mappingClause, setMappingClause] = useState(null); // ✅ Clause ที่กำลัง Map
   const [form] = Form.useForm();
   const [mappingForm] = Form.useForm();
+
+  // --- 🛠️ Milestone Management States ---
+  const [isMilestoneModalVisible, setIsMilestoneModalVisible] = useState(false);
+  const [editingMilestoneData, setEditingMilestoneData] = useState(null);
+  const [milestoneForm] = Form.useForm();
+  
+  // --- 🛠️ Deliverables Management States ---
+  const [isDeliverableModalVisible, setIsDeliverableModalVisible] = useState(false);
+  const [editingDeliverable, setEditingDeliverable] = useState(null);
+  const [deliverableForm] = Form.useForm();
+
+  // --- 🛠️ TOR Scope CRUD States ---
+  const [isTorModalVisible, setIsTorModalVisible] = useState(false);
+  const [editingTor, setEditingTor] = useState(null);
+  const [torForm] = Form.useForm();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -167,6 +184,245 @@ export default function ProjectTracker() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- 🛠️ Milestone Management Handlers ---
+  const handleAddMilestone = () => {
+    setEditingMilestoneData(null);
+    milestoneForm.resetFields();
+    setIsMilestoneModalVisible(true);
+  };
+
+  const handleEditMilestoneDetails = (milestone) => {
+    setEditingMilestoneData(milestone);
+    milestoneForm.setFieldsValue({
+      installment_no: milestone.installment_no,
+      title: milestone.title,
+      description: milestone.description,
+      start_date: milestone.start_date ? dayjs(milestone.start_date) : null,
+      end_date: milestone.end_date ? dayjs(milestone.end_date) : null
+    });
+    setIsMilestoneModalVisible(true);
+  };
+
+  const handleDeleteMilestone = (milestoneId) => {
+    Modal.confirm({
+      title: 'ยืนยันการลบงวดงาน?',
+      content: 'คุณแน่ใจหรือไม่ว่าต้องการลบงวดงานนี้? ข้อมูลงานย่อยอาจได้รับผลกระทบ',
+      okText: 'ลบข้อมูล',
+      okType: 'danger',
+      cancelText: 'ยกเลิก',
+      onOk: async () => {
+        setLoading(true);
+        try {
+          await axiosInstance.delete(`/projects/milestones/${milestoneId}`);
+          alertSuccess('สำเร็จ', 'ลบข้อมูลงวดงานเรียบร้อย');
+          fetchData();
+        } catch (err) {
+          alertError('ผิดพลาด', 'ไม่สามารถลบงวดงานได้');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleSaveMilestone = async (values) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...values,
+        start_date: values.start_date ? values.start_date.format('YYYY-MM-DD') : null,
+        end_date: values.end_date ? values.end_date.format('YYYY-MM-DD') : null
+      };
+
+      if (editingMilestoneData) {
+        await axiosInstance.put(`/projects/milestones/${editingMilestoneData.milestone_id}`, payload);
+        alertSuccess('สำเร็จ', 'อัปเดตข้อมูลงวดงานเรียบร้อย');
+      } else {
+        await axiosInstance.post('/projects/milestones', payload);
+        alertSuccess('สำเร็จ', 'เพิ่มงวดงานใหม่เรียบร้อย');
+      }
+      setIsMilestoneModalVisible(false);
+      fetchData();
+    } catch (err) {
+      alertError('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลงวดงานได้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 🛠️ Deliverables Management Handlers ---
+  const handleAddDeliverable = () => {
+    if (!selectedMilestoneId) {
+      alertError('ผิดพลาด', 'กรุณาเลือกงวดงานก่อนเพิ่มสิ่งส่งมอบ');
+      return;
+    }
+    setEditingDeliverable(null);
+    deliverableForm.resetFields();
+    setIsDeliverableModalVisible(true);
+  };
+
+  const handleEditDeliverable = (record) => {
+    setEditingDeliverable(record);
+    deliverableForm.setFieldsValue({
+      name: record.name,
+      status: record.status
+    });
+    setIsDeliverableModalVisible(true);
+  };
+
+  const handleDeleteDeliverable = (id) => {
+    Modal.confirm({
+      title: 'ยืนยันการลบรายการสิ่งส่งมอบ?',
+      content: 'คุณต้องการลบรายการสิ่งส่งมอบนี้ใช่หรือไม่?',
+      okText: 'ลบข้อมูล',
+      okType: 'danger',
+      cancelText: 'ยกเลิก',
+      onOk: async () => {
+        setLoading(true);
+        try {
+          await axiosInstance.delete(`/projects/deliverables/${id}`);
+          alertSuccess('สำเร็จ', 'ลบรายการสิ่งส่งมอบเรียบร้อย');
+          // Refresh only deliverables
+          const res = await axiosInstance.get(`/projects/deliverables?milestone_id=${selectedMilestoneId}`);
+          setDeliverables(res.data || []);
+        } catch (err) {
+          alertError('ผิดพลาด', 'ไม่สามารถลบรายการได้');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleSaveDeliverable = async (values) => {
+    setLoading(true);
+    try {
+      if (editingDeliverable) {
+        await axiosInstance.put(`/projects/deliverables/${editingDeliverable.deliverable_id}`, values);
+        alertSuccess('สำเร็จ', 'อัปเดตสิ่งส่งมอบเรียบร้อย');
+      } else {
+        await axiosInstance.post('/projects/deliverables', {
+          ...values,
+          milestone_id: selectedMilestoneId
+        });
+        alertSuccess('สำเร็จ', 'เพิ่มสิ่งส่งมอบใหม่เรียบร้อย');
+      }
+      setIsDeliverableModalVisible(false);
+      // Refresh only deliverables
+      const res = await axiosInstance.get(`/projects/deliverables?milestone_id=${selectedMilestoneId}`);
+      setDeliverables(res.data || []);
+    } catch (err) {
+      alertError('ผิดพลาด', 'ไม่สามารถบันทึกสิ่งส่งมอบได้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 🛠️ TOR Scope CRUD Handlers ---
+  const handleAddTor = () => {
+    setEditingTor(null);
+    torForm.resetFields();
+    setIsTorModalVisible(true);
+  };
+
+  const handleEditTor = (record) => {
+    setEditingTor(record);
+    torForm.setFieldsValue({
+      clause_no: record.clause_no,
+      title: record.title,
+      description: record.description,
+      parent_no: record.parent_no,
+      is_group: record.is_group === 1
+    });
+    setIsTorModalVisible(true);
+  };
+
+  const handleDeleteTor = (id) => {
+    Modal.confirm({
+      title: 'ยืนยันการลบขอบเขตงาน?',
+      content: 'คุณแน่ใจหรือไม่ว่าต้องการลบขอบเขตงาน (TOR) นี้? การลบจะลบการจับคู่ที่เกี่ยวข้องทั้งหมดด้วย',
+      okText: 'ลบข้อมูล',
+      okType: 'danger',
+      cancelText: 'ยกเลิก',
+      onOk: async () => {
+        setLoading(true);
+        try {
+          await axiosInstance.delete(`/projects/tor-scope/${id}`);
+          alertSuccess('สำเร็จ', 'ลบขอบเขตงานเรียบร้อย');
+          fetchData();
+        } catch (err) {
+          alertError('ผิดพลาด', 'ไม่สามารถลบขอบเขตงานได้');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleSaveTor = async (values) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...values,
+        is_group: values.is_group ? 1 : 0
+      };
+
+      if (editingTor) {
+        await axiosInstance.put(`/projects/tor-scope/${editingTor.clause_id}`, payload);
+        alertSuccess('สำเร็จ', 'อัปเดตขอบเขตงานเรียบร้อย');
+      } else {
+        await axiosInstance.post('/projects/tor-scope', payload);
+        alertSuccess('สำเร็จ', 'เพิ่มขอบเขตงานใหม่เรียบร้อย');
+      }
+      setIsTorModalVisible(false);
+      fetchData();
+    } catch (err) {
+      alertError('ผิดพลาด', 'ไม่สามารถบันทึกขอบเขตงานได้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 🛠️ Reusable Component: Milestone Header ---
+  const renderMilestoneHeader = () => {
+    const selectedMilestone = milestones.find(m => m.milestone_id === selectedMilestoneId);
+    return (
+      <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
+        <div style={{ flex: 1 }}>
+          <Title level={4} style={{ margin: 0 }}>รายละเอียดงานแต่ละงวด: {selectedMilestone?.title || 'ยังไม่ได้เลือกงวดงาน'}</Title>
+          <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+            {selectedMilestone?.description || 'ไม่มีรายละเอียดงวดงาน'}
+          </Text>
+          {user?.role === 'admin' && selectedMilestone && (
+            <Space style={{ marginTop: 12 }}>
+              <Button size="small" type="primary" ghost icon={<EditOutlined />} onClick={() => handleEditMilestoneDetails(selectedMilestone)}>
+                แก้ไขงวดงาน
+              </Button>
+              <Button size="small" danger ghost icon={<DeleteOutlined />} onClick={() => handleDeleteMilestone(selectedMilestone.milestone_id)}>
+                ลบงวดงาน
+              </Button>
+            </Space>
+          )}
+        </div>
+        <Space direction="vertical" align="end">
+          <Select 
+            style={{ width: 280 }}
+            size="large"
+            placeholder="เลือกงวดงาน"
+            value={selectedMilestoneId}
+            onChange={setSelectedMilestoneId}
+            options={milestones.map(m => ({ label: `${m.title} (${dayjs(m.start_date).format('D MMM')} - ${dayjs(m.end_date).format('D MMM YY')})`, value: m.milestone_id }))}
+          />
+          {user?.role === 'admin' && (
+            <Button type="dashed" icon={<PlusOutlined />} onClick={handleAddMilestone} style={{ width: '100%' }}>
+              เพิ่มงวดงานใหม่
+            </Button>
+          )}
+        </Space>
+      </Flex>
+    );
   };
 
   // --- 📊 Data Transformation for Charts ---
@@ -497,20 +753,7 @@ export default function ProjectTracker() {
         variant="borderless" 
         style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
       >
-        <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
-          <div>
-            <Title level={4} style={{ margin: 0 }}>รายละเอียดงานแต่ละงวด</Title>
-            <Text type="secondary">เลือกงวดงานเพื่อดูรายการ TOR และสถานะการดำเนินการรายข้อ</Text>
-          </div>
-          <Select 
-            style={{ width: 280 }}
-            size="large"
-            placeholder="เลือกงวดงาน"
-            value={selectedMilestoneId}
-            onChange={setSelectedMilestoneId}
-            options={milestones.map(m => ({ label: `${m.title} (${dayjs(m.start_date).format('D MMM')} - ${dayjs(m.end_date).format('D MMM YY')})`, value: m.milestone_id }))}
-          />
-        </Flex>
+        {renderMilestoneHeader()}
       </Card>
 
       <Row gutter={[24, 24]}>
@@ -606,20 +849,21 @@ export default function ProjectTracker() {
       {
         title: 'จัดการ',
         key: 'action',
-        width: 100,
-        render: (_, record) => (
-          !record.is_group && (
-            <Button 
-              size="small" 
-              type="primary" 
-              ghost 
-              icon={<EditOutlined />} 
-              onClick={() => handleEditMapping(record)}
-            >
-              จัดการ
-            </Button>
-          )
-        )
+        width: 150,
+        render: (_, record) => {
+          if (user?.role !== 'admin') return null;
+          return (
+            <Space>
+              <Button size="small" type="primary" ghost icon={<EditOutlined />} onClick={() => handleEditTor(record)} />
+              {!record.is_group && (
+                <Button size="small" type="default" icon={<UnorderedListOutlined />} onClick={() => handleEditMapping(record)}>
+                  Map
+                </Button>
+              )}
+              <Button size="small" danger ghost icon={<DeleteOutlined />} onClick={() => handleDeleteTor(record.clause_id)} />
+            </Space>
+          );
+        }
       }
     ];
 
@@ -627,7 +871,16 @@ export default function ProjectTracker() {
       <Card 
         variant="borderless" 
         style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', animation: 'fadeIn 0.5s ease' }}
-        title={<Space><SearchOutlined /> <Text strong>ขอบเขตงานตามสัญญา (TOR Scope Mapping)</Text></Space>}
+        title={
+          <Flex justify="space-between" align="center" style={{ width: '100%' }}>
+            <Space><SearchOutlined /> <Text strong>ขอบเขตงานตามสัญญา (TOR Scope Mapping)</Text></Space>
+            {user?.role === 'admin' && (
+              <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleAddTor}>
+                เพิ่มหัวข้อ TOR
+              </Button>
+            )}
+          </Flex>
+        }
       >
         <Table 
           dataSource={torScope}
@@ -646,31 +899,55 @@ export default function ProjectTracker() {
     
     return (
       <Flex vertical gap={24} style={{ animation: 'fadeIn 0.5s ease' }}>
+        <Card 
+          variant="borderless" 
+          style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
+        >
+          {renderMilestoneHeader()}
+        </Card>
+
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={16}>
             <Card 
               variant="borderless" 
               style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
-              title={<Space><FileDoneOutlined /> <Text strong>รายการสิ่งส่งมอบตามงวดงาน: {selectedMilestone?.title}</Text></Space>}
+              title={
+                <Flex justify="space-between" align="center" style={{ width: '100%' }}>
+                  <Space><FileDoneOutlined /> <Text strong>รายการสิ่งส่งมอบตามงวดงาน</Text></Space>
+                  {user?.role === 'admin' && (
+                    <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleAddDeliverable}>
+                      เพิ่มรายการส่งมอบ
+                    </Button>
+                  )}
+                </Flex>
+              }
             >
               <Table 
                 dataSource={deliverables}
                 pagination={false}
                 rowKey="deliverable_id"
                 columns={[
+                  { 
+                    title: 'ลำดับ', 
+                    key: 'index', 
+                    width: 60,
+                    render: (text, record, index) => index + 1 
+                  },
                   { title: 'ชื่อรายการสิ่งส่งมอบ', dataIndex: 'name', key: 'name' },
-                  { title: 'สถานะ', dataIndex: 'status', key: 'status', render: (s) => <StatusTag status={s} /> },
+                  { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 120, render: (s) => <StatusTag status={s} /> },
                   { 
                     title: 'จัดการ', 
                     key: 'action', 
-                    render: (_, record) => (
-                      user?.role === 'admin' && (
+                    width: 150,
+                    render: (_, record) => {
+                      if (user?.role !== 'admin') return null;
+                      return (
                         <Space>
-                          <Button size="small" type="primary" ghost>อนุมัติ</Button>
-                          <Button size="small" danger ghost>ตีกลับ</Button>
+                          <Button size="small" type="primary" ghost icon={<EditOutlined />} onClick={() => handleEditDeliverable(record)} />
+                          <Button size="small" danger ghost icon={<DeleteOutlined />} onClick={() => handleDeleteDeliverable(record.deliverable_id)} />
                         </Space>
-                      )
-                    )
+                      );
+                    }
                   }
                 ]}
               />
@@ -686,12 +963,9 @@ export default function ProjectTracker() {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <Progress 
                     type="dashboard" 
-                    percent={selectedMilestone?.progress_percent} 
+                    percent={selectedMilestone?.progress_percent || 0} 
                     strokeColor={selectedMilestone?.progress_percent === 100 ? '#52c41a' : token.colorPrimary}
                   />
-                  <div style={{ marginTop: '10px' }}>
-                    <Text strong style={{ fontSize: '16px' }}>{selectedMilestone?.title}</Text>
-                  </div>
                 </div>
                 
                 <Divider style={{ margin: 0 }} />
@@ -700,8 +974,8 @@ export default function ProjectTracker() {
                   <List.Item extra={allTasksDone ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <SyncOutlined spin style={{ color: '#1677ff' }} />}>
                     <Text type={allTasksDone ? 'success' : 'secondary'}>งานตาม TOR ครบถ้วน</Text>
                   </List.Item>
-                  <List.Item extra={deliverables.every(d => d.status === 'Approved') ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <WarningOutlined style={{ color: '#faad14' }} />}>
-                    <Text type={deliverables.every(d => d.status === 'Approved') ? 'success' : 'secondary'}>เอกสารสิ่งส่งมอบครบถ้วน</Text>
+                  <List.Item extra={deliverables.length > 0 && deliverables.every(d => d.status === 'Approved') ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <WarningOutlined style={{ color: '#faad14' }} />}>
+                    <Text type={deliverables.length > 0 && deliverables.every(d => d.status === 'Approved') ? 'success' : 'secondary'}>เอกสารสิ่งส่งมอบครบถ้วน</Text>
                   </List.Item>
                 </List>
 
@@ -711,7 +985,7 @@ export default function ProjectTracker() {
                     size="large" 
                     block 
                     style={{ height: '50px', borderRadius: '12px' }}
-                    disabled={!allTasksDone || !deliverables.every(d => d.status === 'Approved')}
+                    disabled={!allTasksDone || deliverables.length === 0 || !deliverables.every(d => d.status === 'Approved')}
                   >
                     ยืนยันปิดงวดงาน (Final Review)
                   </Button>
@@ -757,9 +1031,9 @@ export default function ProjectTracker() {
             { key: 'dashboard', label: <Space><DashboardOutlined /> แดชบอร์ด</Space> },
             user?.role === 'admin' && { key: 'scope', label: <Space><SearchOutlined /> ขอบเขตงาน (TOR)</Space> },
             { key: 'tasks', label: <Space><UnorderedListOutlined /> แผนงวดงาน (TOR)</Space> },
+            { key: 'deliverables', label: <Space><FileDoneOutlined /> สิ่งส่งมอบงวดงาน {user?.role === 'admin' && <Badge dot status="processing" style={{ marginLeft: 4 }} />}</Space> },
             { key: 'payments', label: <Space><BarChartOutlined /> การเบิกจ่ายงวดเงิน</Space> },
-            { key: 'sla', label: <Space><SafetyCertificateOutlined /> SLA & Maintenance</Space> },
-            { key: 'deliverables', label: <Space><FileDoneOutlined /> สิ่งส่งมอบ {user?.role === 'admin' && <Badge dot status="processing" style={{ marginLeft: 4 }} />}</Space> }
+            { key: 'sla', label: <Space><SafetyCertificateOutlined /> SLA & Maintenance</Space> }
           ].filter(Boolean)}
         />
       </div>
@@ -772,6 +1046,126 @@ export default function ProjectTracker() {
         {activeTab === 'sla' && renderSLA()}
         {activeTab === 'deliverables' && renderDeliverables()}
       </div>
+
+      {/* --- 🛠️ Milestone Modal (Admin Only) --- */}
+      <Modal
+        title={<Space><EditOutlined /> {editingMilestoneData ? 'แก้ไขข้อมูลและรายละเอียดงวดงาน' : 'เพิ่มงวดงานใหม่'}</Space>}
+        open={isMilestoneModalVisible}
+        onCancel={() => setIsMilestoneModalVisible(false)}
+        onOk={() => milestoneForm.submit()}
+        confirmLoading={loading}
+        okText="บันทึกข้อมูล"
+        cancelText="ยกเลิก"
+        width={600}
+        centered
+      >
+        <Form form={milestoneForm} layout="vertical" onFinish={handleSaveMilestone}>
+          <Row gutter={16}>
+            <Col span={6}>
+              <Form.Item name="installment_no" label="งวดที่" rules={[{ required: true }]}>
+                <Input type="number" />
+              </Form.Item>
+            </Col>
+            <Col span={18}>
+              <Form.Item name="title" label="ชื่องวดงาน / หัวข้อหลัก" rules={[{ required: true }]}>
+                <Input placeholder="เช่น งวดที่ 1" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="description" label="รายละเอียดงานแต่ละงวด (คำอธิบาย)">
+            <Input.TextArea rows={4} placeholder="ระบุรายละเอียดงานหรือเงื่อนไขต่างๆ ของงวดนี้..." />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="start_date" label="วันที่เริ่ม">
+                <DatePicker style={{ width: '100%' }} format="DD MMM YYYY" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="end_date" label="วันที่สิ้นสุด (กำหนดส่ง)">
+                <DatePicker style={{ width: '100%' }} format="DD MMM YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* --- 🛠️ Deliverable Modal (Admin Only) --- */}
+      <Modal
+        title={<Space><FileDoneOutlined /> {editingDeliverable ? 'แก้ไขรายการสิ่งส่งมอบ' : 'เพิ่มรายการสิ่งส่งมอบ'}</Space>}
+        open={isDeliverableModalVisible}
+        onCancel={() => setIsDeliverableModalVisible(false)}
+        onOk={() => deliverableForm.submit()}
+        confirmLoading={loading}
+        okText="บันทึก"
+        cancelText="ยกเลิก"
+        centered
+      >
+        <Form form={deliverableForm} layout="vertical" onFinish={handleSaveDeliverable}>
+          <Form.Item name="name" label="ชื่อรายการสิ่งส่งมอบ" rules={[{ required: true, message: 'กรุณาระบุชื่อรายการสิ่งส่งมอบ' }]}>
+            <Input.TextArea rows={3} placeholder="เช่น 1) แผนการบริหารจัดการ ดูแล บำรุงรักษารายการคอมพิวเตอร์แม่ข่าย..." />
+          </Form.Item>
+
+          <Form.Item name="status" label="สถานะการส่งมอบ" initialValue="Pending" rules={[{ required: true }]}>
+            <Select options={[
+              { label: 'รอดำเนินการ (Pending)', value: 'Pending' },
+              { label: 'ส่งมอบแล้วรอตรวจ (Uploaded)', value: 'Uploaded' },
+              { label: 'อนุมัติผ่าน (Approved)', value: 'Approved' },
+              { label: 'ตีกลับ/ไม่อนุมัติ (Rejected)', value: 'Rejected' },
+            ]} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* --- 🛠️ TOR Scope Modal (Admin Only) --- */}
+      <Modal
+        title={<Space><SearchOutlined /> {editingTor ? 'แก้ไขหัวข้อ TOR' : 'เพิ่มหัวข้อ TOR ใหม่'}</Space>}
+        open={isTorModalVisible}
+        onCancel={() => setIsTorModalVisible(false)}
+        onOk={() => torForm.submit()}
+        confirmLoading={loading}
+        okText="บันทึกข้อมูล"
+        cancelText="ยกเลิก"
+        width={600}
+        centered
+      >
+        <Form form={torForm} layout="vertical" onFinish={handleSaveTor}>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="clause_no" label="ข้อที่ (เช่น 5.1)" rules={[{ required: true }]}>
+                <Input placeholder="เลขข้อ TOR" />
+              </Form.Item>
+            </Col>
+            <Col span={16}>
+              <Form.Item name="title" label="หัวข้อการดำเนินงาน" rules={[{ required: true }]}>
+                <Input placeholder="ชื่อหัวข้อหลัก" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="description" label="รายละเอียดงาน (ถ้ามี)">
+            <Input.TextArea rows={3} placeholder="คำอธิบายเพิ่มเติม..." />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="parent_no" label="เป็นหัวข้อย่อยของ (เลขข้อหลัก)">
+                <Input placeholder="เช่น 5 (เว้นว่างถ้าเป็นข้อหลัก)" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="is_group" valuePropName="checked">
+                <div style={{ marginTop: '30px' }}>
+                  <Input type="checkbox" style={{ marginRight: '8px', width: 'auto' }} />
+                  <Text>เป็นหัวข้อกลุ่ม (ตัวหนา)</Text>
+                </div>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
 
       {/* --- 🛠️ Edit Task Modal --- */}
       <Modal
