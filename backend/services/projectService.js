@@ -5,8 +5,56 @@ const projectService = {
      * ดึงรายชื่อโปรเจกต์ทั้งหมด
      */
     async getProjects() {
-        const [rows] = await db.query('SELECT * FROM projects ORDER BY created_at DESC');
+        const [rows] = await db.query(`
+            SELECT p.*, v.vendor_name 
+            FROM projects p 
+            LEFT JOIN vendors v ON p.vendor_id = v.vendor_id 
+            ORDER BY p.created_at DESC
+        `);
         return rows;
+    },
+
+    /**
+     * สร้างโครงการใหม่
+     */
+    async createProject(data) {
+        const { project_name, project_contract, description, vendor_id, contract_value, penalty_rate, contract_sign_date } = data;
+        const sql = `
+            INSERT INTO projects (project_name, project_contract, description, vendor_id, contract_value, penalty_rate, contract_sign_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        const [result] = await db.query(sql, [
+            project_name, 
+            project_contract || null, 
+            description || null, 
+            vendor_id || null, 
+            contract_value || 0, 
+            penalty_rate || 0.001, 
+            contract_sign_date || null
+        ]);
+        return result.insertId;
+    },
+
+    /**
+     * อัปเดตข้อมูลโครงการ
+     */
+    async updateProject(id, data) {
+        const { project_name, project_contract, description, vendor_id, contract_value, penalty_rate, contract_sign_date } = data;
+        const sql = `
+            UPDATE projects 
+            SET project_name = ?, project_contract = ?, description = ?, vendor_id = ?, contract_value = ?, penalty_rate = ?, contract_sign_date = ? 
+            WHERE project_id = ?
+        `;
+        await db.query(sql, [
+            project_name, 
+            project_contract || null, 
+            description || null, 
+            vendor_id || null, 
+            contract_value || 0, 
+            penalty_rate || 0.001, 
+            contract_sign_date || null, 
+            id
+        ]);
     },
 
     /**
@@ -244,7 +292,7 @@ const projectService = {
     async getTORScope() {
         const [rows] = await db.query(`
             SELECT c.*, 
-                   m.category_id, m.annex_table_no,
+                   m.category_id, m.annex_table_no, m.deadline_days,
                    cat.category_name,
                    (SELECT GROUP_CONCAT(ms.title SEPARATOR ', ') 
                     FROM project_tor_milestones tm 
@@ -265,15 +313,19 @@ const projectService = {
      * อัปเดตการจับคู่ TOR กับงวดงาน (หลายงวด) และหมวดหมู่
      */
     async updateTORMapping(clauseId, data) {
-        const { milestone_ids, category_id, annex_table_no } = data;
+        const { milestone_ids, category_id, annex_table_no, deadline_days } = data;
         
         // 1. จัดการข้อมูลหมวดหมู่และภาคผนวก
         await db.query('DELETE FROM project_tor_mapping WHERE clause_id = ?', [clauseId]);
-        if (category_id || annex_table_no) {
+        
+        // แปลง annex_table_no เป็น string ถ้าเป็น array
+        const annexTableStr = Array.isArray(annex_table_no) ? annex_table_no.join(',') : annex_table_no;
+
+        if (category_id || annexTableStr || deadline_days) {
             await db.query(`
-                INSERT INTO project_tor_mapping (clause_id, category_id, annex_table_no)
-                VALUES (?, ?, ?)
-            `, [clauseId, category_id || null, annex_table_no || null]);
+                INSERT INTO project_tor_mapping (clause_id, category_id, annex_table_no, deadline_days)
+                VALUES (?, ?, ?, ?)
+            `, [clauseId, category_id || null, annexTableStr || null, deadline_days || null]);
         }
 
         // 2. จัดการข้อมูลหลายงวดงาน (Many-to-Many)

@@ -7,6 +7,30 @@ exports.getProjects = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+exports.createProject = async (req, res, next) => {
+    try {
+        const newId = await projectService.createProject(req.body);
+        res.json({ success: true, message: 'บันทึกข้อมูลโครงการและสัญญาเรียบร้อย', project_id: newId });
+    } catch (err) { next(err); }
+};
+
+exports.updateProject = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await projectService.updateProject(id, req.body);
+        res.json({ success: true, message: 'อัปเดตข้อมูลโครงการและสัญญาเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
+exports.deleteProject = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        // Verify if project has categories before delete (optional, handled in service or db)
+        await projectService.deleteProject(id);
+        res.json({ success: true, message: 'ลบโครงการเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
 exports.getMilestones = async (req, res, next) => {
     try {
         const milestones = await projectService.getMilestones();

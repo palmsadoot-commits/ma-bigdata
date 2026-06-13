@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Table, Button, Space, Typography, Tag, Modal, Form, 
   Input, Select, Popconfirm, Row, Col, Tabs, InputNumber, 
-  Switch, message, Divider, Badge, theme, Empty, Flex
+  Switch, message, Divider, Badge, theme, Empty, Flex, DatePicker
 } from 'antd';
+import dayjs from 'dayjs';
 import { 
   AppstoreOutlined, PlusOutlined, EditOutlined, DeleteOutlined, 
   ArrowLeftOutlined, GlobalOutlined, ApartmentOutlined, SettingOutlined,
@@ -126,14 +127,34 @@ export default function CategoryManagement() {
   // --- Project Handlers ---
   const handleProjectManage = () => setIsProjManageModalVisible(true);
   const handleProjectAdd = () => { setEditingProject(null); projForm.resetFields(); setIsProjModalVisible(true); };
-  const handleProjectEdit = (record) => { setEditingProject(record); projForm.setFieldsValue({ ...record, contract_value: Number(record.contract_value) || 0, penalty_rate: Number(record.penalty_rate) || 0.001 }); setIsProjModalVisible(true); };
+  const handleProjectEdit = (record) => { 
+    setEditingProject(record); 
+    projForm.setFieldsValue({ 
+      ...record, 
+      contract_value: Number(record.contract_value) || 0, 
+      penalty_rate: Number(record.penalty_rate) || 0.001,
+      contract_sign_date: record.contract_sign_date ? dayjs(record.contract_sign_date) : null
+    }); 
+    setIsProjModalVisible(true); 
+  };
   const handleProjectDelete = async (id) => { try { await axiosInstance.delete(`/projects/${id}`); alertSuccess('ลบสำเร็จ', 'ลบโครงการแล้ว'); fetchData(); } catch (error) { alertError('ลบไม่สำเร็จ', error.response?.data?.error || 'เกิดข้อผิดพลาด'); } };
-  const handleProjectSubmit = async (values) => { try { if (editingProject) await axiosInstance.put(`/projects/${editingProject.project_id}`, values); else await axiosInstance.post('/projects', values); setIsProjModalVisible(false); fetchData(); alertSuccess('สำเร็จ', 'บันทึกข้อมูลโครงการและสัญญาเรียบร้อย'); } catch (error) { alertError('บันทึกไม่สำเร็จ', 'เกิดข้อผิดพลาด'); } };
+  const handleProjectSubmit = async (values) => { 
+    try { 
+      const formattedValues = {
+        ...values,
+        contract_sign_date: values.contract_sign_date ? values.contract_sign_date.format('YYYY-MM-DD') : null
+      };
+      if (editingProject) await axiosInstance.put(`/projects/${editingProject.project_id}`, formattedValues); 
+      else await axiosInstance.post('/projects', formattedValues); 
+      setIsProjModalVisible(false); fetchData(); alertSuccess('สำเร็จ', 'บันทึกข้อมูลโครงการและสัญญาเรียบร้อย'); 
+    } catch (error) { alertError('บันทึกไม่สำเร็จ', 'เกิดข้อผิดพลาด'); } 
+  };
 
   const projManageColumns = [
     { title: 'ชื่อโครงการ', dataIndex: 'project_name', key: 'project_name', width: 250, render: (text) => <Text strong>{text}</Text> },
     { title: 'ผู้รับจ้าง', dataIndex: 'vendor_name', key: 'vendor_name', width: 200, render: (text) => text ? <Tag color="blue">{text}</Tag> : '-' },
     { title: 'เลขที่สัญญา', dataIndex: 'project_contract', key: 'project_contract', align: 'center' },
+    { title: 'วันที่ลงนาม', dataIndex: 'contract_sign_date', align: 'center', render: (date) => date ? dayjs(date).format('DD/MM/YYYY') : '-' },
     { title: 'มูลค่า (฿)', dataIndex: 'contract_value', align: 'right', render: (val) => parseFloat(val).toLocaleString() },
     { title: 'ปรับ/วัน', dataIndex: 'penalty_rate', align: 'center', render: (val) => `${(val * 100).toFixed(2)}%` },
     { title: 'จัดการ', key: 'action', align: 'center', width: 100, render: (_, record) => (
@@ -392,6 +413,7 @@ export default function CategoryManagement() {
           <Form.Item name="project_name" label="ชื่อโครงการ" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="vendor_id" label="ผู้รับจ้าง"><Select allowClear>{vendors.map(v => <Option key={v.vendor_id} value={v.vendor_id}>{v.vendor_name}</Option>)}</Select></Form.Item>
           <Form.Item name="project_contract" label="เลขที่สัญญา"><Input /></Form.Item>
+          <Form.Item name="contract_sign_date" label="วันที่ลงนามในสัญญา"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item>
           <Form.Item name="contract_value" label="มูลค่าสัญญา"><InputNumber style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="penalty_rate" label="อัตราค่าปรับต่อวัน (เช่น 0.001)"><InputNumber step={0.0001} style={{ width: '100%' }} /></Form.Item>
         </Form>

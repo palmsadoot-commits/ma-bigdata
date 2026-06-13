@@ -3,7 +3,7 @@ import {
   Card, Row, Col, Typography, Table, Button, Space, Tag, 
   Statistic, Divider, Empty, message, Badge, Tooltip,
   Progress, theme, Flex, Tabs, Select, Timeline, List, Avatar,
-  Modal, Form, Input, DatePicker
+  Modal, Form, Input, DatePicker, InputNumber
 } from 'antd';
 import { 
   DashboardOutlined, 
@@ -53,6 +53,7 @@ export default function ProjectTracker() {
   const [deliverables, setDeliverables] = useState([]);
   const [torScope, setTorScope] = useState([]);
   const [categories, setCategories] = useState([]); // ✅ หมวดหมู่ระบบทั้งหมด
+  const [project, setProject] = useState(null); // ✅ ข้อมูลโครงการ
   const user = JSON.parse(localStorage.getItem('user'));
 
   // --- 🛠️ Management States ---
@@ -81,13 +82,14 @@ export default function ProjectTracker() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [milestonesRes, tasksRes, slaRes, usersRes, torRes, catRes] = await Promise.all([
+      const [milestonesRes, tasksRes, slaRes, usersRes, torRes, catRes, projectsRes] = await Promise.all([
         axiosInstance.get('/projects/milestones'),
         axiosInstance.get('/projects/tasks'),
         axiosInstance.get('/projects/sla-logs'),
         axiosInstance.get('/projects/users'),
         axiosInstance.get('/projects/tor-scope'),
-        axiosInstance.get('/categories') // ✅ ดึงหมวดหมู่
+        axiosInstance.get('/categories'), // ✅ ดึงหมวดหมู่
+        axiosInstance.get('/projects') // ✅ ดึงโครงการ
       ]);
       setMilestones(milestonesRes.data || []);
       setTasks(tasksRes.data || []);
@@ -95,6 +97,7 @@ export default function ProjectTracker() {
       setProjectUsers(usersRes.data || []);
       setTorScope(torRes.data || []);
       setCategories(catRes.data || []);
+      setProject(projectsRes.data?.[0] || null); // ✅ เซ็ตโครงการหลัก
       
       const defaultMilestone = milestonesRes.data?.find(m => m.status === 'In Progress') || milestonesRes.data?.[0];
       const mId = selectedMilestoneId || defaultMilestone?.milestone_id;
@@ -166,7 +169,8 @@ export default function ProjectTracker() {
     mappingForm.setFieldsValue({
       milestone_ids: record.milestone_ids ? record.milestone_ids.split(',').map(Number) : [],
       category_id: record.category_id,
-      annex_table_no: record.annex_table_no
+      annex_table_no: record.annex_table_no ? String(record.annex_table_no).split(',').map(Number) : [],
+      deadline_days: record.deadline_days
     });
     setIsMappingModalVisible(true);
   };
@@ -820,6 +824,25 @@ export default function ProjectTracker() {
         )
       },
       {
+        title: 'กำหนดส่ง',
+        key: 'deadline',
+        width: 150,
+        render: (_, record) => {
+          if (record.deadline_days && project?.contract_sign_date) {
+            const deadline = dayjs(project.contract_sign_date).add(record.deadline_days, 'day');
+            const isOverdue = dayjs().isAfter(deadline) && record.status !== 'Done' && record.status !== 'Verified';
+            return (
+              <Tooltip title={`คำนวนจากวันที่ลงนามสัญญา (${dayjs(project.contract_sign_date).format('DD/MM/YYYY')}) + ${record.deadline_days} วัน`}>
+                <Tag color={isOverdue ? 'error' : 'warning'} icon={<CalendarOutlined />}>
+                  {deadline.format('DD/MM/YYYY')}
+                </Tag>
+              </Tooltip>
+            );
+          }
+          return '-';
+        }
+      },
+      {
         title: 'การจับคู่ระบบ/งวดงาน/ภาคผนวก',
         key: 'mapping',
         width: 350,
@@ -836,9 +859,9 @@ export default function ProjectTracker() {
                   <Tag key={title} color="gold" icon={<ClockCircleOutlined />}>{title}</Tag>
                 ))
               )}
-              {record.annex_table_no && (
-                <Tag color="blue" icon={<FileDoneOutlined />}>ภาคผนวก ตารางที่ {record.annex_table_no}</Tag>
-              )}
+              {record.annex_table_no && String(record.annex_table_no).split(',').map(no => (
+                <Tag key={no} color="blue" icon={<FileDoneOutlined />}>ภาคผนวก ตารางที่ {no}</Tag>
+              ))}
               {record.category_name && (
                 <Tag color="cyan" icon={<UnorderedListOutlined />}>{record.category_name}</Tag>
               )}
@@ -1295,6 +1318,7 @@ export default function ProjectTracker() {
 
           <Form.Item name="annex_table_no" label="ภาคผนวกตารางที่ (ถ้ามี)">
             <Select 
+              mode="multiple"
               placeholder="เลือกตารางภาคผนวก"
               options={[
                 { label: 'ตารางที่ 1: Hardware/Software แม่ข่าย', value: 1 },
@@ -1302,6 +1326,10 @@ export default function ProjectTracker() {
               ]}
               allowClear
             />
+          </Form.Item>
+
+          <Form.Item name="deadline_days" label="กำหนดส่ง (จำนวนวันหลังจากลงนามสัญญา)">
+            <InputNumber style={{ width: '100%' }} placeholder="เช่น 7, 30, 90" min={1} />
           </Form.Item>
         </Form>
       </Modal>
