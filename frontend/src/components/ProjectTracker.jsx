@@ -338,7 +338,8 @@ export default function ProjectTracker() {
       title: record.title,
       description: record.description,
       parent_no: record.parent_no,
-      is_group: record.is_group === 1
+      is_group: record.is_group === 1,
+      merge_title: record.merge_title === 1
     });
     setIsTorModalVisible(true);
   };
@@ -804,30 +805,81 @@ export default function ProjectTracker() {
   );
 
   const renderTORScope = () => {
+    // Transform data to support "Merged Title" row + "Data" row for specific items
+    const displayData = [];
+    torScope.forEach(item => {
+      if (item.merge_title === 1) {
+        // Add Title Row (Merged)
+        displayData.push({ 
+          ...item, 
+          key: `title-${item.clause_id}`, 
+          rowType: 'title' 
+        });
+        // Add Data Row (Standard)
+        displayData.push({ 
+          ...item, 
+          key: `data-${item.clause_id}`, 
+          rowType: 'data' 
+        });
+      } else {
+        displayData.push({ 
+          ...item, 
+          key: item.clause_id, 
+          rowType: 'standard' 
+        });
+      }
+    });
+
     const columns = [
       {
         title: 'ข้อที่',
         dataIndex: 'clause_no',
         key: 'no',
         width: 100,
-        render: (text, record) => <Text strong={record.is_group}>{text}</Text>
+        onCell: (record) => ({
+          rowSpan: record.rowType === 'title' ? 2 : (record.rowType === 'data' ? 0 : 1),
+        }),
+        render: (text, record) => <Text strong={record.is_group || record.rowType === 'title'}>{text}</Text>
       },
       {
-        title: 'หัวข้อการดำเนินงาน',
+        title: 'หัวข้อการดำเนินงาน / รายละเอียดงาน',
         dataIndex: 'title',
         key: 'title',
-        render: (text, record) => (
-          <div style={{ paddingLeft: record.parent_no ? '20px' : '0' }}>
-            <Text strong={record.is_group}>{text}</Text>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>{record.description}</div>
-          </div>
-        )
+        onCell: (record) => ({
+          colSpan: record.rowType === 'title' ? 3 : 1,
+        }),
+        render: (text, record) => {
+          if (record.rowType === 'title') {
+            return (
+              <div style={{ padding: '4px 0' }}>
+                <Text strong style={{ fontSize: '15px', color: token.colorPrimary }}>{text}</Text>
+              </div>
+            );
+          }
+          
+          return (
+            <div style={{ paddingLeft: record.parent_no ? '20px' : '0' }}>
+              {record.rowType === 'standard' && (
+                <div style={{ marginBottom: '4px' }}>
+                  <Text strong={record.is_group}>{text}</Text>
+                </div>
+              )}
+              {record.description && (
+                <div style={{ fontSize: '12px', color: '#64748b', whiteSpace: 'pre-wrap' }}>{record.description}</div>
+              )}
+            </div>
+          );
+        }
       },
       {
         title: 'กำหนดส่ง',
         key: 'deadline',
         width: 150,
+        onCell: (record) => ({
+          colSpan: record.rowType === 'title' ? 0 : 1,
+        }),
         render: (_, record) => {
+          if (record.rowType === 'title') return null;
           if (record.deadline_days && project?.contract_sign_date) {
             const deadline = dayjs(project.contract_sign_date).add(record.deadline_days, 'day');
             const isOverdue = dayjs().isAfter(deadline) && record.status !== 'Done' && record.status !== 'Verified';
@@ -846,7 +898,11 @@ export default function ProjectTracker() {
         title: 'การจับคู่ระบบ/งวดงาน/ภาคผนวก',
         key: 'mapping',
         width: 350,
+        onCell: (record) => ({
+          colSpan: record.rowType === 'title' ? 0 : 1,
+        }),
         render: (_, record) => {
+          if (record.rowType === 'title') return null;
           const assignedIds = record.milestone_ids ? record.milestone_ids.split(',').length : 0;
           const isAllMilestones = milestones.length > 0 && assignedIds === milestones.length;
 
@@ -873,6 +929,9 @@ export default function ProjectTracker() {
         title: 'จัดการ',
         key: 'action',
         width: 150,
+        onCell: (record) => ({
+          rowSpan: record.rowType === 'title' ? 2 : (record.rowType === 'data' ? 0 : 1),
+        }),
         render: (_, record) => {
           if (user?.role !== 'admin') return null;
           return (
@@ -906,11 +965,12 @@ export default function ProjectTracker() {
         }
       >
         <Table 
-          dataSource={torScope}
+          dataSource={displayData}
           columns={columns}
-          rowKey="clause_id"
+          rowKey="key"
           pagination={false}
           size="middle"
+          rowClassName={(record) => record.rowType === 'title' ? 'tor-title-row' : (record.rowType === 'data' ? 'tor-data-row' : '')}
         />
       </Card>
     );
@@ -1179,12 +1239,14 @@ export default function ProjectTracker() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="is_group" valuePropName="checked">
-                <div style={{ marginTop: '30px' }}>
-                  <Input type="checkbox" style={{ marginRight: '8px', width: 'auto' }} />
-                  <Text>เป็นหัวข้อกลุ่ม (ตัวหนา)</Text>
-                </div>
-              </Form.Item>
+              <Flex gap={16} style={{ marginTop: '30px' }}>
+                <Form.Item name="is_group" valuePropName="checked" noStyle>
+                  <Switch checkedChildren="หัวข้อกลุ่ม" unCheckedChildren="หัวข้อปกติ" />
+                </Form.Item>
+                <Form.Item name="merge_title" valuePropName="checked" noStyle>
+                  <Switch checkedChildren="ผสานเซล" unCheckedChildren="ปกติ" />
+                </Form.Item>
+              </Flex>
             </Col>
           </Row>
         </Form>

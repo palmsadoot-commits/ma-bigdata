@@ -261,20 +261,21 @@ const projectService = {
      * เพิ่มหัวข้อ TOR ใหม่
      */
     async createTORClause(data) {
-        const { clause_no, title, description, parent_no, is_group } = data;
-        const sql = `INSERT INTO project_tor_clauses (clause_no, title, description, parent_no, is_group) VALUES (?, ?, ?, ?, ?)`;
-        const [result] = await db.query(sql, [clause_no, title, description || null, parent_no || null, is_group || 0]);
+        const { clause_no, title, description, parent_no, is_group, merge_title } = data;
+        const sql = `INSERT INTO project_tor_clauses (clause_no, title, description, parent_no, is_group, merge_title) VALUES (?, ?, ?, ?, ?, ?)`;
+        const [result] = await db.query(sql, [clause_no, title, description || null, parent_no || null, is_group || 0, merge_title || 0]);
         return result.insertId;
     },
 
     /**
-     * แก้ไขหัวข้อ TOR
+     * อัปเดตหัวข้อ TOR
      */
     async updateTORClause(id, data) {
-        const { clause_no, title, description, parent_no, is_group } = data;
-        const sql = `UPDATE project_tor_clauses SET clause_no = ?, title = ?, description = ?, parent_no = ?, is_group = ? WHERE clause_id = ?`;
-        await db.query(sql, [clause_no, title, description || null, parent_no || null, is_group || 0, id]);
+        const { clause_no, title, description, parent_no, is_group, merge_title } = data;
+        const sql = `UPDATE project_tor_clauses SET clause_no = ?, title = ?, description = ?, parent_no = ?, is_group = ?, merge_title = ? WHERE clause_id = ?`;
+        await db.query(sql, [clause_no, title, description || null, parent_no || null, is_group || 0, merge_title || 0, id]);
     },
+
 
     /**
      * ลบหัวข้อ TOR
