@@ -13,11 +13,13 @@ router.put('/tasks/:id', authenticateToken, projectController.updateTask);
 router.get('/sla-logs', authenticateToken, projectController.getSLALogs);
 router.get('/deliverables', authenticateToken, projectController.getDeliverables);
 router.post('/deliverables', authenticateToken, requireRole(['admin']), projectController.createDeliverable);
+router.put('/deliverables/reorder', authenticateToken, requireRole(['admin']), projectController.reorderDeliverables);
 router.put('/deliverables/:id', authenticateToken, requireRole(['admin']), projectController.updateDeliverable);
 router.delete('/deliverables/:id', authenticateToken, requireRole(['admin']), projectController.deleteDeliverable);
 router.get('/users', authenticateToken, projectController.getProjectUsers);
 router.get('/tor-scope', authenticateToken, projectController.getTORScope);
 router.post('/tor-scope', authenticateToken, requireRole(['admin']), projectController.createTORClause);
+router.put('/tor-scope/reorder', authenticateToken, requireRole(['admin']), projectController.reorderTorScope);
 router.put('/tor-scope/:id', authenticateToken, requireRole(['admin']), projectController.updateTORClause);
 router.delete('/tor-scope/:id', authenticateToken, requireRole(['admin']), projectController.deleteTORClause);
 

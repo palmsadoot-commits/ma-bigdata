@@ -120,6 +120,14 @@ exports.deleteTORClause = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+exports.reorderTorScope = async (req, res, next) => {
+    try {
+        const { clauseIds } = req.body;
+        await projectService.reorderTorScope(clauseIds);
+        res.json({ success: true, message: 'บันทึกลำดับเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
 exports.updateMilestone = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -170,6 +178,14 @@ exports.deleteDeliverable = async (req, res, next) => {
         const { id } = req.params;
         await projectService.deleteDeliverable(id);
         res.json({ success: true, message: 'ลบสิ่งส่งมอบเรียบร้อย' });
+    } catch (err) { next(err); }
+};
+
+exports.reorderDeliverables = async (req, res, next) => {
+    try {
+        const { deliverableIds } = req.body;
+        await projectService.reorderDeliverables(deliverableIds);
+        res.json({ success: true, message: 'บันทึกลำดับเรียบร้อย' });
     } catch (err) { next(err); }
 };
 

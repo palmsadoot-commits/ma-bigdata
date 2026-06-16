@@ -162,12 +162,12 @@ const projectService = {
      * สร้างงวดงานใหม่
      */
     async createMilestone(data) {
-        const { project_id, installment_no, title, description, start_date, end_date } = data;
+        const { project_id, installment_no, title, description, start_date, end_date, payment_amount } = data;
         const sql = `
-            INSERT INTO project_milestones (project_id, installment_no, title, description, start_date, end_date, progress_percent, status) 
-            VALUES (?, ?, ?, ?, ?, ?, 0, 'Pending')
+            INSERT INTO project_milestones (project_id, installment_no, title, description, start_date, end_date, payment_amount, progress_percent, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'Pending')
         `;
-        const [result] = await db.query(sql, [project_id || 1, installment_no || 1, title, description || null, start_date || null, end_date || null]);
+        const [result] = await db.query(sql, [project_id || 1, installment_no || 1, title, description || null, start_date || null, end_date || null, payment_amount || 0]);
         return result.insertId;
     },
 
@@ -182,8 +182,17 @@ const projectService = {
      * ดึงข้อมูลสิ่งส่งมอบ
      */
     async getDeliverablesByMilestone(milestoneId) {
-        const [rows] = await db.query('SELECT * FROM project_deliverables WHERE milestone_id = ? ORDER BY created_at ASC', [milestoneId]);
+        const [rows] = await db.query('SELECT * FROM project_deliverables WHERE milestone_id = ? ORDER BY display_order ASC, created_at ASC', [milestoneId]);
         return rows;
+    },
+
+    /**
+     * รีออเดอร์สิ่งส่งมอบ
+     */
+    async reorderDeliverables(deliverableIds) {
+        for (let i = 0; i < deliverableIds.length; i++) {
+            await db.query('UPDATE project_deliverables SET display_order = ? WHERE deliverable_id = ?', [i, deliverableIds[i]]);
+        }
     },
 
     /**
@@ -305,9 +314,18 @@ const projectService = {
             FROM project_tor_clauses c
             LEFT JOIN project_tor_mapping m ON c.clause_id = m.clause_id
             LEFT JOIN categories cat ON m.category_id = cat.category_id
-            ORDER BY c.clause_no ASC
+            ORDER BY c.display_order ASC, c.clause_no ASC
         `);
         return rows;
+    },
+
+    /**
+     * รีออเดอร์ TOR
+     */
+    async reorderTorScope(clauseIds) {
+        for (let i = 0; i < clauseIds.length; i++) {
+            await db.query('UPDATE project_tor_clauses SET display_order = ? WHERE clause_id = ?', [i, clauseIds[i]]);
+        }
     },
 
     /**

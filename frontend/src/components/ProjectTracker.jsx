@@ -23,11 +23,26 @@ import {
   EditOutlined,
   SaveOutlined,
   DeleteOutlined,
-  PlusOutlined
+  PlusOutlined,
+  HolderOutlined
 } from '@ant-design/icons';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area
 } from 'recharts';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th'; 
 import axiosInstance from '../services/api/axiosInstance';
@@ -36,6 +51,37 @@ import { alertSuccess, alertError } from '../utils/alert';
 dayjs.locale('th');
 
 const { Title, Text } = Typography;
+
+// --- DnD Components ---
+const RowContext = React.createContext({});
+const DragHandle = () => {
+  const { setActivatorNodeRef, listeners } = React.useContext(RowContext);
+  return (
+    <Button
+      type="text"
+      size="small"
+      icon={<HolderOutlined />}
+      style={{ cursor: 'move', color: '#94a3b8' }}
+      ref={setActivatorNodeRef}
+      {...listeners}
+    />
+  );
+};
+const SortableRow = (props) => {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: props['data-row-key'] });
+  const style = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform && { ...transform, scaleY: 1 }),
+    transition,
+    ...(isDragging ? { position: 'relative', zIndex: 9999, background: '#f8fafc' } : {}),
+  };
+  const contextValue = useMemo(() => ({ setActivatorNodeRef, listeners }), [setActivatorNodeRef, listeners]);
+  return (
+    <RowContext.Provider value={contextValue}>
+      <tr {...props} ref={setNodeRef} style={style} {...attributes} />
+    </RowContext.Provider>
+  );
+};
 
 /**
  * 🚀 World-Class Project Tracker Dashboard
@@ -48,13 +94,32 @@ export default function ProjectTracker() {
   const [tasks, setTasks] = useState([]);
   const [slaLogs, setSlaLogs] = useState([]);
   const [projectUsers, setProjectUsers] = useState([]); // ✅ รายชื่อผู้ใช้งานในโครงการ
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // --- Persistent States ---
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState(() => {
+    const saved = localStorage.getItem('tracker_selectedMilestoneId');
+    return saved ? Number(saved) : null;
+  });
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('tracker_activeTab') || 'dashboard';
+  });
+
   const [deliverables, setDeliverables] = useState([]);
   const [torScope, setTorScope] = useState([]);
   const [categories, setCategories] = useState([]); // ✅ หมวดหมู่ระบบทั้งหมด
   const [project, setProject] = useState(null); // ✅ ข้อมูลโครงการ
   const user = JSON.parse(localStorage.getItem('user'));
+
+  // Sync state to localStorage
+  useEffect(() => {
+    localStorage.setItem('tracker_activeTab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedMilestoneId) {
+      localStorage.setItem('tracker_selectedMilestoneId', selectedMilestoneId);
+    }
+  }, [selectedMilestoneId]);
 
   // --- 🛠️ Management States ---
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -78,6 +143,15 @@ export default function ProjectTracker() {
   const [isTorModalVisible, setIsTorModalVisible] = useState(false);
   const [editingTor, setEditingTor] = useState(null);
   const [torForm] = Form.useForm();
+
+  // --- 📦 DnD Sensors (Moved to Top Level) ---
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 1, // Require 1px movement before dragging starts
+      },
+    })
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -152,7 +226,7 @@ export default function ProjectTracker() {
         ...values,
         completion_date: values.completion_date ? values.completion_date.format('YYYY-MM-DD') : null
       };
-      await axiosInstance.put(`/project/tasks/${editingTask.task_id}`, payload);
+      await axiosInstance.put(`/projects/tasks/${editingTask.task_id}`, payload);
       alertSuccess('สำเร็จ', 'บันทึกข้อมูลงานเรียบร้อยแล้ว');
       setIsEditModalVisible(false);
       fetchData(); // รีเฟรชข้อมูล
@@ -204,7 +278,8 @@ export default function ProjectTracker() {
       title: milestone.title,
       description: milestone.description,
       start_date: milestone.start_date ? dayjs(milestone.start_date) : null,
-      end_date: milestone.end_date ? dayjs(milestone.end_date) : null
+      end_date: milestone.end_date ? dayjs(milestone.end_date) : null,
+      payment_amount: milestone.payment_amount
     });
     setIsMilestoneModalVisible(true);
   };
@@ -397,6 +472,13 @@ export default function ProjectTracker() {
       <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
         <div style={{ flex: 1 }}>
           <Title level={4} style={{ margin: 0 }}>รายละเอียดงานแต่ละงวด: {selectedMilestone?.title || 'ยังไม่ได้เลือกงวดงาน'}</Title>
+          <div style={{ marginTop: 8 }}>
+            {selectedMilestone?.payment_amount > 0 && (
+              <Tag color="gold" style={{ fontSize: '14px', padding: '4px 12px', borderRadius: '8px', marginBottom: 8 }}>
+                <BarChartOutlined /> จำนวนเงิน: {Number(selectedMilestone.payment_amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท
+              </Tag>
+            )}
+          </div>
           <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
             {selectedMilestone?.description || 'ไม่มีรายละเอียดงวดงาน'}
           </Text>
@@ -808,29 +890,71 @@ export default function ProjectTracker() {
     // Transform data to support "Merged Title" row + "Data" row for specific items
     const displayData = [];
     torScope.forEach(item => {
+      // คำนวณความลึก (Depth) สำหรับการเยื้อง (Indentation)
+      const depth = item.clause_no.split('.').length - 1;
+      const indent = depth * 24; // 24px per level
+
+      const enrichedItem = { ...item, indent };
+
       if (item.merge_title === 1) {
         // Add Title Row (Merged)
         displayData.push({ 
-          ...item, 
+          ...enrichedItem, 
           key: `title-${item.clause_id}`, 
           rowType: 'title' 
         });
         // Add Data Row (Standard)
         displayData.push({ 
-          ...item, 
+          ...enrichedItem, 
           key: `data-${item.clause_id}`, 
           rowType: 'data' 
         });
       } else {
         displayData.push({ 
-          ...item, 
+          ...enrichedItem, 
           key: item.clause_id, 
           rowType: 'standard' 
         });
       }
     });
 
+    const onDragEndTor = async ({ active, over }) => {
+      if (active.id !== over?.id) {
+        const activeIndex = torScope.findIndex((i) => i.clause_id === active.id);
+        const overIndex = torScope.findIndex((i) => i.clause_id === over?.id);
+        const newOrder = arrayMove(torScope, activeIndex, overIndex);
+        setTorScope(newOrder); // Optimistic UI update
+        
+        try {
+          // Send reorder request to backend
+          await axiosInstance.put('/projects/tor-scope/reorder', {
+            clauseIds: newOrder.map(d => d.clause_id)
+          });
+          message.success('อัปเดตลำดับขอบเขตงานเรียบร้อย');
+        } catch (err) {
+          console.error('Reorder error:', err);
+          message.error('ไม่สามารถอัปเดตลำดับได้');
+          // Revert optimistic update
+          const res = await axiosInstance.get('/projects/tor-scope');
+          setTorScope(res.data || []);
+        }
+      }
+    };
+
     const columns = [
+      {
+        key: 'sort',
+        align: 'center',
+        width: 40,
+        onCell: (record) => ({
+          rowSpan: record.rowType === 'title' ? 2 : (record.rowType === 'data' ? 0 : 1),
+        }),
+        render: (_, record) => {
+          if (record.rowType === 'data' || user?.role !== 'admin') return null;
+          // Render DragHandle only on the primary row
+          return <DragHandle />;
+        },
+      },
       {
         title: 'ข้อที่',
         dataIndex: 'clause_no',
@@ -839,7 +963,11 @@ export default function ProjectTracker() {
         onCell: (record) => ({
           rowSpan: record.rowType === 'title' ? 2 : (record.rowType === 'data' ? 0 : 1),
         }),
-        render: (text, record) => <Text strong={record.is_group || record.rowType === 'title'}>{text}</Text>
+        render: (text, record) => (
+          <div style={{ paddingLeft: `${record.indent}px` }}>
+            <Text strong={record.is_group || record.rowType === 'title'}>{text}</Text>
+          </div>
+        )
       },
       {
         title: 'หัวข้อการดำเนินงาน / รายละเอียดงาน',
@@ -851,14 +979,14 @@ export default function ProjectTracker() {
         render: (text, record) => {
           if (record.rowType === 'title') {
             return (
-              <div style={{ padding: '4px 0' }}>
+              <div style={{ padding: '4px 0', paddingLeft: `${record.indent}px` }}>
                 <Text strong style={{ fontSize: '15px', color: token.colorPrimary }}>{text}</Text>
               </div>
             );
           }
           
           return (
-            <div style={{ paddingLeft: record.parent_no ? '20px' : '0' }}>
+            <div style={{ paddingLeft: `${record.indent}px` }}>
               {record.rowType === 'standard' && (
                 <div style={{ marginBottom: '4px' }}>
                   <Text strong={record.is_group}>{text}</Text>
@@ -934,6 +1062,7 @@ export default function ProjectTracker() {
         }),
         render: (_, record) => {
           if (user?.role !== 'admin') return null;
+          if (record.rowType === 'data') return null;
           return (
             <Space>
               <Button size="small" type="primary" ghost icon={<EditOutlined />} onClick={() => handleEditTor(record)} />
@@ -964,22 +1093,117 @@ export default function ProjectTracker() {
           </Flex>
         }
       >
-        <Table 
-          dataSource={displayData}
-          columns={columns}
-          rowKey="key"
-          pagination={false}
-          size="middle"
-          rowClassName={(record) => record.rowType === 'title' ? 'tor-title-row' : (record.rowType === 'data' ? 'tor-data-row' : '')}
-        />
+        <DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEndTor}>
+          <SortableContext
+            items={torScope.map((i) => i.clause_id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <Table 
+              components={{
+                body: {
+                  row: (props) => {
+                    const rowKey = props['data-row-key'];
+                    // กำหนดให้ลากได้เฉพาะแถวหลัก (standard หรือ title)
+                    const isDraggable = typeof rowKey === 'number' || (typeof rowKey === 'string' && rowKey.startsWith('title-'));
+                    const id = typeof rowKey === 'number' ? rowKey : (typeof rowKey === 'string' && rowKey.startsWith('title-') ? parseInt(rowKey.replace('title-', '')) : null);
+
+                    if (!isDraggable || !id) {
+                      return <tr {...props} />;
+                    }
+
+                    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+                    const style = {
+                      ...props.style,
+                      transform: CSS.Transform.toString(transform && { ...transform, scaleY: 1 }),
+                      transition,
+                      ...(isDragging ? { position: 'relative', zIndex: 9999, background: '#f8fafc' } : {}),
+                    };
+                    const contextValue = useMemo(() => ({ setActivatorNodeRef, listeners }), [setActivatorNodeRef, listeners]);
+                    
+                    return (
+                      <RowContext.Provider value={contextValue}>
+                        <tr {...props} ref={setNodeRef} style={style} {...attributes} />
+                      </RowContext.Provider>
+                    );
+                  },
+                },
+              }}
+              dataSource={displayData}
+              columns={columns}
+              rowKey="key"
+              pagination={false}
+              size="middle"
+              rowClassName={(record) => record.rowType === 'title' ? 'tor-title-row' : (record.rowType === 'data' ? 'tor-data-row' : '')}
+            />
+          </SortableContext>
+        </DndContext>
       </Card>
     );
+  };
+
+  const handleCloseMilestone = () => {
+    Modal.confirm({
+      title: 'ยืนยันปิดงวดงาน (Final Review)',
+      content: (
+        <div>
+          <p>คุณกำลังจะยืนยันการปิด <b>{selectedMilestone?.title}</b></p>
+          <p>การดำเนินการนี้จะทำการ:</p>
+          <ul>
+            <li>อัปเดตสถานะงวดงานเป็น <b>"Completed"</b></li>
+            <li>ตั้งค่าสถานะการเบิกจ่าย (Payment) เป็น <b>"In Process"</b> เพื่อรอการอนุมัติจ่ายเงิน</li>
+          </ul>
+          <p style={{ color: 'red', marginTop: 10 }}>*โปรดตรวจสอบความถูกต้องของเอกสารให้ครบถ้วนก่อนยืนยัน</p>
+        </div>
+      ),
+      okText: 'ยืนยันปิดงวดงาน',
+      okType: 'primary',
+      cancelText: 'ยกเลิก',
+      onOk: async () => {
+        setLoading(true);
+        try {
+          await axiosInstance.put(`/projects/milestones/${selectedMilestoneId}`, {
+            status: 'Completed',
+            payment_status: 'In Process'
+          });
+          alertSuccess('ปิดงวดงานสำเร็จ', 'ระบบได้อัปเดตสถานะการเบิกจ่ายเป็น "อยู่ระหว่างดำเนินการ" แล้ว');
+          fetchData();
+        } catch (err) {
+          alertError('ผิดพลาด', 'ไม่สามารถปิดงวดงานได้');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const renderDeliverables = () => {
     const selectedMilestone = milestones.find(m => m.milestone_id === selectedMilestoneId);
     const allTasksDone = currentMilestoneTasks.length > 0 && currentMilestoneTasks.every(t => t.status === 'Done' || t.status === 'Verified');
     
+    // Drag-and-drop handlers
+    const onDragEnd = async ({ active, over }) => {
+      if (active.id !== over?.id) {
+        const activeIndex = deliverables.findIndex((i) => i.deliverable_id === active.id);
+        const overIndex = deliverables.findIndex((i) => i.deliverable_id === over?.id);
+        const newOrder = arrayMove(deliverables, activeIndex, overIndex);
+        setDeliverables(newOrder); // Optimistic UI update
+        
+        try {
+          // Send reorder request to backend
+          await axiosInstance.put('/projects/deliverables/reorder', {
+            deliverableIds: newOrder.map(d => d.deliverable_id)
+          });
+          message.success('อัปเดตลำดับเรียบร้อย');
+        } catch (err) {
+          console.error('Reorder error:', err);
+          message.error('ไม่สามารถอัปเดตลำดับได้');
+          // Revert optimistic update
+          const res = await axiosInstance.get(`/projects/deliverables?milestone_id=${selectedMilestoneId}`);
+          setDeliverables(res.data || []);
+        }
+      }
+    };
+
     return (
       <Flex vertical gap={24} style={{ animation: 'fadeIn 0.5s ease' }}>
         <Card 
@@ -990,13 +1214,13 @@ export default function ProjectTracker() {
         </Card>
 
         <Row gutter={[24, 24]}>
-          <Col xs={24} lg={16}>
+          <Col xs={24} lg={19}>
             <Card 
               variant="borderless" 
               style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
               title={
                 <Flex justify="space-between" align="center" style={{ width: '100%' }}>
-                  <Space><FileDoneOutlined /> <Text strong>รายการสิ่งส่งมอบตามงวดงาน</Text></Space>
+                  <Space><FileDoneOutlined /> <Text strong>รายการสิ่งส่งมอบตามงวดงาน (ลากเพื่อสลับลำดับได้)</Text></Space>
                   {user?.role === 'admin' && (
                     <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleAddDeliverable}>
                       เพิ่มรายการส่งมอบ
@@ -1005,38 +1229,56 @@ export default function ProjectTracker() {
                 </Flex>
               }
             >
-              <Table 
-                dataSource={deliverables}
-                pagination={false}
-                rowKey="deliverable_id"
-                columns={[
-                  { 
-                    title: 'ลำดับ', 
-                    key: 'index', 
-                    width: 60,
-                    render: (text, record, index) => index + 1 
-                  },
-                  { title: 'ชื่อรายการสิ่งส่งมอบ', dataIndex: 'name', key: 'name' },
-                  { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 120, render: (s) => <StatusTag status={s} /> },
-                  { 
-                    title: 'จัดการ', 
-                    key: 'action', 
-                    width: 150,
-                    render: (_, record) => {
-                      if (user?.role !== 'admin') return null;
-                      return (
-                        <Space>
-                          <Button size="small" type="primary" ghost icon={<EditOutlined />} onClick={() => handleEditDeliverable(record)} />
-                          <Button size="small" danger ghost icon={<DeleteOutlined />} onClick={() => handleDeleteDeliverable(record.deliverable_id)} />
-                        </Space>
-                      );
-                    }
-                  }
-                ]}
-              />
+              <DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
+                <SortableContext
+                  items={deliverables.map((i) => i.deliverable_id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <Table 
+                    components={{
+                      body: {
+                        row: SortableRow,
+                      },
+                    }}
+                    dataSource={deliverables}
+                    pagination={false}
+                    rowKey="deliverable_id"
+                    columns={[
+                      {
+                        key: 'sort',
+                        align: 'center',
+                        width: 40,
+                        render: () => <DragHandle />,
+                      },
+                      { 
+                        title: 'ลำดับ', 
+                        key: 'index', 
+                        width: 50,
+                        render: (text, record, index) => index + 1 
+                      },
+                      { title: 'ชื่อรายการสิ่งส่งมอบ', dataIndex: 'name', key: 'name' },
+                      { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 110, render: (s) => <StatusTag status={s} /> },
+                      { 
+                        title: 'จัดการ', 
+                        key: 'action', 
+                        width: 100,
+                        render: (_, record) => {
+                          if (user?.role !== 'admin') return null;
+                          return (
+                            <Space>
+                              <Button size="small" type="primary" ghost icon={<EditOutlined />} onClick={() => handleEditDeliverable(record)} />
+                              <Button size="small" danger ghost icon={<DeleteOutlined />} onClick={() => handleDeleteDeliverable(record.deliverable_id)} />
+                            </Space>
+                          );
+                        }
+                      }
+                    ]}
+                  />
+                </SortableContext>
+              </DndContext>
             </Card>
           </Col>
-          <Col xs={24} lg={8}>
+          <Col xs={24} lg={5}>
             <Card 
               variant="borderless" 
               style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
@@ -1068,9 +1310,10 @@ export default function ProjectTracker() {
                     size="large" 
                     block 
                     style={{ height: '50px', borderRadius: '12px' }}
-                    disabled={!allTasksDone || deliverables.length === 0 || !deliverables.every(d => d.status === 'Approved')}
+                    disabled={selectedMilestone?.status === 'Completed' || !allTasksDone || deliverables.length === 0 || !deliverables.every(d => d.status === 'Approved')}
+                    onClick={handleCloseMilestone}
                   >
-                    ยืนยันปิดงวดงาน (Final Review)
+                    {selectedMilestone?.status === 'Completed' ? 'ปิดงวดงานแล้ว (Completed)' : 'ยืนยันปิดงวดงาน (Final Review)'}
                   </Button>
                 )}
               </Flex>
@@ -1159,6 +1402,19 @@ export default function ProjectTracker() {
           <Form.Item name="description" label="รายละเอียดงานแต่ละงวด (คำอธิบาย)">
             <Input.TextArea rows={4} placeholder="ระบุรายละเอียดงานหรือเงื่อนไขต่างๆ ของงวดนี้..." />
           </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item name="payment_amount" label="จำนวนเงินตามงวดงาน (บาท)">
+                <InputNumber 
+                  style={{ width: '100%' }} 
+                  formatter={value => `฿ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={value => value.replace(/\฿\s?|(,*)/g, '')}
+                  placeholder="เช่น 899000.00"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Row gutter={16}>
             <Col span={12}>
