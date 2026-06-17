@@ -207,64 +207,66 @@ function MainLayout() {
   );
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      {!isMobile && (
-        <Sider trigger={null} collapsible collapsed={collapsed} width={200} style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 100 }}>
-          <div className="sider-logo">
-            {collapsed ? 'LMIS' : '⚙️ LMIS BIG DATA'}
-          </div>
+    <App>
+      <Layout style={{ minHeight: '100vh' }}>
+        {!isMobile && (
+          <Sider trigger={null} collapsible collapsed={collapsed} width={200} style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 100 }}>
+            <div className="sider-logo">
+              {collapsed ? 'LMIS' : '⚙️ LMIS BIG DATA'}
+            </div>
+            {renderNavMenu()}
+          </Sider>
+        )}
+        <Drawer title="⚙️ LMIS BIG DATA" placement="left" onClose={() => setMobileVisible(false)} open={mobileVisible} styles={{ wrapper: { width: 260 }, body: { padding: 0, backgroundColor: 'var(--sidebar-bg)' }, header: { backgroundColor: 'var(--sidebar-bg)', color: 'white' }, mask: { backdropFilter: 'blur(4px)' } }} closeIcon={<span style={{ color: 'white' }}>✕</span>}>
           {renderNavMenu()}
-        </Sider>
-      )}
-      <Drawer title="⚙️ LMIS BIG DATA" placement="left" onClose={() => setMobileVisible(false)} open={mobileVisible} styles={{ wrapper: { width: 260 }, body: { padding: 0, backgroundColor: 'var(--sidebar-bg)' }, header: { backgroundColor: 'var(--sidebar-bg)', color: 'white' }, mask: { backdropFilter: 'blur(4px)' } }} closeIcon={<span style={{ color: 'white' }}>✕</span>}>
-        {renderNavMenu()}
-      </Drawer>
+        </Drawer>
 
-      <Layout style={{ marginLeft: isMobile ? 0 : (collapsed ? 80 : 200), transition: 'all 0.2s' }}>
-        <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 16px' : '0 24px', position: 'sticky', top: 0, zIndex: 99, width: '100%', height: '64px' }}>
-          <Space size={isMobile ? 8 : 16}>
-            <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => isMobile ? setMobileVisible(true) : setCollapsed(!collapsed)} style={{ fontSize: '18px' }} />
-            <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: 'var(--text-main)' }}>{isMobile ? 'แจ้งซ่อม' : 'ระบบแจ้งซ่อมและบำรุงรักษา'}</Title>
-            {!isMobile && <Tag color="blue" icon={<RocketOutlined />}>{activeProject?.project_name}</Tag>}
-          </Space>
-          <Dropdown menu={userMenu} placement="bottomRight" arrow>
-            <Space style={{ cursor: 'pointer' }}>
-                <Avatar icon={<UserOutlined />} style={{ backgroundColor: 'var(--primary-color)' }} />
-                {!isMobile && <Text strong style={{ color: 'var(--text-main)' }}>{user?.first_name}</Text>}
-                <DownOutlined style={{ fontSize: 10, color: 'var(--text-main)' }} />
+        <Layout style={{ marginLeft: isMobile ? 0 : (collapsed ? 80 : 200), transition: 'all 0.2s' }}>
+          <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 16px' : '0 24px', position: 'sticky', top: 0, zIndex: 99, width: '100%', height: '64px' }}>
+            <Space size={isMobile ? 8 : 16}>
+              <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => isMobile ? setMobileVisible(true) : setCollapsed(!collapsed)} style={{ fontSize: '18px' }} />
+              <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: 'var(--text-main)' }}>{isMobile ? 'แจ้งซ่อม' : 'ระบบแจ้งซ่อมและบำรุงรักษา'}</Title>
+              {!isMobile && <Tag color="blue" icon={<RocketOutlined />}>{activeProject?.project_name}</Tag>}
             </Space>
-          </Dropdown>
-        </Header>
+            <Dropdown menu={userMenu} placement="bottomRight" arrow>
+              <Space style={{ cursor: 'pointer' }}>
+                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: 'var(--primary-color)' }} />
+                  {!isMobile && <Text strong style={{ color: 'var(--text-main)' }}>{user?.first_name}</Text>}
+                  <DownOutlined style={{ fontSize: 10, color: 'var(--text-main)' }} />
+              </Space>
+            </Dropdown>
+          </Header>
 
-        <Content style={{ margin: isMobile ? '12px' : '24px', minHeight: 280, background: 'transparent' }}>
-          <Routes>
-            <Route path="/" element={(user?.role === 'admin' || user?.role === 'user') ? <TicketForm project={activeProject} /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<TicketDashboard project={activeProject} />} />
-            <Route path="/tickets" element={<TicketList project={activeProject} />} />
-            <Route path="/ticket/:id" element={<TicketDetail />} />
-            <Route path="/print/:id" element={<TicketPrint />} /> 
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/users" element={user?.role === 'admin' ? <UserManagement /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/categories" element={user?.role === 'admin' ? <CategoryManagement /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/statuses" element={user?.role === 'admin' ? <StatusManagement /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/system-settings" element={user?.role === 'admin' ? <SystemSettings /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/system-logs" element={user?.role === 'admin' ? <SystemLogDashboard /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/navigation" element={user?.role === 'admin' ? <MenuManagement /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/backup" element={user?.role === 'admin' ? <BackupManagement /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/security" element={user?.role === 'admin' ? <SecurityCommandCenter /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/vendors" element={user?.role === 'admin' ? <VendorManagement /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/reports" element={user?.role === 'admin' ? <MaintenanceReportDashboard /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/bi-dashboard" element={(user?.role === 'admin' || user?.role === 'manager') ? <BusinessIntelligenceDashboard /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/project-tracker" element={<ProjectTracker />} />
-            <Route path="/login-success" element={<LoginSuccess />} />
-            <Route path="/error/:code" element={<ErrorDisplay />} />
-            <Route path="/error-test" element={<ErrorDisplay allowPreview={true} />} />
-            <Route path="*" element={settings?.error_404_active === 1 ? <ErrorDisplay code="404" /> : <Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Content>
+          <Content style={{ margin: isMobile ? '12px' : '24px', minHeight: 280, background: 'transparent' }}>
+            <Routes>
+              <Route path="/" element={(user?.role === 'admin' || user?.role === 'user') ? <TicketForm project={activeProject} /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<TicketDashboard project={activeProject} />} />
+              <Route path="/tickets" element={<TicketList project={activeProject} />} />
+              <Route path="/ticket/:id" element={<TicketDetail />} />
+              <Route path="/print/:id" element={<TicketPrint />} /> 
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/users" element={user?.role === 'admin' ? <UserManagement /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/categories" element={user?.role === 'admin' ? <CategoryManagement /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/statuses" element={user?.role === 'admin' ? <StatusManagement /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/system-settings" element={user?.role === 'admin' ? <SystemSettings /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/system-logs" element={user?.role === 'admin' ? <SystemLogDashboard /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/navigation" element={user?.role === 'admin' ? <MenuManagement /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/backup" element={user?.role === 'admin' ? <BackupManagement /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/security" element={user?.role === 'admin' ? <SecurityCommandCenter /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/vendors" element={user?.role === 'admin' ? <VendorManagement /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/reports" element={user?.role === 'admin' ? <MaintenanceReportDashboard /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/bi-dashboard" element={(user?.role === 'admin' || user?.role === 'manager') ? <BusinessIntelligenceDashboard /> : <Navigate to="/dashboard" replace />} />
+              <Route path="/project-tracker" element={<ProjectTracker />} />
+              <Route path="/login-success" element={<LoginSuccess />} />
+              <Route path="/error/:code" element={<ErrorDisplay />} />
+              <Route path="/error-test" element={<ErrorDisplay allowPreview={true} />} />
+              <Route path="*" element={settings?.error_404_active === 1 ? <ErrorDisplay code="404" /> : <Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </App>
   );
 }
 

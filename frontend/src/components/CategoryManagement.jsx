@@ -11,6 +11,8 @@ import {
   DesktopOutlined, ApiOutlined, DatabaseOutlined, TagsOutlined, 
   ProfileOutlined, FileProtectOutlined, SearchOutlined, CheckCircleOutlined 
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError } from '../utils/alert';
 
@@ -25,6 +27,8 @@ const { useToken } = theme;
  */
 export default function CategoryManagement() {
   const { token } = useToken();
+  const navigate = useNavigate();
+  const { selectProject } = useAuth();
   const [categories, setCategories] = useState([]);
   const [projects, setProjects] = useState([]);
   const [categoryTypes, setCategoryTypes] = useState([]);
@@ -85,6 +89,12 @@ export default function CategoryManagement() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleTrackProject = (proj, e) => {
+    e.stopPropagation(); // ป้องกันการคลิก Card หลัก
+    selectProject(proj);
+    navigate('/project-tracker');
+  };
 
   // --- Filtering Logic ---
   const filteredProjects = useMemo(() => {
@@ -252,8 +262,17 @@ export default function CategoryManagement() {
 
                 <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: `1px dashed ${cardTheme.color}40`, fontSize: '13px', color: '#334155' }}>
                   <div style={{ marginBottom: '5px' }}><strong>ผู้รับจ้าง:</strong> {proj.vendor_name || '-'}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span><strong>เลขที่สัญญา:</strong> <Tag color="white" style={{ color: cardTheme.color, border: `1px solid ${cardTheme.color}60` }}>{proj.project_contract || '-'}</Tag></span>
+                    <Button 
+                      type="primary" 
+                      size="small" 
+                      icon={<CheckCircleOutlined />} 
+                      style={{ backgroundColor: cardTheme.color, borderColor: cardTheme.color, borderRadius: '8px', fontSize: '12px' }}
+                      onClick={(e) => handleTrackProject(proj, e)}
+                    >
+                      ติดตามโครงการ
+                    </Button>
                   </div>
                 </div>
               </div>

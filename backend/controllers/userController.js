@@ -202,19 +202,42 @@ exports.getTechnicians = async (req, res, next) => {
 exports.completeProfile = async (req, res, next) => {
     try {
         const userId = req.user.user_id;
-        const { project_id, agency, position, telephone, mobile, first_name, last_name, email } = req.body;
+        const { project_id, agency, position, telephone, mobile, first_name, last_name, email, username, password } = req.body;
 
-        if (!project_id || !agency || !position) {
-            return res.status(400).json({ error: 'กรุณากรอกข้อมูล โครงการ, หน่วยงาน และตำแหน่งให้ครบถ้วน' });
-        }
+        // 🛡️ ขั้นตอนการตรวจสอบความซ้ำซ้อน (Backend Reinforcement)
+        
+        // 1. ตรวจสอบ Username ซ้ำ
+        const [existingUser] = await db.query('SELECT user_id FROM users WHERE username = ? AND user_id != ?', [username, userId]);
+        if (existingUser.length > 0) return res.status(400).json({ error: 'ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว กรุณาใช้ชื่ออื่น' });
 
+        // 2. ตรวจสอบ Email ซ้ำ
+        const [existingEmail] = await db.query('SELECT user_id FROM users WHERE email = ? AND user_id != ?', [email, userId]);
+        if (existingEmail.length > 0) return res.status(400).json({ error: 'อีเมลนี้ถูกลงทะเบียนไว้แล้วในระบบ' });
+
+        // 🛡️ จัดการ Password Hashing
+        const bcrypt = require('bcrypt');
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        // 📝 บันทึกข้อมูลลงฐานข้อมูล
+        // อัปเดตข้อมูลทั้งหมด และเปลี่ยนสถานะให้ไม่ต้อง Onboarding อีก
+        // หากมีการตั้งรหัสผ่าน ให้ถือว่าเป็น account ที่สมบูรณ์
         await db.query(
-            'UPDATE users SET project_id = ?, agency = ?, position = ?, telephone = ?, mobile = ?, first_name = ?, last_name = ?, email = ? WHERE user_id = ?',
-            [project_id, agency, position, telephone || null, mobile || null, first_name || '', last_name || '', email || null, userId]
+            `UPDATE users SET 
+                project_id = ?, agency = ?, position = ?, 
+                telephone = ?, mobile = ?, first_name = ?, 
+                last_name = ?, email = ?, username = ?, 
+                password_hash = ?, is_active = 1
+             WHERE user_id = ?`,
+            [
+                project_id, agency, position, 
+                telephone || null, mobile, first_name, 
+                last_name, email, username, 
+                passwordHash, userId
+            ]
         );
 
-        await logAction(userId, 'COMPLETE_PROFILE', `User completed onboarding profile`, req);
-        await sysLog('INFO', 'OPERATIONAL', `User ID ${userId} completed onboarding profile`, { userId, req });
+        await logAction(userId, 'COMPLETE_PROFILE', `User completed onboarding and set hybrid credentials (User: ${username})`, req);
+        await sysLog('INFO', 'ACCESS', `New hybrid user initialized: ${username}`, { userId, req });
 
         res.json({ success: true, message: 'บันทึกข้อมูลสำเร็จ ยินดีต้อนรับเข้าสู่ระบบครับ' });
     } catch (err) { next(err); }

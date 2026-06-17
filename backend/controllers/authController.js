@@ -205,8 +205,8 @@ exports.linkGoogle = (req, res) => {
 
 function issueTokenAndRedirect(res, user) {
     // 🧠 ตรวจสอบว่าต้องการข้อมูลเพิ่มเติมหรือไม่
-    // ปรับให้เช็คเฉพาะข้อมูลสำคัญที่จำเป็นจริงๆ สำหรับการทำงาน (โครงการ, หน่วยงาน, ตำแหน่ง)
-    const requiresOnboarding = !user.project_id || !user.agency || !user.position;
+    // ปรับให้เช็คข้อมูลสำคัญที่จำเป็นทั้งหมด รวมถึง Email และ Username
+    const requiresOnboarding = !user.project_id || !user.agency || !user.position || !user.email || user.username.includes(user.auth_provider);
 
     const token = jwt.sign(
         { user_id: user.user_id, username: user.username, role: user.role },

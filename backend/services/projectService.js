@@ -302,7 +302,7 @@ const projectService = {
     async getTORScope() {
         const [rows] = await db.query(`
             SELECT c.*, 
-                   m.category_id, m.annex_table_no, m.deadline_days,
+                   m.category_id, m.annex_table_no, m.deadline_days, m.deadline_type,
                    cat.category_name,
                    (SELECT GROUP_CONCAT(ms.title SEPARATOR ', ') 
                     FROM project_tor_milestones tm 
@@ -332,7 +332,7 @@ const projectService = {
      * อัปเดตการจับคู่ TOR กับงวดงาน (หลายงวด) และหมวดหมู่
      */
     async updateTORMapping(clauseId, data) {
-        const { milestone_ids, category_id, annex_table_no, deadline_days } = data;
+        const { milestone_ids, category_id, annex_table_no, deadline_days, deadline_type } = data;
         
         // 1. จัดการข้อมูลหมวดหมู่และภาคผนวก
         await db.query('DELETE FROM project_tor_mapping WHERE clause_id = ?', [clauseId]);
@@ -342,9 +342,9 @@ const projectService = {
 
         if (category_id || annexTableStr || deadline_days) {
             await db.query(`
-                INSERT INTO project_tor_mapping (clause_id, category_id, annex_table_no, deadline_days)
-                VALUES (?, ?, ?, ?)
-            `, [clauseId, category_id || null, annexTableStr || null, deadline_days || null]);
+                INSERT INTO project_tor_mapping (clause_id, category_id, annex_table_no, deadline_days, deadline_type)
+                VALUES (?, ?, ?, ?, ?)
+            `, [clauseId, category_id || null, annexTableStr || null, deadline_days || null, deadline_type || 'AFTER']);
         }
 
         // 2. จัดการข้อมูลหลายงวดงาน (Many-to-Many)

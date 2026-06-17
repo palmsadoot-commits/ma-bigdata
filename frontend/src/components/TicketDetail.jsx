@@ -528,7 +528,7 @@ export default function TicketDetail() {
                   )}
 
                   {!isRejecting ? (
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                       <Button type="primary" size="large" block style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: 10, height: 60, fontSize: 20, fontWeight: 'bold' }} onClick={handleApproveTicket}>✅ ใช้งานได้ปกติ (ปิดเคส)</Button>
                       <Button danger size="large" block style={{ borderRadius: 10, height: 50 }} onClick={() => setIsRejecting(true)}>❌ ยังใช้งานไม่ได้ (ตีกลับให้แก้ไข)</Button>
                     </Space>

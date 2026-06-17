@@ -111,7 +111,7 @@ export default function TicketList({ project }) {
       key: 'ticket_number', 
       width: 120,
       render: (text, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text strong>{text}</Text>
           {record.is_cm === 1 && <Tag color="error" style={{ fontSize: 10, marginTop: 4 }}>CM</Tag>}
         </Space>

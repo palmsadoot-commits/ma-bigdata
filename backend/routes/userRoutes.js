@@ -5,7 +5,7 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 const { uploadAvatar } = require('../utils/upload');
 
 const validate = require('../middleware/validate');
-const { loginSchema, createUserSchema, updateProfileSchema, updatePasswordSchema, adminUpdateUserSchema } = require('../schemas/userSchema');
+const { loginSchema, createUserSchema, updateProfileSchema, updatePasswordSchema, adminUpdateUserSchema, completeProfileSchema } = require('../schemas/userSchema');
 
 router.post('/login', validate({ body: loginSchema }), userController.login);
 router.post('/logout', authenticateToken, userController.logout);
@@ -14,7 +14,7 @@ router.get('/', authenticateToken, requireRole(['admin']), userController.getUse
 router.get('/profile', authenticateToken, userController.getProfile);
 router.put('/profile', authenticateToken, validate({ body: updateProfileSchema }), userController.updateProfile);
 router.patch('/profile', authenticateToken, validate({ body: updateProfileSchema }), userController.updateProfile); // ✅ เพิ่ม PATCH เผื่อไว้
-router.put('/complete-profile', authenticateToken, userController.completeProfile);
+router.put('/complete-profile', authenticateToken, validate({ body: completeProfileSchema }), userController.completeProfile);
 router.post('/upload-avatar', authenticateToken, uploadAvatar.single('avatar'), userController.uploadAvatar);
 router.put('/password', authenticateToken, validate({ body: updatePasswordSchema }), userController.updatePassword);
 router.patch('/password', authenticateToken, validate({ body: updatePasswordSchema }), userController.updatePassword); // ✅ เพิ่ม PATCH เผื่อไว้

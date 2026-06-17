@@ -44,8 +44,19 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('activeProject');
   };
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ user, activeProject, login, logout, selectProject, changeProject, setActiveProject }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      activeProject, 
+      login, 
+      logout, 
+      selectProject, 
+      changeProject, 
+      setActiveProject,
+      isAuthenticated 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -33,6 +33,19 @@ const updatePasswordSchema = z.object({
     new_password: z.string().min(6, { message: "รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร" }).max(100)
 });
 
+const completeProfileSchema = z.object({
+    first_name: z.string().trim().min(1, { message: "กรุณาระบุชื่อจริง" }),
+    last_name: z.string().trim().min(1, { message: "กรุณาระบุนามสกุล" }),
+    email: z.string().trim().email({ message: "รูปแบบอีเมลไม่ถูกต้อง" }),
+    username: z.string().trim().min(4, { message: "ชื่อผู้ใช้งานต้องอย่างน้อย 4 ตัวอักษร" }).regex(/^[a-zA-Z0-9._]+$/, { message: "ชื่อผู้ใช้ใช้ได้เฉพาะภาษาอังกฤษ, ตัวเลข, . และ _" }),
+    password: z.string().min(6, { message: "รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร" }).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/, { message: "รหัสผ่านต้องมีตัวพิมพ์เล็ก พิมพ์ใหญ่ และตัวเลข" }),
+    project_id: z.any().transform(v => Number(v)),
+    agency: z.string().trim().min(1, { message: "กรุณาระบุหน่วยงาน" }),
+    position: z.string().trim().min(1, { message: "กรุณาระบุตำแหน่ง" }),
+    telephone: z.string().trim().regex(/^(|0[2-7][0-9]{7,8})$/, { message: "รูปแบบเบอร์โทรศัพท์โต๊ะทำงานไม่ถูกต้อง (เช่น 021234567)" }).optional().nullable(),
+    mobile: z.string().trim().regex(/^0[689][0-9]{8}$/, { message: "รูปแบบเบอร์โทรศัพท์มือถือไม่ถูกต้อง (เช่น 0812345678)" })
+});
+
 // ✅ ปรับปรุงให้ตรงกับข้อมูลที่ UserManagement.jsx ส่งมาจริง
 const adminUpdateUserSchema = z.object({
     username: z.string().optional(), 
@@ -52,5 +65,6 @@ module.exports = {
     createUserSchema,
     updateProfileSchema,
     updatePasswordSchema,
-    adminUpdateUserSchema
+    adminUpdateUserSchema,
+    completeProfileSchema
 };

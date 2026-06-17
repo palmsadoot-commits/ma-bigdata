@@ -3,7 +3,7 @@ import {
   Card, Row, Col, Typography, Table, Button, Space, Tag, 
   Statistic, Divider, Empty, message, Badge, Tooltip,
   Progress, theme, Flex, Tabs, Select, Timeline, List, Avatar,
-  Modal, Form, Input, DatePicker, InputNumber, Switch
+  Modal, Form, Input, DatePicker, InputNumber, Switch, App
 } from 'antd';
 import { 
   DashboardOutlined, 
@@ -45,6 +45,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th'; 
+import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../services/api/axiosInstance';
 import { alertSuccess, alertError } from '../utils/alert';
 
@@ -89,6 +90,8 @@ const SortableRow = (props) => {
  */
 export default function ProjectTracker() {
   const { token } = theme.useToken();
+  const { message: messageApi, notification, modal } = App.useApp();
+  const { activeProject } = useAuth();
   const [loading, setLoading] = useState(false);
   const [milestones, setMilestones] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -144,6 +147,10 @@ export default function ProjectTracker() {
   const [editingTor, setEditingTor] = useState(null);
   const [torForm] = Form.useForm();
 
+  // --- 🛠️ Project Management States ---
+  const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+  const [projectForm] = Form.useForm();
+
   // --- 📦 DnD Sensors (Moved to Top Level) ---
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -171,7 +178,14 @@ export default function ProjectTracker() {
       setProjectUsers(usersRes.data || []);
       setTorScope(torRes.data || []);
       setCategories(catRes.data || []);
-      setProject(projectsRes.data?.[0] || null); // ✅ เซ็ตโครงการหลัก
+      
+      // ✅ เลือกโครงการจาก activeProject ถ้ามี หรือเลือกอันแรก
+      if (activeProject && projectsRes.data) {
+        const found = projectsRes.data.find(p => p.project_id === activeProject.project_id);
+        setProject(found || projectsRes.data?.[0] || null);
+      } else {
+        setProject(projectsRes.data?.[0] || null);
+      }
       
       const defaultMilestone = milestonesRes.data?.find(m => m.status === 'In Progress') || milestonesRes.data?.[0];
       const mId = selectedMilestoneId || defaultMilestone?.milestone_id;
@@ -188,7 +202,7 @@ export default function ProjectTracker() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMilestoneId]);
+  }, [selectedMilestoneId, activeProject]);
 
   useEffect(() => {
     fetchData();
@@ -204,6 +218,33 @@ export default function ProjectTracker() {
   }, [selectedMilestoneId]);
 
   // --- 🛠️ Management Handlers ---
+
+  const handleEditProject = () => {
+    projectForm.setFieldsValue({
+      ...project,
+      contract_sign_date: project.contract_sign_date ? dayjs(project.contract_sign_date) : null
+    });
+    setIsProjectModalVisible(true);
+  };
+
+  const handleSaveProject = async (values) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...values,
+        contract_sign_date: values.contract_sign_date ? values.contract_sign_date.format('YYYY-MM-DD') : null
+      };
+      await axiosInstance.put(`/projects/${project.project_id}`, payload);
+      alertSuccess('สำเร็จ', 'อัปเดตข้อมูลโครงการเรียบร้อยแล้ว');
+      setIsProjectModalVisible(false);
+      fetchData();
+    } catch (err) {
+      console.error("Save Project Error:", err);
+      alertError('ผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลโครงการได้');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const handleEditTask = (task) => {
     setEditingTask(task);
@@ -244,7 +285,8 @@ export default function ProjectTracker() {
       milestone_ids: record.milestone_ids ? record.milestone_ids.split(',').map(Number) : [],
       category_id: record.category_id,
       annex_table_no: record.annex_table_no ? String(record.annex_table_no).split(',').map(Number) : [],
-      deadline_days: record.deadline_days
+      deadline_days: record.deadline_days,
+      deadline_type: record.deadline_type || 'AFTER'
     });
     setIsMappingModalVisible(true);
   };
@@ -493,7 +535,7 @@ export default function ProjectTracker() {
             </Space>
           )}
         </div>
-        <Space direction="vertical" align="end">
+        <Space orientation="vertical" align="end">
           <Select 
             style={{ width: 280 }}
             size="large"
@@ -974,7 +1016,7 @@ export default function ProjectTracker() {
         dataIndex: 'title',
         key: 'title',
         onCell: (record) => ({
-          colSpan: record.rowType === 'title' ? 3 : 1,
+          colSpan: record.rowType === 'title' ? 2 : 1,
         }),
         render: (text, record) => {
           if (record.rowType === 'title') {
@@ -1000,32 +1042,15 @@ export default function ProjectTracker() {
         }
       },
       {
-        title: 'กำหนดส่ง',
-        key: 'deadline',
-        width: 150,
-        onCell: (record) => ({
-          colSpan: record.rowType === 'title' ? 0 : 1,
-        }),
-        render: (_, record) => {
-          if (record.rowType === 'title') return null;
-          if (record.deadline_days && project?.contract_sign_date) {
-            const deadline = dayjs(project.contract_sign_date).add(record.deadline_days, 'day');
-            const isOverdue = dayjs().isAfter(deadline) && record.status !== 'Done' && record.status !== 'Verified';
-            return (
-              <Tooltip title={`คำนวนจากวันที่ลงนามสัญญา (${dayjs(project.contract_sign_date).format('DD/MM/YYYY')}) + ${record.deadline_days} วัน`}>
-                <Tag color={isOverdue ? 'error' : 'warning'} icon={<CalendarOutlined />}>
-                  {deadline.format('DD/MM/YYYY')}
-                </Tag>
-              </Tooltip>
-            );
-          }
-          return '-';
-        }
-      },
-      {
-        title: 'การจับคู่ระบบ/งวดงาน/ภาคผนวก',
+        title: (
+          <span>
+            <span style={{ color: '#d48806' }}>งวดงาน</span> / 
+            <span style={{ color: '#0958d9' }}> ภาคผนวก</span> / 
+            <span style={{ color: '#ec3700e5' }}> กำหนดส่ง</span>
+          </span>
+        ),
         key: 'mapping',
-        width: 350,
+        width: 420,
         onCell: (record) => ({
           colSpan: record.rowType === 'title' ? 0 : 1,
         }),
@@ -1049,6 +1074,20 @@ export default function ProjectTracker() {
               {record.category_name && (
                 <Tag color="cyan" icon={<UnorderedListOutlined />}>{record.category_name}</Tag>
               )}
+              {record.deadline_days && project?.contract_sign_date && (() => {
+                const isBefore = record.deadline_type === 'BEFORE';
+                const deadline = isBefore 
+                  ? dayjs(project.contract_sign_date).subtract(record.deadline_days, 'day')
+                  : dayjs(project.contract_sign_date).add(record.deadline_days, 'day');
+                const isOverdue = dayjs().isAfter(deadline) && record.status !== 'Done' && record.status !== 'Verified';
+                return (
+                  <Tooltip title={`คำนวนจากวันที่ลงนามสัญญา (${dayjs(project.contract_sign_date).format('DD/MM/YYYY')}) ${isBefore ? '-' : '+'} ${record.deadline_days} วัน`}>
+                    <Tag color={isOverdue ? 'error' : 'warning'} icon={<CalendarOutlined />}>
+                      ส่ง: {deadline.format('DD/MM/YYYY')}
+                    </Tag>
+                  </Tooltip>
+                );
+              })()}
             </Space>
           );
         }
@@ -1295,14 +1334,16 @@ export default function ProjectTracker() {
                 
                 <Divider style={{ margin: 0 }} />
                 
-                <List size="small">
-                  <List.Item extra={allTasksDone ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <SyncOutlined spin style={{ color: '#1677ff' }} />}>
+                <Flex vertical gap={12}>
+                  <Flex justify="space-between" align="center">
                     <Text type={allTasksDone ? 'success' : 'secondary'}>งานตาม TOR ครบถ้วน</Text>
-                  </List.Item>
-                  <List.Item extra={deliverables.length > 0 && deliverables.every(d => d.status === 'Approved') ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <WarningOutlined style={{ color: '#faad14' }} />}>
+                    {allTasksDone ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <SyncOutlined spin style={{ color: '#1677ff' }} />}
+                  </Flex>
+                  <Flex justify="space-between" align="center">
                     <Text type={deliverables.length > 0 && deliverables.every(d => d.status === 'Approved') ? 'success' : 'secondary'}>เอกสารสิ่งส่งมอบครบถ้วน</Text>
-                  </List.Item>
-                </List>
+                    {deliverables.length > 0 && deliverables.every(d => d.status === 'Approved') ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <WarningOutlined style={{ color: '#faad14' }} />}
+                  </Flex>
+                </Flex>
 
                 {user?.role === 'admin' && (
                   <Button 
@@ -1337,9 +1378,19 @@ export default function ProjectTracker() {
               ระบบติดตามความคืบหน้าโครงการ
             </Space>
           </Title>
-          <Text type="secondary" style={{ fontSize: '15px' }}>
-            โครงการบำรุงรักษาระบบสารสนเทศศูนย์ข้อมูลแรงงานแห่งชาติ (MA Big Data Analytics)
-          </Text>
+          <Flex align="center" gap={8}>
+            <Text type="secondary" style={{ fontSize: '15px' }}>
+              {project?.project_name || '...'}
+            </Text>
+            {user?.role === 'admin' && (
+              <Button 
+                type="text" 
+                size="small" 
+                icon={<EditOutlined style={{ fontSize: '12px', color: token.colorPrimary }} />} 
+                onClick={handleEditProject}
+              />
+            )}
+          </Flex>
         </div>
         <Space>
           <Button icon={<DownloadOutlined />} size="large" style={{ borderRadius: '10px' }}>รายงานภาพรวม</Button>
@@ -1646,9 +1697,21 @@ export default function ProjectTracker() {
             />
           </Form.Item>
 
-          <Form.Item name="deadline_days" label="กำหนดส่ง (จำนวนวันหลังจากลงนามสัญญา)">
-            <InputNumber style={{ width: '100%' }} placeholder="เช่น 7, 30, 90" min={1} />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={14}>
+              <Form.Item name="deadline_days" label="กำหนดส่ง (จำนวนวัน)">
+                <InputNumber style={{ width: '100%' }} placeholder="เช่น 7, 30, 90" min={1} />
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Form.Item name="deadline_type" label="เงื่อนไขเวลา" initialValue="AFTER">
+                <Select options={[
+                  { label: 'หลังลงนาม', value: 'AFTER' },
+                  { label: 'ก่อนเริ่มงาน', value: 'BEFORE' },
+                ]} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -1679,6 +1742,59 @@ export default function ProjectTracker() {
               { label: 'อยู่ระหว่างดำเนินการ (In Process)', value: 'In Process' },
               { label: 'เบิกจ่ายแล้ว (Paid)', value: 'Paid' },
             ]} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* --- 📁 Project Edit Modal (Admin Only) --- */}
+      <Modal
+        title={<Space><RocketOutlined /> แก้ไขข้อมูลโครงการ</Space>}
+        open={isProjectModalVisible}
+        onCancel={() => setIsProjectModalVisible(false)}
+        onOk={() => projectForm.submit()}
+        confirmLoading={loading}
+        okText="บันทึกข้อมูลโครงการ"
+        cancelText="ยกเลิก"
+        centered
+        width={600}
+      >
+        <Form form={projectForm} layout="vertical" onFinish={handleSaveProject}>
+          <Form.Item name="project_name" label="ชื่อโครงการ" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="project_contract" label="เลขที่สัญญา">
+                <Input placeholder="เช่น 19/2569" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="contract_sign_date" label="วันที่ลงนามสัญญา (สำคัญสำหรับคำนวณ SLA)">
+                <DatePicker style={{ width: '100%' }} format="DD MMM YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="contract_value" label="มูลค่าสัญญา (บาท)">
+                <InputNumber 
+                  style={{ width: '100%' }} 
+                  formatter={value => `฿ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={value => value.replace(/\฿\s?|(,*)/g, '')}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="penalty_rate" label="อัตราค่าปรับต่อวัน (เช่น 0.001)">
+                <InputNumber style={{ width: '100%' }} step={0.0001} precision={4} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="description" label="รายละเอียดโครงการ">
+            <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
       </Modal>
