@@ -46,15 +46,16 @@ exports.login = async (req, res, next) => {
             { expiresIn: '12h' }
         );
 
-        delete user.password_hash; 
-        user.token = token; 
+        // 🧠 ใช้ Logic รวมศูนย์สำหรับดึงข้อมูลผู้ใช้งานที่ปลอดภัยและ Onboarding Status
+        const safeUser = userService.getSafeUserData(user);
+        safeUser.token = token; 
 
         await sysLog('INFO', 'ACCESS', `Successful login: User ${username}`, { 
             req, userId: user.user_id, metadata: { username, role: user.role } 
         });
         await logAction(user.user_id, 'LOGIN_SUCCESS', `User ${username} logged in`, req);
 
-        res.json({ success: true, user: user });
+        res.json({ success: true, user: safeUser });
     } catch (err) { next(err); }
 };
 

@@ -34,12 +34,15 @@ export default function Onboarding() {
   }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
-    // ดึงข้อมูลโครงการทั้งหมด
+    // ดึงข้อมูลโครงการทั้งหมด (ดึงครั้งเดียวเมื่อ Component Mount)
     axiosInstance.get('/projects')
       .then(res => setProjects(res.data))
       .catch(err => console.error('Error fetching projects:', err))
       .finally(() => setFetchingProjects(false));
+  }, []);
 
+  useEffect(() => {
+    // เซ็ตค่า Form ทันทีที่มีข้อมูล user (ทำงานเฉพาะเมื่อ user เปลี่ยนแปลง)
     if (user) {
       form.setFieldsValue({
         first_name: user.first_name || '',
@@ -49,7 +52,8 @@ export default function Onboarding() {
         mobile: user.mobile || '',
         agency: user.agency || '',
         position: user.position || '',
-        username: user.username || user.email?.split('@')[0] || '', 
+        username: '', // ❌ ไม่แสดง Username ชั่วคราว บังคับให้ตั้งใหม่
+        password: '', // ❌ ไม่แสดง Password ชั่วคราว บังคับให้ตั้งใหม่
       });
     }
   }, [user, form]);

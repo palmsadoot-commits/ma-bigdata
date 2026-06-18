@@ -144,6 +144,42 @@ const userService = {
         ]);
         
         return { changes };
+    },
+
+    /**
+     * กรองข้อมูลผู้ใช้งานสำหรับส่งให้ Frontend (Security & Logic Sync)
+     */
+    getSafeUserData(user) {
+        // 🧠 ตรวจสอบว่าข้อมูลสำคัญครบถ้วนหรือไม่
+        const hasProject = !!user.project_id;
+        const hasAgency = !!user.agency;
+        const hasPosition = !!user.position;
+        const hasEmail = !!user.email;
+        
+        // ถ้ารหัสผ่านยังเป็นค่าเริ่มต้นของ Social Auth แสดงว่ายังไม่ได้ตั้งค่า Hybrid Password (แต่จะไม่บังคับให้ Onboarding ซ้ำถ้าอย่างอื่นครบแล้ว)
+        // บังคับ Onboarding เฉพาะเมื่อ ฟิลด์สำคัญว่างเปล่า
+        const requiresOnboarding = !hasProject || !hasAgency || !hasPosition || !hasEmail;
+
+        console.log(`[DEBUG] User ${user.username} Onboarding Check: Project=${hasProject}, Agency=${hasAgency}, Position=${hasPosition}, Email=${hasEmail} -> requires_onboarding=${requiresOnboarding}`);
+
+        return {
+            user_id: user.user_id,
+            username: user.username,
+            role: user.role,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+            agency: user.agency,
+            position: user.position,
+            project_id: user.project_id,
+            telephone: user.telephone,
+            mobile: user.mobile,
+            line_id: user.line_id,
+            google_id: user.google_id,
+            user_photo: user.social_profile_pic || user.user_photo,
+            auth_provider: user.auth_provider,
+            requires_onboarding: requiresOnboarding
+        };
     }
 
 };

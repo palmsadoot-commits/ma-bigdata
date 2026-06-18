@@ -113,16 +113,10 @@ export default function ProjectTracker() {
   const [project, setProject] = useState(null); // ✅ ข้อมูลโครงการ
   const user = JSON.parse(localStorage.getItem('user'));
 
-  // Sync state to localStorage
+  // Sync state to localStorage (Only on activeTab change)
   useEffect(() => {
     localStorage.setItem('tracker_activeTab', activeTab);
   }, [activeTab]);
-
-  useEffect(() => {
-    if (selectedMilestoneId) {
-      localStorage.setItem('tracker_selectedMilestoneId', selectedMilestoneId);
-    }
-  }, [selectedMilestoneId]);
 
   // --- 🛠️ Management States ---
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -191,7 +185,6 @@ export default function ProjectTracker() {
       const mId = selectedMilestoneId || defaultMilestone?.milestone_id;
       
       if (mId) {
-        setSelectedMilestoneId(mId);
         // ดึงสิ่งส่งมอบของงวดที่เลือก
         const delRes = await axiosInstance.get(`/projects/deliverables?milestone_id=${mId}`);
         setDeliverables(delRes.data || []);
@@ -202,7 +195,7 @@ export default function ProjectTracker() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMilestoneId, activeProject]);
+  }, [activeProject]);
 
   useEffect(() => {
     fetchData();

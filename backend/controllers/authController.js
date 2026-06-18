@@ -203,35 +203,17 @@ exports.linkGoogle = (req, res) => {
 
 // --- HELPERS ---
 
+const userService = require('../services/userService');
+
 function issueTokenAndRedirect(res, user) {
-    // 🧠 ตรวจสอบว่าต้องการข้อมูลเพิ่มเติมหรือไม่
-    // ปรับให้เช็คข้อมูลสำคัญที่จำเป็นทั้งหมด รวมถึง Email และ Username
-    const requiresOnboarding = !user.project_id || !user.agency || !user.position || !user.email || user.username.includes(user.auth_provider);
+    // 🧠 ใช้ Logic รวมศูนย์จาก Service
+    const userData = userService.getSafeUserData(user);
 
     const token = jwt.sign(
         { user_id: user.user_id, username: user.username, role: user.role },
         process.env.JWT_SECRET || 'fallback_secret',
         { expiresIn: '12h' }
     );
-
-    // ส่งข้อมูลครบทุกฟิลด์กลับไปเพื่อให้ Frontend/Profile แสดงผลได้ถูกต้อง
-    const userData = {
-        user_id: user.user_id,
-        username: user.username,
-        role: user.role,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        agency: user.agency,
-        position: user.position,
-        project_id: user.project_id,
-        telephone: user.telephone,
-        mobile: user.mobile,
-        line_id: user.line_id,
-        google_id: user.google_id,
-        user_photo: user.social_profile_pic || user.user_photo,
-        requires_onboarding: requiresOnboarding
-    };
 
     res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`);
 }
