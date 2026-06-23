@@ -30,6 +30,15 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area
 } from 'recharts';
 import {
+  getAxisConfig,
+  getGridConfig,
+  getTooltipStyle,
+  getGradientId,
+  getChartCardStyle,
+  ANIMATION_CONFIG,
+  CHART_PALETTE,
+} from '../utils/chartTheme';
+import {
   DndContext,
   PointerSensor,
   useSensor,
@@ -662,47 +671,42 @@ export default function ProjectTracker() {
         return (
           <Button 
             type="text" 
-            icon={<EditOutlined style={{ color: token.colorPrimary }} />} 
-            onClick={() => handleEditTask(record)}
-          />
-        );
-      }
-    }
-  ];
-
-  // --- 💸 Payments View ---
-  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
-  const [editingMilestone, setEditingMilestone] = useState(null);
-  const [paymentForm] = Form.useForm();
-
-  const handleEditPayment = (milestone) => {
-    setEditingMilestone(milestone);
-    paymentForm.setFieldsValue({
-      payment_amount: milestone.payment_amount || 0,
-      payment_status: milestone.payment_status || 'Pending'
-    });
-    setIsPaymentModalVisible(true);
-  };
-
-  const handleSavePayment = async (values) => {
-    setLoading(true);
-    try {
-      await axiosInstance.put(`/projects/milestones/${editingMilestone.milestone_id}`, values);
-      alertSuccess('สำเร็จ', 'บันทึกข้อมูลการเบิกจ่ายเรียบร้อย');
-      setIsPaymentModalVisible(false);
-      fetchData();
-    } catch (err) {
-      alertError('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลการเบิกจ่ายได้');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderPayments = () => (
-    <Card 
-      variant="borderless" 
-      style={{ borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', animation: 'fadeIn 0.5s ease' }}
-      title={<Space><BarChartOutlined /> <Text strong>การเบิกจ่ายเงินตามงวดงาน (Installment Payments)</Text></Space>}
+            icon={<Edi           <Card 
+            variant="borderless" 
+            className="chart-card"
+            style={{ ...getChartCardStyle(), height: '100%' }}
+            title={<Space><BarChartOutlined /> <Text strong>ภาพรวมความคืบหน้าแต่ละงวดงาน</Text></Space>}
+          >
+            <div style={{ height: 350, minHeight: 350, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={progressData}>
+                  <defs>
+                    <linearGradient id={getGradientId('proj-progress', 'primary')} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={token.colorPrimary} stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor={token.colorPrimary} stopOpacity={0.01}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...getGridConfig()} />
+                  <XAxis dataKey="name" {...getAxisConfig()} />
+                  <YAxis {...getAxisConfig()} unit="%" />
+                  <RechartsTooltip 
+                    {...getTooltipStyle()}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="progress" 
+                    stroke={token.colorPrimary} 
+                    strokeWidth={2.5} 
+                    fillOpacity={1} 
+                    fill={`url(#${getGradientId('proj-progress', 'primary')})`} 
+                    dot={false}
+                    activeDot={{ r: 6, fill: token.colorPrimary, stroke: '#fff', strokeWidth: 3 }}
+                    {...ANIMATION_CONFIG}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>�งวดงาน (Installment Payments)</Text></Space>}
     >
       <Table 
         dataSource={milestones}

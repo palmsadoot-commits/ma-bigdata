@@ -1,0 +1,174 @@
+/* ═══════════════════════════════════════════════
+   🎨 Modern Chart Styles — MA Big Data
+   Global CSS for beautiful, consistent charts
+   ═══════════════════════════════════════════════ */
+
+/* ─── Chart Container Animations ─── */
+
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chartScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+  }
+}
+
+.chart-container {
+  animation: chartFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.chart-container:nth-child(2) { animation-delay: 0.1s; }
+.chart-container:nth-child(3) { animation-delay: 0.2s; }
+.chart-container:nth-child(4) { animation-delay: 0.3s; }
+
+/* ─── Chart Card Hover Effects ─── */
+
+.chart-card {
+  transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.chart-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-2px);
+}
+
+body.dark-mode .chart-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ─── Recharts Tooltip Override ─── */
+
+.recharts-tooltip-wrapper {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.1));
+  transition: all 0.15s ease !important;
+  pointer-events: none;
+}
+
+body.dark-mode .recharts-tooltip-wrapper {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.4));
+}
+
+/* ─── Recharts Legend Styling ─── */
+
+.recharts-legend-wrapper {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.recharts-legend-item {
+  cursor: pointer;
+  padding: 4px 8px !important;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.recharts-legend-item:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+body.dark-mode .recharts-legend-item:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+/* ─── Recharts Active Dot Glow ─── */
+
+.recharts-active-dot circle {
+  filter: drop-shadow(0 0 6px currentColor);
+  transition: r 0.2s ease;
+}
+
+/* ─── Recharts Bar Hover ─── */
+
+.recharts-bar-rectangle:hover {
+  filter: brightness(1.1);
+  transition: filter 0.2s ease;
+}
+
+/* ─── Recharts Pie/Radial Hover ─── */
+
+.recharts-pie-sector:hover,
+.recharts-radial-bar-sector:hover {
+  filter: brightness(1.08) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+  transition: filter 0.2s ease;
+}
+
+/* ─── Dark Mode: Recharts SVG Text ─── */
+
+body.dark-mode .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8 !important;
+}
+
+body.dark-mode .recharts-cartesian-grid line {
+  stroke: rgba(148, 163, 184, 0.1) !important;
+}
+
+body.dark-mode .recharts-legend-item-text {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .recharts-label {
+  fill: #e2e8f0 !important;
+}
+
+/* ─── Responsive Chart Heights ─── */
+
+@media (max-width: 768px) {
+  .chart-responsive-height {
+    min-height: 260px !important;
+    height: 260px !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .chart-responsive-height {
+    min-height: 350px !important;
+    height: 350px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .chart-responsive-height {
+    min-height: 400px !important;
+    height: 400px !important;
+  }
+}
+
+/* ─── Statistic Card Animations ─── */
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chart-stat-card .ant-statistic-content {
+  animation: countUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.chart-stat-card:nth-child(1) .ant-statistic-content { animation-delay: 0.05s; }
+.chart-stat-card:nth-child(2) .ant-statistic-content { animation-delay: 0.10s; }
+.chart-stat-card:nth-child(3) .ant-statistic-content { animation-delay: 0.15s; }
+.chart-stat-card:nth-child(4) .ant-statistic-content { animation-delay: 0.20s; }

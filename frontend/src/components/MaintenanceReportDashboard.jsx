@@ -30,18 +30,21 @@ import {
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../services/api/axiosInstance';
+import {
+  CHART_PALETTE,
+  getAxisConfig,
+  getGridConfig,
+  getTooltipStyle,
+  getGradientId,
+  getGradientStops,
+  getAreaStyle,
+  getLegendConfig,
+  getChartCardStyle,
+  ANIMATION_CONFIG,
+} from '../utils/chartTheme';
 
 const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
-
-// 🎨 Palette for Charts
-const COLORS = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96'];
-const STATUS_COLORS = {
-  'success': '#52c41a',
-  'warning': '#faad14',
-  'error': '#f5222d',
-  'processing': '#1890ff'
-};
 
 export default function MaintenanceReportDashboard() {
   const { token } = theme.useToken();
@@ -130,7 +133,17 @@ export default function MaintenanceReportDashboard() {
     XLSX.writeFile(wb, `Report_Maintenance_${dayjs().format('YYYYMMDD')}.xlsx`);
   };
 
-  const kpiCardStyle = { borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none' };
+  // --- Theme configs ---
+  const axisConfig = getAxisConfig();
+  const gridConfig = getGridConfig();
+  const tooltipStyle = getTooltipStyle();
+  const legendConfig = getLegendConfig();
+  const chartCardStyle = getChartCardStyle();
+  const kpiCardStyle = { ...chartCardStyle };
+
+  // --- Gradient IDs ---
+  const trendGradCreated = getGradientId('maint-trend', 'created');
+  const gradStops = getGradientStops('#6366f1');
 
   return (
     <div style={{ padding: '24px', backgroundColor: 'var(--bg-app)', minHeight: '100vh' }}>
@@ -165,41 +178,41 @@ export default function MaintenanceReportDashboard() {
 
       {/* 📊 Executive KPI Cards */}
       <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={kpiCardStyle}>
+        <Col xs={24} sm={12} lg={6} className="chart-stat-card">
+          <Card className="chart-card" style={kpiCardStyle}>
             <Statistic 
-              title={<Text strong style={{ color: '#1890ff' }}><SolutionOutlined /> งานแจ้งซ่อมทั้งหมด</Text>} 
+              title={<Text strong style={{ color: CHART_PALETTE[0] }}><SolutionOutlined /> งานแจ้งซ่อมทั้งหมด</Text>} 
               value={kpis.total_tickets || 0} 
               suffix="รายการ"
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={kpiCardStyle}>
+        <Col xs={24} sm={12} lg={6} className="chart-stat-card">
+          <Card className="chart-card" style={kpiCardStyle}>
             <Statistic 
-              title={<Text strong style={{ color: '#faad14' }}><ClockCircleOutlined /> กำลังดำเนินการ</Text>} 
+              title={<Text strong style={{ color: CHART_PALETTE[2] }}><ClockCircleOutlined /> กำลังดำเนินการ</Text>} 
               value={kpis.active_tickets || 0} 
-              styles={{ content: { color: '#faad14' } }}
+              styles={{ content: { color: CHART_PALETTE[2] } }}
               suffix="รายการ"
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={kpiCardStyle}>
+        <Col xs={24} sm={12} lg={6} className="chart-stat-card">
+          <Card className="chart-card" style={kpiCardStyle}>
             <Statistic 
-              title={<Text strong style={{ color: '#52c41a' }}><CheckCircleOutlined /> ปิดงานสำเร็จ</Text>} 
+              title={<Text strong style={{ color: CHART_PALETTE[1] }}><CheckCircleOutlined /> ปิดงานสำเร็จ</Text>} 
               value={kpis.resolved_tickets || 0} 
-              styles={{ content: { color: '#52c41a' } }}
+              styles={{ content: { color: CHART_PALETTE[1] } }}
               suffix="รายการ"
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={kpiCardStyle}>
+        <Col xs={24} sm={12} lg={6} className="chart-stat-card">
+          <Card className="chart-card" style={kpiCardStyle}>
             <Statistic 
-              title={<Text strong style={{ color: '#f5222d' }}><WarningOutlined /> หลุดกำหนด SLA</Text>} 
+              title={<Text strong style={{ color: CHART_PALETTE[3] }}><WarningOutlined /> หลุดกำหนด SLA</Text>} 
               value={kpis.sla_breaches || 0} 
-              styles={{ content: { color: '#f5222d' } }}
+              styles={{ content: { color: CHART_PALETTE[3] } }}
               suffix="รายการ"
             />
           </Card>
@@ -209,7 +222,7 @@ export default function MaintenanceReportDashboard() {
       {/* 📈 Visual Analytics Section */}
       <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
         {/* Ticket Volume Trend */}
-        <Col xs={24} xl={15} style={{ minWidth: 0 }}>
+        <Col xs={24} xl={15} style={{ minWidth: 0 }} className="chart-container">
           <Card 
             title={
               <Space>
@@ -220,64 +233,81 @@ export default function MaintenanceReportDashboard() {
               </Space>
             } 
             variant="borderless" 
-            style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }}
+            className="chart-card"
+            style={chartCardStyle}
           >
             <div style={{ width: '100%', height: 400, minHeight: 400 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trendData}>
                   <defs>
-                    <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#1890ff" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#1890ff" stopOpacity={0}/>
+                    <linearGradient id={trendGradCreated} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={CHART_PALETTE[0]} stopOpacity={gradStops.topOpacity}/>
+                      <stop offset="95%" stopColor={CHART_PALETTE[0]} stopOpacity={gradStops.bottomOpacity}/>
+                    </linearGradient>
+                    <linearGradient id={getGradientId('maint-trend', 'resolved')} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={CHART_PALETTE[1]} stopOpacity={0.12}/>
+                      <stop offset="95%" stopColor={CHART_PALETTE[1]} stopOpacity={0.01}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} />
-                  <ChartTooltip />
-                  <Legend verticalAlign="top" height={36}/>
-                  <Area type="monotone" dataKey="created" name="งานแจ้งซ่อมใหม่" stroke="#1890ff" fillOpacity={1} fill="url(#colorCreated)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="resolved" name="ปิดงานสำเร็จ" stroke="#52c41a" fillOpacity={0.1} fill="#52c41a" strokeWidth={2} />
+                  <CartesianGrid {...gridConfig} />
+                  <XAxis dataKey="month" {...axisConfig} />
+                  <YAxis {...axisConfig} />
+                  <ChartTooltip {...tooltipStyle} />
+                  <Legend {...legendConfig} />
+                  <Area 
+                    {...getAreaStyle(CHART_PALETTE[0], trendGradCreated)} 
+                    dataKey="created" 
+                    name="งานแจ้งซ่อมใหม่" 
+                  />
+                  <Area 
+                    {...getAreaStyle(CHART_PALETTE[1], getGradientId('maint-trend', 'resolved'))} 
+                    dataKey="resolved" 
+                    name="ปิดงานสำเร็จ" 
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
         </Col>
 
-        {/* Category Distribution - Switched to Horizontal Bar for long names */}
-        <Col xs={24} xl={9} style={{ minWidth: 0 }}>
+        {/* Category Distribution - Horizontal Bar */}
+        <Col xs={24} xl={9} style={{ minWidth: 0 }} className="chart-container">
           <Card 
             title={<Space><PieChartOutlined /> สัดส่วนปัญหาตามหมวดหมู่</Space>} 
             variant="borderless" 
-            style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }}
+            className="chart-card"
+            style={chartCardStyle}
           >
             <div style={{ width: '100%', height: 400, minHeight: 400 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryData} layout="vertical" margin={{ left: 10, right: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                  <CartesianGrid {...gridConfig} horizontal={false} />
                   <XAxis type="number" hide />
                   <YAxis 
                     type="category" 
                     dataKey="name" 
                     width={150} 
-                    fontSize={10} 
-                    axisLine={false} 
-                    tickLine={false}
+                    {...axisConfig}
                     tick={(props) => {
                       const { x, y, payload } = props;
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          <text x={-5} y={0} dy={4} textAnchor="end" fill="#666" fontSize={10}>
+                          <text x={-5} y={0} dy={4} textAnchor="end" fill={axisConfig.tick.fill} fontSize={10}>
                             {payload.value.length > 25 ? `${payload.value.substring(0, 25)}...` : payload.value}
                           </text>
                         </g>
                       );
                     }}
                   />
-                  <ChartTooltip cursor={{fill: 'transparent'}} />
-                  <Bar dataKey="value" name="จำนวน (รายการ)" fill="#1890ff" radius={[0, 4, 4, 0]}>
+                  <ChartTooltip {...tooltipStyle} />
+                  <Bar 
+                    dataKey="value" 
+                    name="จำนวน (รายการ)" 
+                    radius={[0, 8, 8, 0]}
+                    {...ANIMATION_CONFIG}
+                  >
                     {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -289,11 +319,12 @@ export default function MaintenanceReportDashboard() {
 
       <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
         {/* 🚀 Maintenance Lifecycle Efficiency (Radial Chart & Flow) */}
-        <Col xs={24} xl={10} style={{ minWidth: 0 }}>
+        <Col xs={24} xl={10} style={{ minWidth: 0 }} className="chart-container">
           <Card 
             title={<Space><SyncOutlined spin={loading} style={{ color: token.colorPrimary }} /> ท่อกระบวนการทำงาน (Maintenance Pipeline)</Space>} 
             variant="borderless" 
-            style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', height: '100%' }}
+            className="chart-card"
+            style={{ ...chartCardStyle, height: '100%' }}
           >
             <Row gutter={16} align="middle">
               <Col span={14}>
@@ -303,7 +334,7 @@ export default function MaintenanceReportDashboard() {
                       cx="50%" cy="50%" 
                       innerRadius="20%" outerRadius="100%" 
                       barSize={15} 
-                      data={statusData.map((s, i) => ({ ...s, fill: s.color || COLORS[i % COLORS.length] }))}
+                      data={statusData.map((s, i) => ({ ...s, fill: s.color || CHART_PALETTE[i % CHART_PALETTE.length] }))}
                     >
                       <RadialBar
                         minAngle={15}
@@ -311,10 +342,11 @@ export default function MaintenanceReportDashboard() {
                         clockWise
                         dataKey="value"
                         cornerRadius={10}
+                        {...ANIMATION_CONFIG}
                       />
                       <ChartTooltip 
                         formatter={(value, name, entry) => [`${value} รายการ`, entry.payload.name]}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        {...tooltipStyle}
                         labelStyle={{ display: 'none' }}
                       />
                     </RadialBarChart>
@@ -363,29 +395,45 @@ export default function MaintenanceReportDashboard() {
         </Col>
 
         {/* Vendor Performance */}
-        <Col xs={24} xl={14} style={{ minWidth: 0 }}>
+        <Col xs={24} xl={14} style={{ minWidth: 0 }} className="chart-container">
           <Card 
             title={<Space><BarChartOutlined /> ประสิทธิภาพ SLA รายบริษัท (Vendor)</Space>} 
             variant="borderless" 
-            style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)', height: '100%' }}
+            className="chart-card"
+            style={{ ...chartCardStyle, height: '100%' }}
           >
             <div style={{ width: '100%', height: 350, minHeight: 350 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={vendorData} layout="vertical" margin={{ left: 10, right: 30, top: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-                  <XAxis type="number" axisLine={false} tickLine={false} hide />
+                  <CartesianGrid {...gridConfig} horizontal={true} vertical={false} />
+                  <XAxis type="number" {...axisConfig} hide />
                   <YAxis 
                     type="category" 
                     dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
+                    {...axisConfig}
                     width={120} 
-                    fontSize={11}
+                    tick={{ ...axisConfig.tick, fontSize: 11 }}
                   />
-                  <ChartTooltip cursor={{fill: 'rgba(0,0,0,0.02)'}} />
-                  <Legend verticalAlign="top" align="right" height={36}/>
-                  <Bar dataKey="on_time" name="ปิดงานทันเวลา" stackId="a" fill="#52c41a" radius={[0, 0, 0, 0]} barSize={20} />
-                  <Bar dataKey="breached" name="หลุด SLA" stackId="a" fill="#f5222d" radius={[0, 4, 4, 0]} barSize={20} />
+                  <ChartTooltip {...tooltipStyle} />
+                  <Legend {...legendConfig} verticalAlign="top" align="right" />
+                  <Bar 
+                    dataKey="on_time" 
+                    name="ปิดงานทันเวลา" 
+                    stackId="a" 
+                    fill={CHART_PALETTE[1]} 
+                    radius={[0, 0, 0, 0]} 
+                    barSize={20} 
+                    {...ANIMATION_CONFIG}
+                  />
+                  <Bar 
+                    dataKey="breached" 
+                    name="หลุด SLA" 
+                    stackId="a" 
+                    fill={CHART_PALETTE[3]} 
+                    radius={[0, 6, 6, 0]} 
+                    barSize={20} 
+                    {...ANIMATION_CONFIG}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -395,11 +443,12 @@ export default function MaintenanceReportDashboard() {
 
       <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
         {/* Financial Summary: Penalties */}
-        <Col xs={24} xl={24}>
+        <Col xs={24} xl={24} className="chart-container">
           <Card 
-            title={<Space><DollarOutlined style={{ color: '#f5222d' }} /> สรุปมูลค่าโครงการและค่าปรับสะสม (Financial Insights)</Space>} 
+            title={<Space><DollarOutlined style={{ color: CHART_PALETTE[3] }} /> สรุปมูลค่าโครงการและค่าปรับสะสม (Financial Insights)</Space>} 
             variant="borderless" 
-            style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }}
+            className="chart-card"
+            style={chartCardStyle}
             extra={<Text strong type="danger" style={{ fontSize: '20px' }}>ยอดค่าปรับรวม: ฿ {Number(kpis.total_penalties || 0).toLocaleString()}</Text>}
           >
             <Row gutter={24} align="middle">
@@ -407,7 +456,7 @@ export default function MaintenanceReportDashboard() {
                 <Progress 
                     type="dashboard" 
                     percent={Number(Math.min(100, (kpis.sla_breaches / kpis.total_tickets * 100) || 0).toFixed(1))} 
-                    strokeColor="#f5222d"
+                    strokeColor={CHART_PALETTE[3]}
                     format={percent => `${percent}% Breach`}
                     size={180}
                 />
@@ -426,10 +475,10 @@ export default function MaintenanceReportDashboard() {
                   </div>
                   <Row gutter={16}>
                     <Col span={12}>
-                      <Statistic title="จำนวนเคสที่หลุด SLA" value={kpis.sla_breaches} prefix={<WarningOutlined style={{ color: '#f5222d' }} />} />
+                      <Statistic title="จำนวนเคสที่หลุด SLA" value={kpis.sla_breaches} prefix={<WarningOutlined style={{ color: CHART_PALETTE[3] }} />} />
                     </Col>
                     <Col span={12}>
-                      <Statistic title="ยอดค่าปรับค้างชำระ" value={kpis.total_penalties} precision={2} prefix="฿" styles={{ content: { color: '#f5222d' } }} />
+                      <Statistic title="ยอดค่าปรับค้างชำระ" value={kpis.total_penalties} precision={2} prefix="฿" styles={{ content: { color: CHART_PALETTE[3] } }} />
                     </Col>
                   </Row>
                 </Flex>
@@ -443,7 +492,8 @@ export default function MaintenanceReportDashboard() {
       <Card 
         title={<Space><FileTextOutlined /> รายละเอียดรายการแจ้งซ่อม</Space>} 
         variant="borderless" 
-        style={{ borderRadius: '16px', boxShadow: 'var(--card-shadow)' }}
+        className="chart-card"
+        style={chartCardStyle}
         styles={{ body: { padding: 0 } }}
       >
         <Table
