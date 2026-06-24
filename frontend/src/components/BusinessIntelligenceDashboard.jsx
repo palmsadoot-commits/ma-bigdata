@@ -23,22 +23,11 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import axiosInstance from '../services/api/axiosInstance';
-import {
-  CHART_PALETTE,
-  getAxisConfig,
-  getGridConfig,
-  getTooltipStyle,
-  getGradientId,
-  getGradientStops,
-  getAreaStyle,
-  getBarStyle,
-  getLegendConfig,
-  getChartCardStyle,
-  ANIMATION_CONFIG,
-} from '../utils/chartTheme';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
 export default function BusinessIntelligenceDashboard() {
   const { token } = theme.useToken();
@@ -92,21 +81,8 @@ export default function BusinessIntelligenceDashboard() {
 
   const kpiData = biData?.kpis || {};
 
-  // --- Gradient IDs ---
-  const trendGradPrimary = getGradientId('bi-trend', 'primary');
-  const trendGradSuccess = getGradientId('bi-trend', 'success');
-  const gradStops = getGradientStops(token.colorPrimary);
-  const gradStopsGreen = getGradientStops('#22c55e', { topOpacity: 0.12 });
-
-  // --- Theme configs ---
-  const axisConfig = getAxisConfig();
-  const gridConfig = getGridConfig();
-  const tooltipStyle = getTooltipStyle();
-  const legendConfig = getLegendConfig();
-  const chartCardStyle = getChartCardStyle();
-
   return (
-    <div style={{ padding: '24px', backgroundColor: 'var(--bg-app)', minHeight: '100vh' }}>
+    <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       {/* 👑 Executive Header */}
       <Flex justify="space-between" align="center" style={{ marginBottom: '32px' }} wrap="wrap">
         <div>
@@ -116,14 +92,14 @@ export default function BusinessIntelligenceDashboard() {
           </Title>
           <Text type="secondary" style={{ fontSize: 16 }}>Executive Summary & Operational Insights (Big Data Analytics)</Text>
         </div>
-        <Space wrap style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <Space wrap style={{ background: '#fff', padding: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <CalendarOutlined style={{ color: '#64748b' }} />
           <RangePicker 
             value={filters.dateRange} 
             onChange={(val) => setFilters(prev => ({ ...prev, dateRange: val }))}
             style={{ border: 'none' }}
           />
-          <span style={{ borderLeft: '1px solid var(--border-color)', height: 24, margin: '0 8px' }} />
+          <span style={{ borderLeft: '1px solid #e2e8f0', height: 24, margin: '0 8px' }} />
           <ProjectOutlined style={{ color: '#64748b' }} />
           <Select 
             placeholder="ทุกโปรเจกต์" 
@@ -139,12 +115,12 @@ export default function BusinessIntelligenceDashboard() {
 
       {/* 🚀 Top Tier KPIs */}
       <Row gutter={[24, 24]} style={{ marginBottom: '32px' }}>
-        <Col xs={24} md={6} className="chart-stat-card">
-          <Card variant="borderless" className="chart-card" style={{ ...chartCardStyle, background: 'var(--bg-card)' }}>
+        <Col xs={24} md={6}>
+          <Card variant="borderless" style={{ borderRadius: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: '#fff' }}>
             <Statistic 
               title={<div style={{ color: 'rgba(8, 143, 87, 0.85)', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>ปริมาณงานซ่อมบำรุงรวม</div>}
               value={kpiData.total_tickets}
-              styles={{ content: { color: kpiData.compliance_rate >= 80 ? '#22c55e' : '#f59e0b', fontSize: 32, fontWeight: 800 } }}
+              styles={{ content: { color: kpiData.compliance_rate >= 80 ? '#10b981' : '#f59e0b', fontSize: 32, fontWeight: 800 } }}
               prefix={<ThunderboltOutlined style={{ marginRight: 8 }} />}
               suffix={<span style={{ fontSize: 16, marginLeft: 4, opacity: 0.9 }}>ใบงาน</span>}
             />
@@ -153,13 +129,13 @@ export default function BusinessIntelligenceDashboard() {
             </div>
           </Card>
         </Col>
-        <Col xs={24} md={6} className="chart-stat-card">
-          <Card variant="borderless" className="chart-card" style={{ ...chartCardStyle, background: 'var(--bg-card)' }}>
+        <Col xs={24} md={6}>
+          <Card variant="borderless" style={{ borderRadius: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: '#fff' }}>
             <Statistic 
               title={<Text type="secondary" style={{ fontSize: 14 }}>อัตราการทำตาม SLA</Text>}
               value={kpiData.compliance_rate}
               precision={2}
-              styles={{ content: { color: kpiData.compliance_rate >= 80 ? '#22c55e' : '#f59e0b', fontSize: 32, fontWeight: 800 } }}
+              styles={{ content: { color: kpiData.compliance_rate >= 80 ? '#10b981' : '#f59e0b', fontSize: 32, fontWeight: 800 } }}
               prefix={kpiData.compliance_rate >= 80 ? <RiseOutlined /> : <FallOutlined />}
               suffix="%"
             />
@@ -167,13 +143,13 @@ export default function BusinessIntelligenceDashboard() {
               percent={kpiData.compliance_rate} 
               showInfo={false} 
               size="small" 
-              strokeColor={kpiData.compliance_rate >= 80 ? '#22c55e' : '#f59e0b'}
+              strokeColor={kpiData.compliance_rate >= 80 ? '#10b981' : '#f59e0b'}
               style={{ marginTop: 12 }}
             />
           </Card>
         </Col>
-        <Col xs={24} md={6} className="chart-stat-card">
-          <Card variant="borderless" className="chart-card" style={{ ...chartCardStyle, background: 'var(--bg-card)' }}>
+        <Col xs={24} md={6}>
+          <Card variant="borderless" style={{ borderRadius: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: '#fff' }}>
             <Statistic 
               title={<Text type="secondary" style={{ fontSize: 14 }}>ผลกระทบทางการเงิน (ค่าปรับ)</Text>}
               value={kpiData.total_penalty_cost}
@@ -186,13 +162,13 @@ export default function BusinessIntelligenceDashboard() {
             </div>
           </Card>
         </Col>
-        <Col xs={24} md={6} className="chart-stat-card">
-          <Card variant="borderless" className="chart-card" style={{ ...chartCardStyle, background: 'var(--bg-card)' }}>
+        <Col xs={24} md={6}>
+          <Card variant="borderless" style={{ borderRadius: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: '#fff' }}>
             <Statistic 
               title={<Text type="secondary" style={{ fontSize: 14 }}>ระยะเวลาเฉลี่ยในการปิดงาน</Text>}
               value={kpiData.avg_resolution_hours}
               precision={1}
-              styles={{ content: { color: 'var(--text-main)', fontSize: 32, fontWeight: 800 } }}
+              styles={{ content: { color: '#1e293b', fontSize: 32, fontWeight: 800 } }}
               suffix="ชม."
             />
             <div style={{ marginTop: 12, fontSize: 12 }}>
@@ -204,7 +180,7 @@ export default function BusinessIntelligenceDashboard() {
 
       {/* 📊 Advanced Visualizations */}
       <Row gutter={[24, 24]}>
-        <Col xs={24} xl={16} className="chart-container">
+        <Col xs={24} xl={16}>
           <Card 
             title={
               <Flex justify="space-between" align="center">
@@ -213,51 +189,36 @@ export default function BusinessIntelligenceDashboard() {
               </Flex>
             } 
             variant="borderless" 
-            className="chart-card"
-            style={chartCardStyle}
+            style={{ borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05)' }}
           >
             <div style={{ width: '100%', height: 400, minHeight: 400 }}>
                <ResponsiveContainer width="100%" height="100%">
                  <AreaChart data={biData?.trend || []}>
                     <defs>
-                      <linearGradient id={trendGradPrimary} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={token.colorPrimary} stopOpacity={gradStops.topOpacity}/>
-                        <stop offset="95%" stopColor={token.colorPrimary} stopOpacity={gradStops.bottomOpacity}/>
-                      </linearGradient>
-                      <linearGradient id={trendGradSuccess} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={gradStopsGreen.topOpacity}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={gradStopsGreen.bottomOpacity}/>
+                      <linearGradient id="biGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={token.colorPrimary} stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor={token.colorPrimary} stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid {...gridConfig} />
-                    <XAxis dataKey="month" {...axisConfig} />
-                    <YAxis {...axisConfig} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                     <ChartTooltip 
-                      {...tooltipStyle}
+                      contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                     />
-                    <Legend {...legendConfig} />
-                    <Area 
-                      {...getAreaStyle(token.colorPrimary, trendGradPrimary)}
-                      dataKey="created" 
-                      name="จำนวนแจ้งซ่อม" 
-                    />
-                    <Area 
-                      {...getAreaStyle('#22c55e', trendGradSuccess)}
-                      dataKey="resolved" 
-                      name="จำนวนที่แก้ไขเสร็จ" 
-                    />
+                    <Area type="monotone" dataKey="created" name="จำนวนแจ้งซ่อม" stroke={token.colorPrimary} fillOpacity={1} fill="url(#biGradient)" strokeWidth={3} />
+                    <Area type="monotone" dataKey="resolved" name="จำนวนที่แก้ไขเสร็จ" stroke="#10b981" fillOpacity={0.05} fill="#10b981" strokeWidth={3} />
                  </AreaChart>
                </ResponsiveContainer>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} xl={8} className="chart-container">
+        <Col xs={24} xl={8}>
           <Card 
             title={<Text strong style={{ fontSize: 18 }}>ระดับความรุนแรงของปัญหา</Text>} 
             variant="borderless" 
-            className="chart-card"
-            style={{ ...chartCardStyle, height: '100%' }}
+            style={{ borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05)', height: '100%' }}
           >
             <div style={{ width: '100%', height: 300, minHeight: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -267,25 +228,19 @@ export default function BusinessIntelligenceDashboard() {
                     cx="50%" cy="50%"
                     innerRadius={60}
                     outerRadius={100}
-                    paddingAngle={6}
+                    paddingAngle={8}
                     dataKey="value"
-                    cornerRadius={6}
-                    {...ANIMATION_CONFIG}
                   >
                     {biData?.priorities.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={CHART_PALETTE[index % CHART_PALETTE.length]} 
-                        stroke="none"
-                      />
+                      <Cell key={`cell-${index}`} fill={index === 0 ? '#ef4444' : '#6366f1'} />
                     ))}
                   </Pie>
-                  <ChartTooltip {...tooltipStyle} />
-                  <Legend {...legendConfig} verticalAlign="bottom" />
+                  <ChartTooltip />
+                  <Legend verticalAlign="bottom" />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: 16, paddingTop: 16 }}>
+            <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 16, paddingTop: 16 }}>
               <Flex vertical gap={12}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Text type="secondary">งานฉุกเฉิน (CM)</Text>
@@ -300,29 +255,21 @@ export default function BusinessIntelligenceDashboard() {
           </Card>
         </Col>
 
-        <Col xs={24} xl={12} className="chart-container">
+        <Col xs={24} xl={12}>
           <Card 
             title={<Text strong style={{ fontSize: 18 }}>5 อันดับหมวดหมู่ปัญหาที่พบบ่อย (Pain Points)</Text>} 
             variant="borderless" 
-            className="chart-card"
-            style={chartCardStyle}
+            style={{ borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05)' }}
           >
              <div style={{ width: '100%', height: 300, minHeight: 300 }}>
                <ResponsiveContainer width="100%" height="100%">
                  <BarChart data={biData?.topCategories || []} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid {...gridConfig} horizontal={true} vertical={false} />
                     <XAxis type="number" hide />
-                    <YAxis type="category" dataKey="name" {...axisConfig} width={150} />
-                    <ChartTooltip {...tooltipStyle} />
-                    <Bar 
-                      dataKey="count" 
-                      name="จำนวนครั้ง" 
-                      radius={[0, 8, 8, 0]} 
-                      barSize={25}
-                      {...ANIMATION_CONFIG}
-                    >
+                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={150} tick={{fontSize: 12}} />
+                    <ChartTooltip cursor={{fill: 'rgba(0,0,0,0.02)'}} />
+                    <Bar dataKey="count" name="จำนวนครั้ง" fill={token.colorPrimary} radius={[0, 8, 8, 0]} barSize={25}>
                        {biData?.topCategories.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length]} />
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                        ))}
                     </Bar>
                  </BarChart>
@@ -331,12 +278,11 @@ export default function BusinessIntelligenceDashboard() {
           </Card>
         </Col>
 
-        <Col xs={24} xl={12} className="chart-container">
+        <Col xs={24} xl={12}>
            <Card 
              title={<Text strong style={{ fontSize: 18 }}>ข้อมูลเชิงลึกด้านการทำตามสัญญา</Text>} 
              variant="borderless" 
-             className="chart-card"
-             style={chartCardStyle}
+             style={{ borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05)' }}
            >
               <Flex vertical align="center" justify="center" style={{ height: 300, minHeight: 300 }}>
                  <Progress 
@@ -346,12 +292,12 @@ export default function BusinessIntelligenceDashboard() {
                     size={200}
                     strokeColor={{
                       '0%': '#ef4444',
-                      '100%': '#22c55e',
+                      '100%': '#10b981',
                     }}
                     format={p => (
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--text-main)' }}>{p}%</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-sub)', fontWeight: 600, letterSpacing: '1px' }}>SLA COMPLIANT</div>
+                        <div style={{ fontSize: 36, fontWeight: 800, color: '#1e293b' }}>{p}%</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>SLA COMPLIANT</div>
                       </div>
                     )}
                  />

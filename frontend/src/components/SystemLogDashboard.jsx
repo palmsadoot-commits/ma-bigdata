@@ -6,15 +6,6 @@ import {
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import {
-  getAxisConfig,
-  getGridConfig,
-  getTooltipStyle,
-  getGradientId,
-  getLegendConfig,
-  getChartCardStyle,
-  ANIMATION_CONFIG,
-} from '../utils/chartTheme';
 import { 
   SafetyCertificateOutlined, BugOutlined, RocketOutlined, 
   SearchOutlined, SyncOutlined, HistoryOutlined, WarningOutlined,
@@ -287,33 +278,33 @@ export default function SystemLogDashboard() {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={12} className="chart-container"><Card title="สุขภาพระบบรายวัน" variant="borderless" className="chart-card" style={{ ...getChartCardStyle(), height: 350 }}>
+        <Col xs={24} md={12}><Card title="สุขภาพระบบรายวัน" variant="borderless" style={{ borderRadius: 8, height: 350 }}>
           {stats?.errorTimeline?.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={stats.errorTimeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id={getGradientId('syslog', 'error')} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.01}/>
+                  <linearGradient id="colorError" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f5222d" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#f5222d" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id={getGradientId('syslog', 'critical')} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#c026d3" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#c026d3" stopOpacity={0.01}/>
+                  <linearGradient id="colorCritical" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#c41d7f" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#c41d7f" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id={getGradientId('syslog', 'access')} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0.01}/>
+                  <linearGradient id="colorAccess" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#52c41a" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#52c41a" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid {...getGridConfig()} />
-                <XAxis dataKey="date" {...getAxisConfig()} tick={{ ...getAxisConfig().tick, fontSize: 10 }} tickFormatter={(val) => { const d = new Date(val); return isNaN(d.getTime()) ? val : `${d.getDate()} ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][d.getMonth()]}`; }} />
-                <YAxis {...getAxisConfig()} tick={{ ...getAxisConfig().tick, fontSize: 10 }} allowDecimals={false} />
-                <ChartTooltip {...getTooltipStyle()} labelFormatter={(val) => `วันที่: ${new Date(val).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}`} />
-                <Legend {...getLegendConfig()} />
-                <Area name="Error" type="monotone" dataKey="error_count" stroke="#ef4444" strokeWidth={2.5} fillOpacity={1} fill={`url(#${getGradientId('syslog', 'error')})`} dot={false} activeDot={{ r: 6, fill: '#ef4444', stroke: '#fff', strokeWidth: 3 }} {...ANIMATION_CONFIG} />
-                <Area name="Critical" type="monotone" dataKey="critical_count" stroke="#c026d3" strokeWidth={2.5} fillOpacity={1} fill={`url(#${getGradientId('syslog', 'critical')})`} dot={false} activeDot={{ r: 6, fill: '#c026d3', stroke: '#fff', strokeWidth: 3 }} {...ANIMATION_CONFIG} />
-                <Area name="Security" type="monotone" dataKey="security_count" stroke="#f59e0b" strokeWidth={2} fill="transparent" strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }} {...ANIMATION_CONFIG} />
-                <Area name="Login" type="monotone" dataKey="access_count" stroke="#22c55e" strokeWidth={2.5} fillOpacity={1} fill={`url(#${getGradientId('syslog', 'access')})`} dot={false} activeDot={{ r: 6, fill: '#22c55e', stroke: '#fff', strokeWidth: 3 }} {...ANIMATION_CONFIG} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="date" fontSize={10} axisLine={false} tickLine={false} tickFormatter={(val) => { const d = new Date(val); return isNaN(d.getTime()) ? val : `${d.getDate()} ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][d.getMonth()]}`; }} />
+                <YAxis fontSize={10} allowDecimals={false} axisLine={false} tickLine={false} />
+                <ChartTooltip labelFormatter={(val) => `วันที่: ${new Date(val).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}`} />
+                <Legend verticalAlign="top" height={36} iconType="circle" />
+                <Area name="Error" type="monotone" dataKey="error_count" stroke="#f5222d" strokeWidth={3} fill="url(#colorError)" dot={{ r: 4, fill: '#f5222d', strokeWidth: 2, stroke: '#fff' }} />
+                <Area name="Critical" type="monotone" dataKey="critical_count" stroke="#c41d7f" strokeWidth={3} fill="url(#colorCritical)" dot={{ r: 4, fill: '#c41d7f', strokeWidth: 2, stroke: '#fff' }} />
+                <Area name="Security" type="monotone" dataKey="security_count" stroke="#faad14" strokeWidth={2} fill="transparent" strokeDasharray="5 5" dot={{ r: 3, fill: '#faad14' }} />
+                <Area name="Login" type="monotone" dataKey="access_count" stroke="#52c41a" strokeWidth={3} fill="url(#colorAccess)" dot={{ r: 4, fill: '#52c41a', strokeWidth: 2, stroke: '#fff' }} />
               </AreaChart>
             </ResponsiveContainer>
           ) : <Empty description="ไม่พบข้อมูลสถิติย้อนหลัง" />}</Card></Col>

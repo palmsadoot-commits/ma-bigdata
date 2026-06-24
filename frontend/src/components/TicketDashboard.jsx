@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Typography, Tag, Avatar, Button, Modal, Form, Input, Upload, Space, Empty, Spin, Tabs, Table, Tooltip as AntTooltip, Statistic, Select, Divider, Grid, Badge } from 'antd';
 import { 
   ClockCircleOutlined, UserOutlined, FileTextOutlined, UploadOutlined, DashboardOutlined, SyncOutlined, 
@@ -6,6 +6,7 @@ import {
   EditOutlined, BarChartOutlined, AppstoreOutlined, FireOutlined, DollarCircleOutlined, AlertOutlined,
   ThunderboltOutlined, InfoCircleOutlined, TagOutlined
 } from '@ant-design/icons';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../services/api/axiosInstance';
@@ -14,7 +15,6 @@ import duration from 'dayjs/plugin/duration';
 import 'dayjs/locale/th';
 import { alertSuccess, alertError } from '../utils/alert';
 import { API_BASE_URL } from '../utils/config';
-import { CHART_PALETTE } from '../utils/chartTheme';
 
 dayjs.extend(duration);
 dayjs.locale('th');
@@ -24,176 +24,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { useBreakpoint } = Grid;
 const BACKEND_URL = API_BASE_URL;
-const CHART_COLORS = CHART_PALETTE;
-
-const AmChartsPie = ({ data, isMobile }) => {
-  const chartRef = useRef(null);
-  const [isDark, setIsDark] = useState(document.body.classList.contains('dark-mode'));
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.body.classList.contains('dark-mode'));
-    });
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!window.am5 || !window.am5percent || !window.am5themes_Animated) {
-      console.warn("amCharts 5 not loaded yet");
-      return;
-    }
-
-    const am5 = window.am5;
-    const am5percent = window.am5percent;
-    const am5themes_Animated = window.am5themes_Animated;
-
-    // Calculate total and custom variable radiuses for a Nightingale Rose look
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    const maxVal = Math.max(...data.map(d => d.value), 1);
-    const minVal = Math.min(...data.map(d => d.value), 0);
-    const range = maxVal - minVal || 1;
-    const processedData = data.map(d => {
-      const normalized = (d.value - minVal) / range;
-      const radiusValue = 60 + normalized * 40; // Scale radius from 60% to 100% to keep small slices readable
-      return {
-        ...d,
-        radiusValue: radiusValue
-      };
-    });
-
-    // Create root element
-    let root = am5.Root.new(chartRef.current);
-
-    // Set themes
-    root.setThemes([
-      am5themes_Animated.new(root)
-    ]);
-
-    // Create chart
-    let chart = root.container.children.push(
-      am5percent.PieChart.new(root, {
-        layout: root.verticalLayout,
-        innerRadius: am5.percent(60) // Donut chart
-      })
-    );
-
-    // Create series
-    let series = chart.series.push(
-      am5percent.PieSeries.new(root, {
-        name: "สัดส่วนใบงาน",
-        categoryField: "name",
-        valueField: "value",
-        radiusField: "radiusValue", // Dynamic Nightingale Rose style
-        alignLabels: false
-      })
-    );
-
-    // Set custom colors
-    series.get("colors").set("colors", CHART_COLORS.map(c => am5.color(parseInt(c.replace('#', ''), 16))));
-
-    // Disable labels/ticks on mobile to prevent overlapping
-    if (isMobile) {
-      series.labels.template.set("forceHidden", true);
-      series.ticks.template.set("forceHidden", true);
-    } else {
-      series.labels.template.setAll({
-        textType: "circular",
-        centerX: 0,
-        centerY: 0,
-        fontSize: 11,
-        fill: am5.color(isDark ? 0xe2e8f0 : 0x475569),
-        text: "{category}: {value}"
-      });
-      series.ticks.template.setAll({
-        stroke: am5.color(isDark ? 0x475569 : 0xcbd5e1),
-        strokeWidth: 1
-      });
-    }
-
-    // Configure tooltips and premium slice styling
-    series.slices.template.setAll({
-      tooltipText: "[bold]{category}[/]\n{value} ใบงาน ({valuePercentTotal.formatNumber('0.0')}%)\n[font-size: 11]คลิกเพื่อซ่อน/แสดง[/]",
-      cornerRadius: 6,
-      strokeWidth: 2,
-      stroke: am5.color(isDark ? 0x1d283c : 0xffffff),
-      shadowColor: am5.color(0x000000),
-      shadowBlur: 8,
-      shadowOpacity: 0.1,
-      shadowOffsetX: 0,
-      shadowOffsetY: 4
-    });
-
-    // Create center label in Donut
-    let label = chart.seriesContainer.children.push(
-      am5.Label.new(root, {
-        textAlign: "center",
-        centerY: am5.p50,
-        centerX: am5.p50,
-        text: `[fontSize: 12px; fill: ${isDark ? '#cbd5e1' : '#475569'}; font-weight: 600]ใบงานรวม[/]\n[fontSize: 34px; font-weight: 900; fill: ${isDark ? '#ffffff' : '#1e293b'}]${total}[/]\n[fontSize: 11px; fill: ${isDark ? '#94a3b8' : '#64748b'}]ทุกหมวดหมู่[/]`
-      })
-    );
-
-    // Hover events for dynamic label updates
-    series.slices.template.events.on("pointerover", (ev) => {
-      const dataItem = ev.target.dataItem;
-      if (dataItem) {
-        const category = dataItem.get("category");
-        const value = dataItem.get("value");
-        const percent = dataItem.get("valuePercentTotal").toFixed(1);
-        label.set("text", `[fontSize: 11px; fill: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600]${category}[/]\n[fontSize: 30px; font-weight: 900; fill: ${isDark ? '#ffffff' : '#1e293b'}]${value}[/]\n[fontSize: 12px; fill: #10b981; font-weight: bold]${percent}%[/]`);
-      }
-    });
-
-    series.slices.template.events.on("pointerout", () => {
-      label.set("text", `[fontSize: 12px; fill: ${isDark ? '#cbd5e1' : '#475569'}; font-weight: 600]ใบงานรวม[/]\n[fontSize: 34px; font-weight: 900; fill: ${isDark ? '#ffffff' : '#1e293b'}]${total}[/]\n[fontSize: 11px; fill: ${isDark ? '#94a3b8' : '#64748b'}]ทุกหมวดหมู่[/]`);
-    });
-
-    // Hover state effects
-    series.slices.template.states.create("hover", {
-      scale: 1.05,
-      shiftRadius: 8,
-      shadowOpacity: 0.25,
-      shadowBlur: 12
-    });
-
-    // Set data
-    series.data.setAll(processedData);
-
-    // Add Legend
-    let legend = chart.children.push(am5.Legend.new(root, {
-      centerX: am5.percent(50),
-      x: am5.percent(50),
-      marginTop: 15,
-      marginBottom: 0,
-      layout: root.gridLayout
-    }));
-
-    legend.labels.template.setAll({
-      fontSize: 12,
-      fill: am5.color(isDark ? 0xcbd5e1 : 0x475569),
-      fontWeight: "500"
-    });
-
-    legend.valueLabels.template.setAll({
-      fontSize: 12,
-      fill: am5.color(isDark ? 0xcbd5e1 : 0x475569),
-      fontWeight: "bold"
-    });
-
-    legend.data.setAll(series.dataItems);
-
-    // Play appear animation
-    series.appear(1000, 100);
-    chart.appear(1000, 100);
-
-    return () => {
-      root.dispose();
-    };
-  }, [data, isMobile, isDark]);
-
-  return <div ref={chartRef} style={{ width: "100%", height: isMobile ? "300px" : "400px" }}></div>;
-};
+const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 const AnimatedNumber = ({ value, isCurrency = false }) => {
   const [count, setCount] = useState(0);
@@ -687,7 +518,17 @@ const renderSLATimer = (ticket) => {
                         styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 12 } }}
                       >
                         {chartData.length > 0 ? (
-                          <AmChartsPie data={chartData} isMobile={isMobile} />
+                          <div style={{ width: '100%', height: isMobile ? 300 : 400, minHeight: 300 }}>
+                            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={300}>
+                              <PieChart>
+                                <Pie data={chartData} cx="50%" cy="45%" innerRadius={isMobile ? 50 : 70} outerRadius={isMobile ? 80 : 100} paddingAngle={5} dataKey="value">
+                                  {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                                </Pie>
+                                <RechartsTooltip />
+                                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10, paddingTop: 10 }}/>
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
                         ) : <Empty description="ไม่มีข้อมูล" />}
                       </Card>
                     </Col>
