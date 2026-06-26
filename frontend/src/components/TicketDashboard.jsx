@@ -6,7 +6,7 @@ import {
   EditOutlined, BarChartOutlined, AppstoreOutlined, FireOutlined, DollarCircleOutlined, AlertOutlined,
   ThunderboltOutlined, InfoCircleOutlined, TagOutlined
 } from '@ant-design/icons';
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../services/api/axiosInstance';
@@ -82,6 +82,8 @@ export default function TicketDashboard({ project }) {
 
   const [now, setNow] = useState(dayjs());
   const [availablePeriods, setAvailablePeriods] = useState([]);
+  const [milestoneData, setMilestoneData] = useState({ milestones: [], overall: {} });
+  const [activeMilestoneTab, setActiveMilestoneTab] = useState('overview');
   const [slaStats, setSlaStats] = useState({ totalCM: 0, activeCM: [], breachedCount: 0, totalPenalty: 0 });
 
   const screens = useBreakpoint();
@@ -104,19 +106,24 @@ export default function TicketDashboard({ project }) {
     if (!project?.project_id) return;
     setLoading(true);
     try {
-      const [ticketRes, statusRes] = await Promise.all([
+      const [ticketRes, statusRes, milestoneRes] = await Promise.all([
         axiosInstance.get('/tickets', { 
           params: { project_id: project.project_id },
           signal: signal instanceof AbortSignal ? signal : undefined
         }),
         axiosInstance.get('/statuses', {
           signal: signal instanceof AbortSignal ? signal : undefined
-        })
+        }),
+        axiosInstance.get('/tickets/dashboard-by-milestone', {
+          params: { project_id: project.project_id },
+          signal: signal instanceof AbortSignal ? signal : undefined
+        }).catch(() => ({ data: { milestones: [], overall: {} } }))
       ]);
 
       const data = ticketRes.data || [];
       setTickets(data);
       setStatuses(statusRes.data || []);
+      setMilestoneData(milestoneRes.data || { milestones: [], overall: {} });
 
       const cmData = data.filter(t => Number(t.is_cm) === 1);
       const periods = [...new Set(cmData.map(t => dayjs(t.created_at).format('YYYY-MM')))].sort((a,b) => b.localeCompare(a));
@@ -509,40 +516,322 @@ const renderSLATimer = (ticket) => {
                   </div>
                 ),
                 children: (
-                  <Row gutter={[16, 16]} style={{ marginTop: 5 }}>
-                    <Col xs={24} lg={9}>
-                      <Card 
-                        title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📊 สัดส่วนใบงาน</span>} 
-                        variant="borderless" 
-                        style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}
-                        styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 12 } }}
-                      >
-                        {chartData.length > 0 ? (
-                          <div style={{ width: '100%', height: isMobile ? 300 : 400, minHeight: 300 }}>
-                            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={300}>
-                              <PieChart>
-                                <Pie data={chartData} cx="50%" cy="45%" innerRadius={isMobile ? 50 : 70} outerRadius={isMobile ? 80 : 100} paddingAngle={5} dataKey="value">
-                                  {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
-                                </Pie>
-                                <RechartsTooltip />
-                                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10, paddingTop: 10 }}/>
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        ) : <Empty description="ไม่มีข้อมูล" />}
-                      </Card>
-                    </Col>
-                    <Col xs={24} lg={15}>
-                      <Card 
-                        title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📋 รายการใบงานล่าสุด</span>} 
-                        variant="borderless" 
-                        style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}
-                        styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 0 } }}
-                      >
-                        <Table columns={tableColumns} dataSource={activeRecentTickets} rowKey="ticket_id" pagination={false} size="small" scroll={{ x: 600 }} />
-                      </Card>
-                    </Col>
-                  </Row>
+                  <div style={{ marginTop: 5 }}>
+                    {/* Overview Cards */}
+                    {(() => {
+                      const milestoneCards = (() => {
+                        if (activeMilestoneTab === 'overview') {
+                          return [
+                            {
+                              title: 'ใบงานรวมทุกงวด',
+                              value: milestoneData.overall?.total_tickets || 0,
+                              icon: <FileTextOutlined />,
+                              bg: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)',
+                              shadow: 'rgba(59, 130, 246, 0.4)',
+                              bgIcon: <AppstoreOutlined />,
+                              anim: 'icon-float',
+                              isNumber: true
+                            },
+                            {
+                              title: 'งวดปัจจุบัน',
+                              value: milestoneData.overall?.current_milestone_title || '-',
+                              icon: <ClockCircleOutlined />,
+                              bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                              shadow: 'rgba(245, 158, 11, 0.4)',
+                              bgIcon: <ClockCircleOutlined />,
+                              anim: 'icon-spin-slow',
+                              isNumber: false
+                            },
+                            {
+                              title: 'งวดที่เสร็จแล้ว',
+                              value: `${milestoneData.overall?.completed_milestones || 0}/${milestoneData.overall?.total_milestones || 0}`,
+                              icon: <CheckSquareOutlined />,
+                              bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              shadow: 'rgba(16, 185, 129, 0.4)',
+                              bgIcon: <CheckSquareOutlined />,
+                              anim: 'icon-pulse',
+                              isNumber: false
+                            },
+                            {
+                              title: 'มูลค่าสะสม',
+                              value: milestoneData.overall?.total_payment_completed || 0,
+                              icon: <DollarCircleOutlined />,
+                              bg: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                              shadow: 'rgba(139, 92, 246, 0.4)',
+                              bgIcon: <DollarCircleOutlined />,
+                              anim: 'icon-float',
+                              isCurrency: true
+                            }
+                          ];
+                        } else {
+                          const m = (milestoneData.milestones || []).find(x => String(x.milestone_id) === activeMilestoneTab);
+                          if (!m) return [];
+                          const payStatus = m.payment_status === 'Paid' ? 'ชำระแล้ว' : 'ค้างชำระ';
+                          return [
+                            {
+                              title: `ใบงานในงวดที่ ${m.installment_no}`,
+                              value: m.stats?.total || 0,
+                              icon: <FileTextOutlined />,
+                              bg: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)',
+                              shadow: 'rgba(59, 130, 246, 0.4)',
+                              bgIcon: <AppstoreOutlined />,
+                              anim: 'icon-float',
+                              isNumber: true
+                            },
+                            {
+                              title: 'สถานะการดำเนินงาน',
+                              value: m.status === 'Completed' ? 'เสร็จสมบูรณ์' : m.status === 'In Progress' ? 'กำลังดำเนินการ' : 'รอเริ่ม',
+                              icon: <ClockCircleOutlined />,
+                              bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                              shadow: 'rgba(245, 158, 11, 0.4)',
+                              bgIcon: <ClockCircleOutlined />,
+                              anim: 'icon-spin-slow',
+                              isNumber: false
+                            },
+                            {
+                              title: 'แก้ไขแล้ว / ทั้งหมด',
+                              value: `${m.stats?.resolved || 0}/${m.stats?.total || 0}`,
+                              icon: <CheckSquareOutlined />,
+                              bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              shadow: 'rgba(16, 185, 129, 0.4)',
+                              bgIcon: <CheckSquareOutlined />,
+                              anim: 'icon-pulse',
+                              isNumber: false
+                            },
+                            {
+                              title: `มูลค่างวด (${payStatus})`,
+                              value: parseFloat(m.payment_amount) || 0,
+                              icon: <DollarCircleOutlined />,
+                              bg: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                              shadow: 'rgba(139, 92, 246, 0.4)',
+                              bgIcon: <DollarCircleOutlined />,
+                              anim: 'icon-float',
+                              isCurrency: true
+                            }
+                          ];
+                        }
+                      })();
+
+                      return (
+                        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                          {milestoneCards.map(s => (
+                            <Col xs={12} sm={6} key={s.title}>
+                              <div className="stat-card" style={{ 
+                                position: 'relative', overflow: 'hidden',
+                                background: s.bg, borderRadius: 12, padding: isMobile ? '12px 8px' : '16px 12px', color: 'white', textAlign: 'center',
+                                boxShadow: `0 4px 12px ${s.shadow}`, transition: 'transform 0.3s ease', cursor: 'default',
+                                minHeight: isMobile ? '100px' : '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center'
+                              }}>
+                                <div className={`stat-icon-bg ${s.anim}`}>{s.bgIcon}</div>
+                                <div style={{ opacity: 0.9, marginBottom: 2, position: 'relative', zIndex: 1 }}>
+                                  {React.cloneElement(s.icon, { style: { fontSize: isMobile ? 18 : 22 } })}
+                                </div>
+                                {s.isCurrency ? (
+                                  <Title level={3} style={{ color: 'white', margin: 0, fontWeight: 900, position: 'relative', zIndex: 1 }}>
+                                    <AnimatedNumber value={s.value} isCurrency={true} /> ฿
+                                  </Title>
+                                ) : s.isNumber ? (
+                                  <Title level={3} style={{ color: 'white', margin: 0, fontWeight: 900, position: 'relative', zIndex: 1 }}>
+                                    <AnimatedNumber value={s.value} />
+                                  </Title>
+                                ) : (
+                                  <Title level={3} style={{ color: 'white', margin: 0, fontWeight: 900, position: 'relative', zIndex: 1, fontSize: isMobile ? 13 : 16 }}>
+                                    {s.value}
+                                  </Title>
+                                )}
+                                <Text style={{ color: 'white', fontSize: isMobile ? 10 : 12, opacity: 0.95, fontWeight: 500, position: 'relative', zIndex: 1 }}>
+                                  {s.title}
+                                </Text>
+                              </div>
+                            </Col>
+                          ))}
+                        </Row>
+                      );
+                    })()}
+
+                    {/* Milestone Sub-Tabs */}
+                    <Tabs
+                      type="card"
+                      size={isMobile ? 'small' : 'middle'}
+                      activeKey={activeMilestoneTab}
+                      onChange={setActiveMilestoneTab}
+                      tabBarStyle={{ marginBottom: 12 }}
+                      items={[
+                        {
+                          key: 'overview',
+                          label: <span style={{ fontSize: isMobile ? 11 : 13, fontWeight: 600 }}>📊 ภาพรวม</span>,
+                          children: (() => {
+                            const allStatusMap = {};
+                            milestoneData.milestones?.forEach(m => {
+                              m.status_breakdown?.forEach(s => {
+                                if (!allStatusMap[s.name]) allStatusMap[s.name] = { name: s.name, value: 0, color: s.color };
+                                allStatusMap[s.name].value += s.value;
+                              });
+                            });
+                            const allStatusData = Object.values(allStatusMap);
+                            const milestoneCompare = (milestoneData.milestones || []).map(m => ({
+                              name: `งวด ${m.installment_no}`,
+                              total: m.stats?.total || 0,
+                              resolved: m.stats?.resolved || 0,
+                              breached: m.stats?.sla_breached || 0
+                            }));
+                            const allTickets = (milestoneData.milestones || []).flatMap(m => m.tickets || []);
+                            return (
+                              <Row gutter={[16, 16]}>
+                                <Col xs={24} lg={9}>
+                                  <Card title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📊 สัดส่วนสถานะรวม</span>} variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }} styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 12 } }}>
+                                    {allStatusData.length > 0 ? (
+                                      <div style={{ width: '100%', height: isMobile ? 260 : 300 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                          <PieChart>
+                                            <Pie data={allStatusData} cx="50%" cy="45%" innerRadius={isMobile ? 45 : 60} outerRadius={isMobile ? 70 : 90} paddingAngle={4} dataKey="value">
+                                              {allStatusData.map((entry, i) => <Cell key={`ov-${i}`} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />)}
+                                            </Pie>
+                                            <RechartsTooltip />
+                                            <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+                                          </PieChart>
+                                        </ResponsiveContainer>
+                                      </div>
+                                    ) : <Empty description="ไม่มีข้อมูล" />}
+                                  </Card>
+                                </Col>
+                                <Col xs={24} lg={15}>
+                                  <Card title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📊 เปรียบเทียบงวดงาน</span>} variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }} styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 12 } }}>
+                                    {milestoneCompare.length > 0 ? (
+                                      <div style={{ width: '100%', height: isMobile ? 260 : 300 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                          <BarChart data={milestoneCompare} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-sub)' }} />
+                                            <YAxis tick={{ fontSize: 11, fill: 'var(--text-sub)' }} allowDecimals={false} />
+                                            <RechartsTooltip />
+                                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                                            <Bar dataKey="total" name="ทั้งหมด" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="resolved" name="แก้ไขแล้ว" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="breached" name="หลุด SLA" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                          </BarChart>
+                                        </ResponsiveContainer>
+                                      </div>
+                                    ) : <Empty description="ไม่มีข้อมูล" />}
+                                  </Card>
+                                </Col>
+                                <Col xs={24}>
+                                  <Card title={<span style={{ color: 'var(--text-main)', fontSize: 14 }}>📋 ใบงานล่าสุดทุกงวด</span>} variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }} styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '8px 16px' }, body: { padding: 0 } }}>
+                                    <Table columns={tableColumns} dataSource={allTickets.slice(0, 20)} rowKey="ticket_id" pagination={false} size="small" scroll={{ x: 600 }} />
+                                  </Card>
+                                </Col>
+                              </Row>
+                            );
+                          })()
+                        },
+                        ...(milestoneData.milestones || []).map(m => {
+                          const msColor = m.status === 'Completed' ? '#10b981' : m.status === 'In Progress' ? '#f59e0b' : '#94a3b8';
+                          return {
+                            key: String(m.milestone_id),
+                            label: (
+                              <span style={{ fontSize: isMobile ? 11 : 13, fontWeight: 600 }}>
+                                <Badge color={msColor} style={{ marginRight: 4 }} />
+                                งวด {m.installment_no}
+                              </span>
+                            ),
+                            children: (
+                              <div>
+                                {/* Milestone Header */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)' }}>
+                                  <div>
+                                    <Text strong style={{ fontSize: 15, color: 'var(--text-main)' }}>{m.title || `งวดที่ ${m.installment_no}`}</Text>
+                                    <div style={{ marginTop: 4 }}>
+                                      <Tag color={msColor} style={{ borderRadius: 6, fontSize: 11 }}>{m.status === 'Completed' ? 'เสร็จสมบูรณ์' : m.status === 'In Progress' ? 'กำลังดำเนินการ' : 'รอเริ่ม'}</Tag>
+                                      {m.start_date && m.end_date && <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>{dayjs(m.start_date).format('DD/MM/YY')} — {dayjs(m.end_date).format('DD/MM/YY')}</Text>}
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <Text style={{ fontSize: 12, color: 'var(--text-sub)' }}>ความคืบหน้า</Text>
+                                    <div style={{ width: isMobile ? 100 : 150, height: 8, borderRadius: 4, backgroundColor: 'var(--border-color)', marginTop: 4 }}>
+                                      <div style={{ width: `${m.progress_percent || 0}%`, height: '100%', borderRadius: 4, backgroundColor: msColor, transition: 'width 0.5s ease' }} />
+                                    </div>
+                                    <Text style={{ fontSize: 11, color: msColor, fontWeight: 700 }}>{m.progress_percent || 0}%</Text>
+                                  </div>
+                                </div>
+
+                                {/* Stats Grid */}
+                                <Row gutter={[10, 10]} style={{ marginBottom: 16 }}>
+                                  {[
+                                    { label: 'ใบงานทั้งหมด', value: m.stats?.total || 0, icon: <FileTextOutlined />, color: '#6366f1' },
+                                    { label: 'กำลังดำเนินการ', value: m.stats?.active || 0, icon: <HourglassOutlined />, color: '#f59e0b' },
+                                    { label: 'แก้ไขแล้ว', value: m.stats?.resolved || 0, icon: <CheckSquareOutlined />, color: '#10b981' },
+                                    { label: 'CM (ด่วน)', value: m.stats?.cm || 0, icon: <ThunderboltOutlined />, color: '#ef4444' },
+                                    { label: 'หลุด SLA', value: m.stats?.sla_breached || 0, icon: <FireOutlined />, color: '#be123c' },
+                                    { label: 'ค่าปรับ', value: `${(m.stats?.total_penalty || 0).toLocaleString()} ฿`, icon: <DollarCircleOutlined />, color: '#7c3aed' }
+                                  ].map((s, i) => (
+                                    <Col xs={8} sm={4} key={i}>
+                                      <div style={{ textAlign: 'center', padding: isMobile ? '8px 4px' : '12px 8px', borderRadius: 10, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)' }}>
+                                        <div style={{ color: s.color, fontSize: isMobile ? 16 : 20 }}>{s.icon}</div>
+                                        <div style={{ fontWeight: 800, fontSize: isMobile ? 14 : 18, color: s.color, margin: '2px 0' }}>{s.value}</div>
+                                        <Text style={{ fontSize: isMobile ? 9 : 11, color: 'var(--text-sub)' }}>{s.label}</Text>
+                                      </div>
+                                    </Col>
+                                  ))}
+                                </Row>
+
+                                {/* Charts */}
+                                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                                  <Col xs={24} lg={10}>
+                                    <Card title={<span style={{ color: 'var(--text-main)', fontSize: 13 }}>สัดส่วนสถานะ</span>} variant="borderless" size="small" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }} styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '6px 14px' }, body: { padding: 8 } }}>
+                                      {(m.status_breakdown || []).length > 0 ? (
+                                        <div style={{ width: '100%', height: isMobile ? 220 : 260 }}>
+                                          <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                              <Pie data={m.status_breakdown} cx="50%" cy="45%" innerRadius={isMobile ? 35 : 50} outerRadius={isMobile ? 60 : 80} paddingAngle={4} dataKey="value">
+                                                {m.status_breakdown.map((entry, i) => <Cell key={`ms-${i}`} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />)}
+                                              </Pie>
+                                              <RechartsTooltip />
+                                              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10 }} />
+                                            </PieChart>
+                                          </ResponsiveContainer>
+                                        </div>
+                                      ) : <Empty description="ไม่มีข้อมูล" style={{ padding: '30px 0' }} />}
+                                    </Card>
+                                  </Col>
+                                  <Col xs={24} lg={14}>
+                                    <Card title={<span style={{ color: 'var(--text-main)', fontSize: 13 }}>จำนวนต่อหมวดหมู่</span>} variant="borderless" size="small" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }} styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '6px 14px' }, body: { padding: 8 } }}>
+                                      {(m.category_breakdown || []).length > 0 ? (
+                                        <div style={{ width: '100%', height: isMobile ? 220 : 260 }}>
+                                          <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={m.category_breakdown} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                                              <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-sub)' }} allowDecimals={false} />
+                                              <YAxis dataKey="name" type="category" width={isMobile ? 80 : 120} tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--text-sub)' }} />
+                                              <RechartsTooltip />
+                                              <Bar dataKey="value" name="จำนวน" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                                            </BarChart>
+                                          </ResponsiveContainer>
+                                        </div>
+                                      ) : <Empty description="ไม่มีข้อมูล" style={{ padding: '30px 0' }} />}
+                                    </Card>
+                                  </Col>
+                                </Row>
+
+                                {/* Tickets Table */}
+                                <Card title={<span style={{ color: 'var(--text-main)', fontSize: 13 }}>📋 รายการใบงานในงวด ({m.stats?.total || 0} รายการ)</span>} variant="borderless" size="small" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }} styles={{ header: { backgroundColor: 'var(--bg-app)', padding: '6px 14px' }, body: { padding: 0 } }}>
+                                  {(m.tickets || []).length > 0 ? (
+                                    <Table
+                                      columns={tableColumns}
+                                      dataSource={m.tickets}
+                                      rowKey="ticket_id"
+                                      pagination={{ pageSize: 10, size: 'small', showSizeChanger: false, showTotal: (total) => `${total} รายการ` }}
+                                      size="small"
+                                      scroll={{ x: 600 }}
+                                    />
+                                  ) : <Empty description="ไม่มีใบงานในงวดนี้" style={{ padding: '30px 0' }} />}
+                                </Card>
+                              </div>
+                            )
+                          };
+                        })
+                      ]}
+                    />
+                  </div>
                 )
               },
               {

@@ -205,3 +205,105 @@ exports.createTicketLog = async (req, res, next) => {
         res.json({ success: true });
     } catch (err) { next(err); }
 };
+
+exports.getDashboardByMilestone = async (req, res, next) => {
+    try {
+        const { project_id } = req.query;
+
+        const [milestones] = await db.query(
+            'SELECT * FROM project_milestones ORDER BY installment_no ASC'
+        );
+
+        const milestoneData = await Promise.all(milestones.map(async (m) => {
+            let tickets = [];
+            let stats = { total: 0, active: 0, resolved: 0, cm: 0, pm: 0, sla_on_time: 0, sla_breached: 0, total_penalty: 0 };
+            let status_breakdown = [];
+            let category_breakdown = [];
+
+            if (m.start_date && m.end_date) {
+                let ticketQuery = `
+                    SELECT t.ticket_id, t.ticket_number, t.equipment_no, t.software_no,
+                        LEFT(REGEXP_REPLACE(t.problem_detail, '<[^>]*>?', ''), 100) AS problem_detail,
+                        t.status_id, ts.status_name, ts.status_color,
+                        t.created_at, t.is_cm, t.sla_deadline,
+                        t.is_sla_breached, t.penalty_amount, t.acknowledged_at,
+                        c.category_name, c.category_type,
+                        t.reporter_name_snap,
+                        t.assigned_to_name_snap
+                    FROM tickets t
+                    LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
+                    LEFT JOIN categories c ON t.category_id = c.category_id
+                    WHERE t.created_at BETWEEN ? AND ?
+                `;
+                let params = [m.start_date + ' 00:00:00', m.end_date + ' 23:59:59'];
+
+                if (project_id && project_id !== 'null' && project_id !== 'undefined') {
+                    ticketQuery += ' AND c.project_id = ?';
+                    params.push(project_id);
+                }
+                ticketQuery += ' ORDER BY t.created_at DESC';
+
+                [tickets] = await db.query(ticketQuery, params);
+
+                stats.total = tickets.length;
+                stats.active = tickets.filter(t => [1, 2].includes(t.status_id)).length;
+                stats.resolved = tickets.filter(t => [3, 4, 5, 6].includes(t.status_id)).length;
+                stats.cm = tickets.filter(t => t.is_cm === 1).length;
+                stats.pm = tickets.filter(t => t.is_cm !== 1).length;
+                stats.sla_breached = tickets.filter(t => t.is_sla_breached === 1).length;
+                stats.sla_on_time = tickets.filter(t => t.is_sla_breached === 0 && [4, 5, 6].includes(t.status_id)).length;
+                stats.total_penalty = tickets.reduce((sum, t) => sum + (parseFloat(t.penalty_amount) || 0), 0);
+
+                const statusMap = {};
+                tickets.forEach(t => {
+                    const key = t.status_name || 'ไม่ระบุ';
+                    if (!statusMap[key]) statusMap[key] = { name: key, value: 0, color: t.status_color || '#999' };
+                    statusMap[key].value++;
+                });
+                status_breakdown = Object.values(statusMap);
+
+                const catMap = {};
+                tickets.forEach(t => {
+                    const key = t.category_name || 'ไม่ระบุ';
+                    if (!catMap[key]) catMap[key] = { name: key, value: 0 };
+                    catMap[key].value++;
+                });
+                category_breakdown = Object.values(catMap).sort((a, b) => b.value - a.value);
+            }
+
+            return {
+                milestone_id: m.milestone_id,
+                installment_no: m.installment_no,
+                title: m.title,
+                description: m.description,
+                status: m.status,
+                progress_percent: m.progress_percent,
+                start_date: m.start_date,
+                end_date: m.end_date,
+                payment_amount: m.payment_amount,
+                payment_status: m.payment_status,
+                stats,
+                status_breakdown,
+                category_breakdown,
+                tickets
+            };
+        }));
+
+        const completedMilestones = milestones.filter(m => m.status === 'Completed').length;
+        const currentMilestone = milestones.find(m => m.status === 'In Progress') || milestones.find(m => m.status === 'Pending');
+        const totalPaymentCompleted = milestones
+            .filter(m => m.payment_status === 'Paid')
+            .reduce((sum, m) => sum + (parseFloat(m.payment_amount) || 0), 0);
+
+        res.json({
+            milestones: milestoneData,
+            overall: {
+                total_tickets: milestoneData.reduce((sum, m) => sum + m.stats.total, 0),
+                completed_milestones: completedMilestones,
+                total_milestones: milestones.length,
+                total_payment_completed: totalPaymentCompleted,
+                current_milestone_title: currentMilestone?.title || 'ไม่มี'
+            }
+        });
+    } catch (err) { next(err); }
+};
