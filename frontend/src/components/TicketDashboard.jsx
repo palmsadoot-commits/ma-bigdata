@@ -415,86 +415,9 @@ const renderSLATimer = (ticket) => {
       `}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <Title level={isMobile ? 4 : 3} style={{ color: 'var(--text-main)', margin: 0 }}><DashboardOutlined /> แดชบอร์ดภาพรวม</Title>
+        <Title level={isMobile ? 4 : 3} style={{ color: 'var(--text-main)', margin: 0 }}><DashboardOutlined /> รายงานภาพรวม</Title>
         <Button type="primary" icon={<SyncOutlined />} onClick={fetchData} loading={loading} size={isMobile ? "middle" : "large"} style={{ borderRadius: 8 }}>รีเฟรช</Button>
       </div>
-
-      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        {stats.map(s => (
-          <Col xs={12} sm={8} lg={4} key={s.title}>
-            <div className="stat-card" style={{ 
-              position: 'relative', overflow: 'hidden',
-              background: s.bg, borderRadius: 12, padding: isMobile ? '12px 8px' : '16px 12px', color: 'white', textAlign: 'center',
-              boxShadow: `0 4px 12px ${s.shadow}`, transition: 'transform 0.3s ease', cursor: 'default',
-              minHeight: isMobile ? '100px' : '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center'
-            }}>
-              <div className={`stat-icon-bg ${s.anim}`}>{s.bgIcon}</div>
-              <div style={{ opacity: 0.9, marginBottom: 2, position: 'relative', zIndex: 1 }}>{React.cloneElement(s.icon, { style: { fontSize: isMobile ? 18 : 22 } })}</div>
-              <Title level={3} style={{ color: 'white', margin: 0, fontWeight: 900, position: 'relative', zIndex: 1 }}><AnimatedNumber value={s.value} /></Title>
-              <Text style={{ color: 'white', fontSize: isMobile ? 10 : 12, opacity: 0.95, fontWeight: 500, position: 'relative', zIndex: 1 }}>{s.title}</Text>
-            </div>
-          </Col>
-        ))}
-      </Row>
-
-      {(currentUser?.role === 'admin' || currentUser?.role === 'head_technician' || currentUser?.role === 'technician') && (
-        <Card style={{ borderRadius: 16, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', marginBottom: 20 }} styles={{ body: { padding: isMobile ? '12px' : '20px' } }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 12, marginBottom: 15, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
-            <Title level={isMobile ? 5 : 4} style={{ color: 'var(--text-main)', margin: 0 }}>
-              <AlertOutlined style={{ color: '#ef4444', marginRight: 8 }}/> 
-              SLA Monitor {isMobile ? '' : '(ค่าปรับ)'}
-            </Title>
-            <Space orientation={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
-              <Text strong style={{ fontSize: 13, color: 'var(--text-main)' }}>งวดประเมิน:</Text>
-              <Select value={selectedPeriod} onChange={setSelectedPeriod} style={{ width: isMobile ? '100%' : 180, borderRadius: 8 }} size="small">
-                <Option value="all">รวมทั้งหมด</Option>
-                {availablePeriods.map(p => (
-                  <Option key={p} value={p}>{dayjs(p).format('MMM YYYY')}</Option>
-                ))}
-              </Select>
-            </Space>
-          </div>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={12} sm={6}>
-              <Statistic title={<span style={{ fontSize: 11, color: 'var(--text-sub)' }}>ใบงานด่วน</span>} value={slaStats.totalCM} prefix={<ThunderboltOutlined />} styles={{ content: { fontSize: isMobile ? 18 : 22, color: '#3b82f6', fontWeight: 'bold' } }} />
-            </Col>
-            <Col xs={12} sm={6}>
-              <Statistic title={<span style={{ fontSize: 11, color: 'var(--text-sub)' }}>นับเวลา</span>} value={slaStats.activeCM.length} prefix={<ClockCircleOutlined />} styles={{ content: { fontSize: isMobile ? 18 : 22, color: '#f59e0b', fontWeight: 'bold' } }} />
-            </Col>
-            <Col xs={12} sm={6}>
-              <Statistic title={<span style={{ fontSize: 11, color: 'var(--text-sub)' }}>หลุด SLA</span>} value={slaStats.breachedCount} prefix={<FireOutlined />} styles={{ content: { fontSize: isMobile ? 18 : 22, color: '#ef4444', fontWeight: 'bold' } }} />
-            </Col>
-            <Col xs={12} sm={6}>
-              <AntTooltip title="ค่าปรับสุทธิ">
-                <Statistic 
-                  title={<span style={{ cursor: 'help', fontSize: 11, color: 'var(--text-sub)' }}>ค่าปรับ (฿) <InfoCircleOutlined /></span>} 
-                  value={slaStats.totalPenalty} 
-                  precision={2} 
-                  prefix={<DollarCircleOutlined />} 
-                  styles={{ content: { fontSize: isMobile ? 18 : 22, color: '#be123c', fontWeight: 'bold' } }} 
-                />
-              </AntTooltip>
-            </Col>
-          </Row>
-
-          {slaStats.activeCM.length > 0 && (
-            <>
-              <Divider dashed style={{ margin: '12px 0', borderColor: 'var(--border-color)' }} />
-              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px' }} className="kanban-container">
-                {slaStats.activeCM.map(ticket => (
-                  <div key={ticket.ticket_id} style={{ minWidth: '160px', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '8px 12px', backgroundColor: 'var(--bg-app)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <Link to={`/ticket/${ticket.ticket_id}`} style={{ fontWeight: 'bold', color: '#0ea5e9', fontSize: 11 }}>#{ticket.ticket_number}</Link>
-                    </div>
-                    {renderSLATimer(ticket)}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-      )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
