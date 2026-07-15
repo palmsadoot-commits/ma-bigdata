@@ -7,9 +7,18 @@ let blockedIpCache = new Set();
 let securitySettingsCache = null;
 let lastCacheUpdate = 0;
 
-/**
- * 🛡️ Hardened Threat Detector & Auto-Blocker
- */
+// In-memory cache for tracking active threat scores and attack counts per IP (spoofing and DDoS protection)
+const activeThreatsCache = new Map();
+
+// เคลียร์ข้อมูล Cache ประวัติภัยคุกคามของ IP ที่ไม่มีการเคลื่อนไหวเกิน 1 ชั่วโมง เพื่อป้องกัน Memory Leak
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, data] of activeThreatsCache.entries()) {
+        if (now - data.lastSeen > 3600000) {
+            activeThreatsCache.delete(ip);
+        }
+    }
+}, 300000); // ทำงานทุกๆ 5 นาที
 const updateSecurityCache = async () => {
     try {
         const now = Date.now();
@@ -53,33 +62,45 @@ const autoBlockIp = async (ip, score, reason) => {
     if (isWhitelisted(ip) || !securitySettingsCache.auto_block_enabled) return false;
 
     try {
-        const [rows] = await db.query(
-            'SELECT SUM(threat_score) as total_score, COUNT(*) as attack_count FROM threat_logs WHERE ip_address = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)',
-            [ip]
-        );
+        const now = Date.now();
+        let cached = activeThreatsCache.get(ip);
         
-        const totalScore = (rows[0].total_score || 0) + score;
-        const attackCount = (rows[0].attack_count || 0) + 1;
+        // หากไม่มี cache หรือเป็นข้อมูลที่เก่ากว่า 1 ชั่วโมง ให้สร้างตัวเก็บประวัติชุดใหม่
+        if (!cached || (now - cached.startTime > 3600000)) {
+            cached = { totalScore: 0, attackCount: 0, startTime: now, lastSeen: now };
+        }
+        
+        // บันทึกและสะสมค่าคะแนนภัยคุกคามในหน่วยความจำ (แทนการไป SELECT SUM ในฐานข้อมูล)
+        cached.totalScore += score;
+        cached.attackCount += 1;
+        cached.lastSeen = now;
+        activeThreatsCache.set(ip, cached);
 
         if (
-            totalScore >= securitySettingsCache.score_threshold || 
-            attackCount >= securitySettingsCache.attack_limit_per_hour || 
+            cached.totalScore >= securitySettingsCache.score_threshold || 
+            cached.attackCount >= securitySettingsCache.attack_limit_per_hour || 
             score >= securitySettingsCache.immediate_block_score
         ) {
             let expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + securitySettingsCache.block_duration_hours);
 
+            // บันทึกลงฐานข้อมูลเพื่อการจดจำ IP ที่ถูกบล็อกแบบถาวร (Persistence)
             await db.query(
                 'INSERT INTO blocked_ips (ip_address, reason, blocked_by, expires_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE reason=VALUES(reason), expires_at=VALUES(expires_at)',
                 [
                     ip, 
-                    `Auto-blocked: ${reason} (Cumulative Score: ${totalScore}, Peak Score: ${score})`, 
+                    `Auto-blocked: ${reason} (Cumulative Score: ${cached.totalScore}, Peak Score: ${score})`, 
                     'System-AutoBlock',
                     expiresAt
                 ]
             );
             
-            lastCacheUpdate = 0; 
+            // อัปเดตในหน่วยความจำทันทีเพื่อให้การบล็อกมีผลใน request ถัดไปทันที (Realtime protection)
+            blockedIpCache.add(ip);
+            
+            // ลบประวัติความถี่ความพยายามออกจาก cache หลังจาก IP ถูกบล็อกไปแล้ว
+            activeThreatsCache.delete(ip);
+            
             return true;
         }
         return false;

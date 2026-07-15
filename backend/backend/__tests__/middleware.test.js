@@ -33,8 +33,9 @@ describe('Auth Middleware', () => {
         req.headers['authorization'] = 'Bearer invalid-token';
         
         // Mock jwt.verify to call callback with error
-        vi.spyOn(jwt, 'verify').mockImplementation((token, secret, callback) => {
-            callback(new Error('invalid token'), null);
+        vi.spyOn(jwt, 'verify').mockImplementation((token, secret, options, callback) => {
+            const cb = typeof options === 'function' ? options : callback;
+            cb(new Error('invalid token'), null);
         });
 
         authenticateToken(req, res, next);
@@ -51,8 +52,9 @@ describe('Auth Middleware', () => {
         req.headers['authorization'] = 'Bearer valid-token';
         const mockUser = { user_id: 1, role: 'admin' };
         
-        vi.spyOn(jwt, 'verify').mockImplementation((token, secret, callback) => {
-            callback(null, mockUser);
+        vi.spyOn(jwt, 'verify').mockImplementation((token, secret, options, callback) => {
+            const cb = typeof options === 'function' ? options : callback;
+            cb(null, mockUser);
         });
 
         authenticateToken(req, res, next);

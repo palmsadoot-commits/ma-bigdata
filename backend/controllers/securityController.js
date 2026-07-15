@@ -2,21 +2,42 @@ const db = require('../config/db');
 
 exports.getThreats = async (req, res, next) => {
     try {
-        const [rows] = await db.query('SELECT * FROM threat_logs ORDER BY created_at DESC LIMIT 100');
+        const { startDate, endDate, limit = 200, attack_type, kill_chain_phase } = req.query;
+        let sql = 'SELECT * FROM threat_logs WHERE 1=1';
+        const params = [];
+
+        if (startDate) { sql += ' AND created_at >= ?'; params.push(startDate); }
+        if (endDate) { sql += ' AND created_at <= ?'; params.push(endDate); }
+        if (attack_type) { sql += ' AND attack_type = ?'; params.push(attack_type); }
+        if (kill_chain_phase) { sql += ' AND kill_chain_phase = ?'; params.push(kill_chain_phase); }
+
+        sql += ' ORDER BY created_at DESC LIMIT ?';
+        params.push(parseInt(limit));
+
+        const [rows] = await db.query(sql, params);
         res.json(rows);
     } catch (err) { next(err); }
 };
 
 exports.getStats = async (req, res, next) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateCondition = 'created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)';
+        const params = [];
+
+        if (startDate && endDate) {
+            dateCondition = 'created_at >= ? AND created_at <= ?';
+            params.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT 
                 kill_chain_phase as phase, 
                 COUNT(*) as count 
             FROM threat_logs 
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            WHERE ${dateCondition}
             GROUP BY kill_chain_phase
-        `);
+        `, params);
         res.json(rows);
     } catch (err) { next(err); }
 };

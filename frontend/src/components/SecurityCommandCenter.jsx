@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Card, Row, Col, Typography, Table, Button, Space, Tag, 
   Statistic, Divider, Empty, Modal, message, Badge, Tooltip,
-  Timeline, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover, Alert
+  Timeline, Avatar, Progress, theme, Flex, Descriptions, Switch, Form, InputNumber, Input, Popover, Alert, DatePicker
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -43,6 +43,7 @@ dayjs.locale('th');
 
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
+const { RangePicker } = DatePicker;
 
 /**
  * 🛡️ Security Command Center - Enterprise Search Enabled Version
@@ -66,12 +67,28 @@ export default function SecurityCommandCenter() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [form] = Form.useForm();
 
+  // Date & Drill-down States
+  const [dateRange, setDateRange] = useState([dayjs().startOf('day'), dayjs().endOf('day')]);
+  const [drillPhase, setDrillPhase] = useState(null); // Kill Chain phase drill-down filter
+
   const fetchSecurityData = useCallback(async () => {
     setLoading(true);
     try {
       const [threatsRes, statsRes, blockedRes] = await Promise.all([
-        axiosInstance.get('/security/threats'),
-        axiosInstance.get('/security/stats'),
+        axiosInstance.get('/security/threats', { 
+          params: { 
+            startDate: dateRange?.[0]?.format('YYYY-MM-DD 00:00:00'),
+            endDate: dateRange?.[1]?.format('YYYY-MM-DD 23:59:59'),
+            limit: 500,
+            ...(drillPhase ? { kill_chain_phase: drillPhase } : {})
+          } 
+        }),
+        axiosInstance.get('/security/stats', { 
+          params: { 
+            startDate: dateRange?.[0]?.format('YYYY-MM-DD 00:00:00'),
+            endDate: dateRange?.[1]?.format('YYYY-MM-DD 23:59:59')
+          } 
+        }),
         axiosInstance.get('/security/blocked-ips')
       ]);
       setThreats(threatsRes.data || []);
@@ -83,7 +100,7 @@ export default function SecurityCommandCenter() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange, drillPhase]);
 
   const fetchSecuritySettings = useCallback(async () => {
     setSettingsLoading(true);
@@ -447,7 +464,20 @@ export default function SecurityCommandCenter() {
             ระบบป้องกันการบุกรุกระดับองค์กร (Enterprise IPS)
           </Text>
         </div>
-        <Space size="middle">
+        <Space size="middle" wrap>
+          <RangePicker 
+            value={dateRange} 
+            onChange={(dates) => { setDateRange(dates); setDrillPhase(null); }} 
+            format="DD/MM/YYYY"
+            allowClear={false}
+            style={{ borderRadius: 8 }}
+            presets={[
+              { label: 'วันนี้', value: [dayjs().startOf('day'), dayjs().endOf('day')] },
+              { label: 'เมื่อวาน', value: [dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')] },
+              { label: '7 วัน', value: [dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')] },
+              { label: '30 วัน', value: [dayjs().subtract(30, 'day').startOf('day'), dayjs().endOf('day')] },
+            ]}
+          />
           <Button 
             type="primary" 
             icon={<SettingOutlined />} 
@@ -484,13 +514,15 @@ export default function SecurityCommandCenter() {
                 variant="borderless" 
                 hoverable 
                 className="glass-card"
+                onClick={() => { setDrillPhase(drillPhase === phase.key ? null : phase.key); }}
                 style={{ 
                   borderRadius: '20px', 
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.8)',
                   backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)'
+                  border: drillPhase === phase.key ? `2px solid ${phase.color}` : '1px solid rgba(255, 255, 255, 0.3)',
+                  cursor: 'pointer'
                 }}
                 styles={{ body: { padding: '24px' } }}
               >
@@ -504,7 +536,7 @@ export default function SecurityCommandCenter() {
                   }}>
                     {React.cloneElement(phase.icon, { style: { fontSize: '24px' } })}
                   </div>
-                  <Tag color={phase.color} variant="filled" style={{ borderRadius: '10px', fontSize: '10px', fontWeight: 'bold' }}>เรียลไทม์</Tag>
+                  <Tag color={phase.color} variant="filled" style={{ borderRadius: '10px', fontSize: '10px', fontWeight: 'bold' }}>{drillPhase === phase.key ? '✓ เลือกอยู่' : 'เรียลไทม์'}</Tag>
                 </div>
                 <Statistic 
                   title={<Text type="secondary" style={{ fontWeight: 500 }}>{phase.title}</Text>} 
@@ -536,6 +568,15 @@ export default function SecurityCommandCenter() {
       <Row gutter={[24, 24]}>
         {/* Main Log Table Section */}
         <Col xs={24} xl={17}>
+          {drillPhase && (
+            <div style={{ marginBottom: 12, padding: '8px 16px', background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Space>
+                <SearchOutlined style={{ color: '#d97706' }} />
+                <Text style={{ fontSize: 13, color: '#92400e' }}>Drill Down: กำลังแสดงเฉพาะ <Tag color="orange" style={{ margin: '0 4px' }}>{drillPhase}</Tag></Text>
+              </Space>
+              <Button size="small" type="link" danger onClick={() => setDrillPhase(null)}>✕ ยกเลิก</Button>
+            </div>
+          )}
           <Card 
             title={
               <Flex justify="space-between" align="center" wrap="wrap" gap={16} style={{ padding: '8px 0' }}>

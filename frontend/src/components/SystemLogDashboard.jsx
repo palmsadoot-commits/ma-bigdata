@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Card, Table, Typography, Tag, Space, Button, Input, Select, 
-  Row, Col, Statistic, Tooltip, Badge, Modal, Empty, Descriptions, Flex
+  Row, Col, Statistic, Tooltip, Badge, Modal, Empty, Descriptions, Flex, DatePicker
 } from 'antd';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend
@@ -15,9 +15,11 @@ import {
 } from '@ant-design/icons';
 import axiosInstance from '../services/api/axiosInstance';
 import { formatThaiDate } from '../utils/dateUtils';
+import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 export default function SystemLogDashboard() {
   const [logs, setLogs] = useState([]);
@@ -27,6 +29,8 @@ export default function SystemLogDashboard() {
   const [pageSize, setPageSize] = useState(20);
   const [selectedLog, setSelectedLog] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [dateRange, setDateRange] = useState([dayjs().startOf('day'), dayjs().endOf('day')]);
+  const [drillFilter, setDrillFilter] = useState(null); // { type: 'level'|'category', value: 'ERROR'|'SECURITY' etc }
 
   const exportToCSV = () => {
     if (logs.length === 0) return;
@@ -65,22 +69,35 @@ export default function SystemLogDashboard() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axiosInstance.get('/audit/stats');
+      const params = {};
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        params.startDate = dateRange[0].format('YYYY-MM-DD 00:00:00');
+        params.endDate = dateRange[1].format('YYYY-MM-DD 23:59:59');
+      }
+      const res = await axiosInstance.get('/audit/stats', { params });
       setStats(res.data);
     } catch (error) { console.error("Fetch stats error:", error); }
-  }, []);
+  }, [dateRange]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const { level, category, search } = filter;
-      const res = await axiosInstance.get('/audit/system', {
-        params: { level, category, search, limit: 500 }
-      });
+      const params = { level, category, search, limit: 500 };
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        params.startDate = dateRange[0].format('YYYY-MM-DD 00:00:00');
+        params.endDate = dateRange[1].format('YYYY-MM-DD 23:59:59');
+      }
+      // Apply drill-down filter
+      if (drillFilter) {
+        if (drillFilter.type === 'level') params.level = drillFilter.value;
+        if (drillFilter.type === 'category') params.category = drillFilter.value;
+      }
+      const res = await axiosInstance.get('/audit/system', { params });
       setLogs(res.data);
     } catch (error) { console.error("Fetch system logs error:", error); }
     finally { setLoading(false); }
-  }, [filter]);
+  }, [filter, dateRange, drillFilter]);
 
   useEffect(() => {
     fetchStats();
@@ -88,6 +105,24 @@ export default function SystemLogDashboard() {
     const interval = setInterval(() => { fetchStats(); fetchLogs(); }, 60000);
     return () => clearInterval(interval);
   }, [fetchStats, fetchLogs]);
+
+  // Drill Down handler: คลิกจาก Card หรือ กราฟ เพื่อ Filter ข้อมูลในตาราง
+  const handleDrillDown = (type, value) => {
+    if (drillFilter && drillFilter.type === type && drillFilter.value === value) {
+      setDrillFilter(null); // Toggle off
+    } else {
+      setDrillFilter({ type, value });
+    }
+  };
+
+  // Drill Down จากกราฟ: กรองทั้งวันที่ของจุดที่คลิก และ Category/Level
+  const handleChartDrillDown = (type, value, dateStr) => {
+    if (dateStr) {
+      const d = dayjs(dateStr);
+      setDateRange([d.startOf('day'), d.endOf('day')]);
+    }
+    setDrillFilter({ type, value });
+  };
 
   const getLevelTag = (level) => {
     const colors = { INFO: 'blue', WARN: 'orange', ERROR: 'red', CRITICAL: 'magenta' };
@@ -260,21 +295,38 @@ export default function SystemLogDashboard() {
     { title: 'Level', dataIndex: 'level', key: 'level', width: 100, render: (l) => getLevelTag(l) },
     { title: 'Category', dataIndex: 'category', key: 'category', width: 120, render: (c) => <Space>{getCategoryIcon(c)} <Text strong style={{ fontSize: 12 }}>{c}</Text></Space> },
     { title: 'Message', dataIndex: 'message', key: 'message', render: (m) => <Text ellipsis={{ tooltip: m }}>{m}</Text> },
+    { title: 'เวลา', dataIndex: 'timestamp', key: 'timestamp', width: 150, render: (t) => t ? <Tooltip title={formatThaiDate(t)}><Text style={{ fontSize: 11, color: '#64748b' }}>{dayjs(t).format('DD/MM/YY HH:mm:ss')}</Text></Tooltip> : '-' },
     { title: 'Details', key: 'actions', width: 80, render: (_, record) => <Button icon={<EyeOutlined />} size="small" onClick={() => showLogDetail(record)} /> }
   ];
 
   return (
     <div style={{ padding: '12px', minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div><Title level={2} style={{ margin: 0 }}><HistoryOutlined /> Global Log Center</Title><Text type="secondary">ระบบตรวจสอบสถานะและความปลอดภัยแบบเรียลไทม์</Text></div>
-        <Space><Button icon={<DownloadOutlined />} onClick={exportToCSV} disabled={logs.length === 0}>Export CSV</Button><Button type="primary" icon={<SyncOutlined />} onClick={() => { fetchStats(); fetchLogs(); }} loading={loading}>Refresh Now</Button></Space>
+        <Space wrap>
+          <RangePicker 
+            value={dateRange} 
+            onChange={(dates) => { setDateRange(dates); setDrillFilter(null); }} 
+            format="DD/MM/YYYY"
+            allowClear={false}
+            style={{ borderRadius: 8 }}
+            presets={[
+              { label: 'วันนี้', value: [dayjs().startOf('day'), dayjs().endOf('day')] },
+              { label: 'เมื่อวาน', value: [dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')] },
+              { label: '7 วัน', value: [dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')] },
+              { label: '30 วัน', value: [dayjs().subtract(30, 'day').startOf('day'), dayjs().endOf('day')] },
+            ]}
+          />
+          <Button icon={<DownloadOutlined />} onClick={exportToCSV} disabled={logs.length === 0}>Export CSV</Button>
+          <Button type="primary" icon={<SyncOutlined />} onClick={() => { fetchStats(); fetchLogs(); }} loading={loading}>Refresh Now</Button>
+        </Space>
       </div>
       
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}><Card variant="borderless"><Statistic title="Total API Traffic" value={stats?.categoryStats?.find(s => s.category === 'TRAFFIC')?.count || 0} prefix={<GlobalOutlined />} styles={{ content: { color: '#1890ff' } }}/></Card></Col>
-        <Col xs={12} md={6}><Card variant="borderless"><Statistic title="System Errors" value={stats?.levelStats?.find(s => s.level === 'ERROR')?.count || 0} prefix={<BugOutlined />} styles={{ content: { color: '#f5222d' } }}/></Card></Col>
-        <Col xs={12} md={6}><Card variant="borderless"><Statistic title="Security Alerts" value={stats?.categoryStats?.find(s => s.category === 'SECURITY')?.count || 0} prefix={<WarningOutlined />} styles={{ content: { color: '#faad14' } }}/></Card></Col>
-        <Col xs={12} md={6}><Card variant="borderless"><Statistic title="Login Events" value={stats?.categoryStats?.find(s => s.category === 'ACCESS')?.count || 0} prefix={<SafetyCertificateOutlined />} styles={{ content: { color: '#52c41a' } }}/></Card></Col>
+        <Col xs={12} md={6}><Card variant="borderless" hoverable onClick={() => handleDrillDown('category', 'TRAFFIC')} style={{ cursor: 'pointer', border: drillFilter?.value === 'TRAFFIC' ? '2px solid #1890ff' : undefined, transition: 'all 0.3s' }}><Statistic title="Total API Traffic" value={stats?.categoryStats?.find(s => s.category === 'TRAFFIC')?.count || 0} prefix={<GlobalOutlined />} styles={{ content: { color: '#1890ff' } }}/></Card></Col>
+        <Col xs={12} md={6}><Card variant="borderless" hoverable onClick={() => handleDrillDown('level', 'ERROR')} style={{ cursor: 'pointer', border: drillFilter?.value === 'ERROR' ? '2px solid #f5222d' : undefined, transition: 'all 0.3s' }}><Statistic title="System Errors" value={stats?.levelStats?.find(s => s.level === 'ERROR')?.count || 0} prefix={<BugOutlined />} styles={{ content: { color: '#f5222d' } }}/></Card></Col>
+        <Col xs={12} md={6}><Card variant="borderless" hoverable onClick={() => handleDrillDown('category', 'SECURITY')} style={{ cursor: 'pointer', border: drillFilter?.value === 'SECURITY' ? '2px solid #faad14' : undefined, transition: 'all 0.3s' }}><Statistic title="Security Alerts" value={stats?.categoryStats?.find(s => s.category === 'SECURITY')?.count || 0} prefix={<WarningOutlined />} styles={{ content: { color: '#faad14' } }}/></Card></Col>
+        <Col xs={12} md={6}><Card variant="borderless" hoverable onClick={() => handleDrillDown('category', 'ACCESS')} style={{ cursor: 'pointer', border: drillFilter?.value === 'ACCESS' ? '2px solid #52c41a' : undefined, transition: 'all 0.3s' }}><Statistic title="Login Events" value={stats?.categoryStats?.find(s => s.category === 'ACCESS')?.count || 0} prefix={<SafetyCertificateOutlined />} styles={{ content: { color: '#52c41a' } }}/></Card></Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
@@ -358,6 +410,15 @@ export default function SystemLogDashboard() {
       </Row>
 
       <Card variant="borderless" style={{ borderRadius: 8 }}>
+        {drillFilter && (
+          <div style={{ marginBottom: 12, padding: '8px 16px', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Space>
+              <SearchOutlined style={{ color: '#0284c7' }} />
+              <Text style={{ fontSize: 13, color: '#0369a1' }}>Drill Down: กำลังแสดงเฉพาะ <Tag color="blue" style={{ margin: '0 4px' }}>{drillFilter.type === 'level' ? `Level: ${drillFilter.value}` : `Category: ${drillFilter.value}`}</Tag></Text>
+            </Space>
+            <Button size="small" type="link" danger onClick={() => setDrillFilter(null)}>✕ ยกเลิก</Button>
+          </div>
+        )}
         <div style={{ marginBottom: 16 }}>
           <Row gutter={8}>
             <Col xs={24} md={6}><Input placeholder="ค้นหาข้อความ หรือ IP..." prefix={<SearchOutlined />} value={filter.search} onChange={e => setFilter({ ...filter, search: e.target.value })} /></Col>

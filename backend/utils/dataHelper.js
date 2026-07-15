@@ -30,28 +30,48 @@ const simpleSanitize = (html) => {
 };
 
 
-// ✅ ฟังก์ชันดึง IP Address จริง (Real IP Resolution)
+// ✅ ฟังก์ชันดึง IP Address จริง (Real IP Resolution) ที่ต้านการปลอมแปลง (Spoofing-Resistant)
 const getRealIp = (req) => {
     if (!req) return 'unknown';
     
-    // 1. ตรวจสอบ Header พิเศษจาก Frontend (Hybrid Mode) หรือ Header มาตรฐานจาก Proxy
-    const clientPublicIp = req.headers['x-client-public-ip'];
-    const forwarded = req.headers['x-forwarded-for'];
-    const realIp = req.headers['x-real-ip'];
-    const cfIp = req.headers['cf-connecting-ip'];
-    
-    let ip = clientPublicIp || cfIp || realIp || (forwarded ? forwarded.split(',')[0].trim() : req.ip || req.socket.remoteAddress);
-    
-    // 2. ล้างค่า IPv6 Mapping (เช่น ::ffff:127.0.0.1 -> 127.0.0.1)
-    if (ip && typeof ip === 'string') {
-        if (ip.includes('::ffff:')) {
-            ip = ip.split(':').pop();
+    // ดึงค่า TCP socket IP จริงจากตัวการเชื่อมต่อ
+    let socketIp = req.socket.remoteAddress || '';
+    if (socketIp && typeof socketIp === 'string') {
+        if (socketIp.includes('::ffff:')) {
+            socketIp = socketIp.split(':').pop();
         }
-        // 3. กรณีที่ยังเป็น localhost และไม่มี Header พิเศษ ให้คืนค่ามาตรฐาน
-        if (ip === '::1') return '127.0.0.1';
+        if (socketIp === '::1') socketIp = '127.0.0.1';
     }
-    
-    return ip || 'unknown';
+
+    // ฟังก์ชันตรวจสอบว่า IP ต้นทางเป็น Proxy/Network ภายในหรือไม่
+    const isTrustedLocalProxy = (ip) => {
+        return ip === '127.0.0.1' || 
+               ip === '::1' || 
+               ip.startsWith('10.') || 
+               ip.startsWith('192.168.') || 
+               /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip);
+    };
+
+    // เชื่อถือ Header เฉพาะเมื่อคำขอส่งมาจาก Proxy ภายในหรือ Localhost เท่านั้น
+    if (isTrustedLocalProxy(socketIp)) {
+        const clientPublicIp = req.headers['x-client-public-ip'];
+        const cfIp = req.headers['cf-connecting-ip'];
+        const realIp = req.headers['x-real-ip'];
+        const forwarded = req.headers['x-forwarded-for'];
+        
+        let ip = clientPublicIp || cfIp || realIp || (forwarded ? forwarded.split(',')[0].trim() : socketIp);
+        
+        if (ip && typeof ip === 'string') {
+            if (ip.includes('::ffff:')) {
+                ip = ip.split(':').pop();
+            }
+            if (ip === '::1') return '127.0.0.1';
+        }
+        return ip || 'unknown';
+    }
+
+    // กรณีอื่น ๆ (เชื่อมต่อมาจากข้างนอกโดยตรง) จะไม่เชื่อถือ Header ใด ๆ เพื่อป้องกัน IP Spoofing
+    return socketIp || 'unknown';
 };
 
 // ✅ ฟังก์ชันระบุตำแหน่งทางภูมิศาสตร์
