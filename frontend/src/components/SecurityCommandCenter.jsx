@@ -68,7 +68,7 @@ export default function SecurityCommandCenter() {
   const [form] = Form.useForm();
 
   // Date & Drill-down States
-  const [dateRange, setDateRange] = useState([dayjs().startOf('day'), dayjs().endOf('day')]);
+  const [dateRange, setDateRange] = useState(null);
   const [drillPhase, setDrillPhase] = useState(null); // Kill Chain phase drill-down filter
 
   const fetchSecurityData = useCallback(async () => {
@@ -77,19 +77,19 @@ export default function SecurityCommandCenter() {
       const [threatsRes, statsRes, blockedRes] = await Promise.all([
         axiosInstance.get('/security/threats', { 
           params: { 
-            startDate: dateRange?.[0]?.format('YYYY-MM-DD 00:00:00'),
-            endDate: dateRange?.[1]?.format('YYYY-MM-DD 23:59:59'),
-            limit: 500,
+            ...(dateRange?.[0] ? { startDate: dateRange[0].format('YYYY-MM-DD 00:00:00') } : {}),
+            ...(dateRange?.[1] ? { endDate: dateRange[1].format('YYYY-MM-DD 23:59:59') } : {}),
+            limit: 200,
             ...(drillPhase ? { kill_chain_phase: drillPhase } : {})
           } 
         }),
         axiosInstance.get('/security/stats', { 
           params: { 
-            startDate: dateRange?.[0]?.format('YYYY-MM-DD 00:00:00'),
-            endDate: dateRange?.[1]?.format('YYYY-MM-DD 23:59:59')
+            ...(dateRange?.[0] ? { startDate: dateRange[0].format('YYYY-MM-DD 00:00:00') } : {}),
+            ...(dateRange?.[1] ? { endDate: dateRange[1].format('YYYY-MM-DD 23:59:59') } : {})
           } 
         }),
-        axiosInstance.get('/security/blocked-ips')
+        axiosInstance.get('/security/blocked-ips', { params: { limit: 200 } })
       ]);
       setThreats(threatsRes.data || []);
       setStats(statsRes.data || []);
@@ -154,6 +154,9 @@ export default function SecurityCommandCenter() {
       b.reason?.toLowerCase().includes(search)
     );
   }, [blockedIps, blockedIpSearchText]);
+
+  // O(1) lookup Set for blocked IPs — prevents O(n*m) in table render
+  const blockedIpSet = useMemo(() => new Set(blockedIps.map(b => b.ip_address)), [blockedIps]);
 
   const attackerJourneys = useMemo(() => {
     const journeys = {};
@@ -310,7 +313,7 @@ export default function SecurityCommandCenter() {
     </Space>
   );
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: <ColumnHeader title="ผู้โจมตี" desc="ที่อยู่ IP ของผู้ที่พยายามกระทำการอันตราย" />,
       dataIndex: 'ip_address',
@@ -320,7 +323,7 @@ export default function SecurityCommandCenter() {
           <Space>
             <GlobalOutlined style={{ color: token.colorPrimary }} />
             <Text strong style={{ letterSpacing: '0.5px' }}>{text}</Text>
-            {blockedIps.some(b => b.ip_address === text) && (
+            {blockedIpSet.has(text) && (
               <Badge status="error" text={<Text type="danger" style={{ fontSize: '10px', fontWeight: 'bold' }}>BLOCKED</Text>} />
             )}
           </Space>
@@ -410,7 +413,7 @@ export default function SecurityCommandCenter() {
       width: 120,
       render: (_, record) => (
         <Space>
-          {!blockedIps.some(b => b.ip_address === record.ip_address) ? (
+          {!blockedIpSet.has(record.ip_address) ? (
             <Button 
               danger 
               type="primary" 
@@ -434,7 +437,7 @@ export default function SecurityCommandCenter() {
         </Space>
       )
     }
-  ];
+  ], [blockedIpSet, token]);
 
   return (
     <div className="security-dashboard-container" style={{ 
@@ -469,7 +472,8 @@ export default function SecurityCommandCenter() {
             value={dateRange} 
             onChange={(dates) => { setDateRange(dates); setDrillPhase(null); }} 
             format="DD/MM/YYYY"
-            allowClear={false}
+            allowClear
+            placeholder={['เริ่มต้น', 'สิ้นสุด']}
             style={{ borderRadius: 8 }}
             presets={[
               { label: 'วันนี้', value: [dayjs().startOf('day'), dayjs().endOf('day')] },

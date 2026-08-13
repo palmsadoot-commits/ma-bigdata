@@ -53,6 +53,9 @@ exports.updateSettings = async (req, res) => {
         addField('agency_name', body.agency_name);
         addField('enable_line', body.enable_line, 'bool');
         addField('notify_backup_status', body.notify_backup_status, 'bool'); // ✅ เพิ่มฟิลด์ใหม่
+        addField('notify_line_quota_low', body.notify_line_quota_low, 'bool');
+        addField('notify_security_line', body.notify_security_line, 'bool');
+        addField('notify_security_email', body.notify_security_email, 'bool');
         addField('enable_email', body.enable_email, 'bool');
         addField('notify_new_ticket', body.notify_new_ticket, 'bool');
         addField('notify_status_change', body.notify_status_change, 'bool');
@@ -96,9 +99,12 @@ exports.updateSettings = async (req, res) => {
 exports.testLineConnection = async (req, res) => {
     try {
         const testMessage = `🔔 [ทดสอบ] LINE Connection OK\nเวลา: ${new Date().toLocaleString('th-TH')}`;
-        await sendLineNotify(testMessage);
+        await sendLineNotify(testMessage, true);
         res.json({ success: true, message: 'ส่งข้อความทดสอบสำเร็จ' });
-    } catch (err) { res.status(500).json({ error: 'ล้มเหลว' }); }
+    } catch (err) {
+        console.error('❌ testLineConnection error:', err.message);
+        res.status(400).json({ success: false, error: err.message || 'ล้มเหลว' });
+    }
 };
 
 // ทดสอบส่ง Email
@@ -394,4 +400,62 @@ exports.getWebhookStatus = (req, res) => {
 exports.resetWebhookStatus = (req, res) => {
     lastCapturedLineId = null;
     res.json({ success: true, message: 'ID ล้างค่าเรียบร้อยแล้ว' });
+};
+
+// 📊 ดึงสถานะและโควต้าข้อความคงเหลือจาก LINE Official Account (LINE Messaging API)
+exports.getLineQuotaStatus = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT line_notify_token, enable_line, notify_line_quota_low FROM system_settings WHERE id = 1');
+        const config = rows[0];
+
+        if (!config || !config.line_notify_token) {
+            return res.json({
+                success: false,
+                configured: false,
+                message: 'ยังไม่ได้ระบุ LINE Channel Access Token'
+            });
+        }
+
+        const headers = { 'Authorization': `Bearer ${config.line_notify_token}` };
+
+        const [quotaRes, consumptionRes] = await Promise.allSettled([
+            axios.get('https://api.line.me/v2/bot/message/quota', { headers }),
+            axios.get('https://api.line.me/v2/bot/message/quota/consumption', { headers })
+        ]);
+
+        let type = 'limited';
+        let limit = 500;
+        let used = 0;
+        let error = null;
+
+        if (quotaRes.status === 'fulfilled') {
+            type = quotaRes.value.data.type || 'limited';
+            limit = quotaRes.value.data.value !== undefined ? quotaRes.value.data.value : (type === 'none' ? 'Unlimited' : 500);
+        } else {
+            error = quotaRes.reason?.response?.data?.message || quotaRes.reason?.message;
+        }
+
+        if (consumptionRes.status === 'fulfilled') {
+            used = consumptionRes.value.data.totalUsage || 0;
+        }
+
+        const remaining = typeof limit === 'number' ? Math.max(0, limit - used) : 'Unlimited';
+        const percentRemaining = typeof limit === 'number' && limit > 0 ? Math.round((remaining / limit) * 100) : 100;
+
+        return res.json({
+            success: true,
+            configured: true,
+            type,
+            limit,
+            used,
+            remaining,
+            percentRemaining,
+            notify_line_quota_low: config.notify_line_quota_low === 1,
+            periodText: 'ต่อเดือน (Monthly Quota - รีเซ็ตทุกวันที่ 1 ของเดือน)',
+            error
+        });
+    } catch (err) {
+        console.error('❌ Error fetching LINE quota:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch LINE quota: ' + err.message });
+    }
 };

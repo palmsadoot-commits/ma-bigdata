@@ -18,6 +18,7 @@ router.put('/', authenticateToken, requireRole(['admin']), upload.fields([
 ]), validate({ body: updateSettingsSchema }), settingController.updateSettings);
 
 router.get('/health', authenticateToken, requireRole(['admin']), settingController.getSystemHealth);
+router.get('/line-quota', authenticateToken, requireRole(['admin']), settingController.getLineQuotaStatus);
 router.post('/test-line', authenticateToken, requireRole(['admin']), settingController.testLineConnection);
 router.post('/test-email', authenticateToken, requireRole(['admin']), settingController.testEmailConnection);
 

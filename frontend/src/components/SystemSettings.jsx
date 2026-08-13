@@ -184,15 +184,34 @@ export default function SystemSettings() {
   const [loadingWebhook, setLoadingWebhook] = useState(false);
   const socketRef = React.useRef(null);
 
+  // LINE Quota state
+  const [lineQuota, setLineQuota] = useState(null);
+  const [loadingQuota, setLoadingQuota] = useState(false);
+
   // Test notification states
   const [loadingTestLine, setLoadingTestLine] = useState(false);
   const [loadingTestEmail, setLoadingTestEmail] = useState(false);
+
+  const fetchLineQuota = async () => {
+    setLoadingQuota(true);
+    try {
+      const res = await axiosInstance.get('/settings/line-quota');
+      if (res.data && res.data.success) {
+        setLineQuota(res.data);
+      }
+    } catch (err) {
+      console.error('Fetch LINE quota error:', err);
+    } finally {
+      setLoadingQuota(false);
+    }
+  };
 
   const handleTestLine = async () => {
     setLoadingTestLine(true);
     try {
       const r = await axiosInstance.post('/settings/test-line');
       alertSuccess('สำเร็จ', r.data.message);
+      fetchLineQuota(); // Refresh quota after test message
     } catch (e) {
       alertError('ล้มเหลว', e.response?.data?.error || 'เกิดข้อผิดพลาดในการทดสอบ');
     } finally {
@@ -217,35 +236,25 @@ export default function SystemSettings() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get('/settings');
-      if (res.data) {
-        const settings = res.data;
+      const response = await axiosInstance.get('/settings');
+      const settings = response.data;
+      if (settings) {
         form.setFieldsValue({
           ...settings,
-          msg_template_new: settings.msg_template_new || DEFAULT_NEW_TICKET_TEMPLATE,
-          msg_template_update: settings.msg_template_update || DEFAULT_UPDATE_TICKET_TEMPLATE,
-          default_sla_hours: settings.default_sla_hours ?? 2,
-          default_penalty_rate: settings.default_penalty_rate ?? 0.001,
-          security_strict_mode: settings.security_strict_mode === 1,
-          max_file_size_mb: settings.max_file_size_mb ?? 5,
-          allowed_file_types: settings.allowed_file_types ? settings.allowed_file_types.split(',').map(e => e.trim()) : ['jpg', 'jpeg', 'png', 'pdf'],
-          admin_email: settings.admin_email ? settings.admin_email.split(',').map(e => e.trim()) : [],
-          enable_line: settings.enable_line === 1,
-          notify_backup_status: settings.notify_backup_status === 1,
-          enable_email: settings.enable_email === 1,
-          notify_new_ticket: settings.notify_new_ticket === 1,
-          notify_status_change: settings.notify_status_change === 1,
-          maintenance_mode: settings.maintenance_mode === 1,
-          error_404_active: settings.error_404_active === 1,
-          error_500_active: settings.error_500_active === 1,
-          sla_hardware_hours: settings.sla_hardware_hours || 6,
-          sla_software_hours: settings.sla_software_hours || 6,
-          sla_app_hours: settings.sla_app_hours || 12,
-          ack_limit_hours: settings.ack_limit_hours || 2,
-          theme_mode: settings.theme_mode || 'light',
-          primary_color: settings.primary_color || '#1677ff',
-          system_font: settings.system_font || 'Inter',
-          ngrok_authtoken: settings.ngrok_authtoken || ''
+          allowed_file_types: settings.allowed_file_types ? settings.allowed_file_types.split(',').map(s => s.trim()) : [],
+          admin_email: settings.admin_email ? settings.admin_email.split(',').map(s => s.trim()) : [],
+          enable_line: Number(settings.enable_line) === 1,
+          notify_backup_status: Number(settings.notify_backup_status) === 1,
+          notify_line_quota_low: Number(settings.notify_line_quota_low) === 1,
+          notify_security_line: Number(settings.notify_security_line) === 1,
+          notify_security_email: Number(settings.notify_security_email) === 1,
+          enable_email: Number(settings.enable_email) === 1,
+          notify_new_ticket: Number(settings.notify_new_ticket) === 1,
+          notify_status_change: Number(settings.notify_status_change) === 1,
+          security_strict_mode: Number(settings.security_strict_mode) === 1,
+          maintenance_mode: Number(settings.maintenance_mode) === 1,
+          error_404_active: Number(settings.error_404_active) === 1,
+          error_500_active: Number(settings.error_500_active) === 1
         });
         
         if (settings.system_logo) setCurrentLogo(settings.system_logo);
@@ -279,12 +288,14 @@ export default function SystemSettings() {
     }
   };
 
-  const fetchWebhookStatus = async () => {
+  const fetchWebhookStatus = async (showToast = false) => {
     setLoadingWebhook(true);
     try {
       const res = await axiosInstance.get('/settings/webhook-status');
       setWebhookStatus(res.data);
-      message.success('อัปเดตสถานะ Webhook แล้ว');
+      if (showToast) {
+        message.success('อัปเดตสถานะ Webhook แล้ว');
+      }
     } catch (err) {
       console.error("Webhook status error:", err);
     } finally {
@@ -308,7 +319,8 @@ export default function SystemSettings() {
   useEffect(() => {
     fetchSettings();
     fetchHealth();
-    fetchWebhookStatus();
+    fetchWebhookStatus(false);
+    fetchLineQuota();
 
     // ✅ [Socket.io] เชื่อมต่อเพื่อรับข้อมูล Real-time
     socketRef.current = io(BACKEND_URL);
@@ -557,7 +569,95 @@ export default function SystemSettings() {
     <div style={{ padding: '10px 0' }}>
       <Row gutter={[32, 32]}>
         <Col xs={24} lg={12}>
-          <Title level={5}><BellOutlined /> การแจ้งเตือนและข้อความ</Title>
+          {/* 📊 LINE Quota Card */}
+          <Card title={<span><MessageOutlined style={{ color: '#00c300' }}/> LINE Message Limit & Quota (โควต้าข้อความ LINE)</span>} size="small" style={{ marginBottom: 20 }}>
+            {lineQuota ? (
+              <div>
+                <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                  <Col xs={8}>
+                    <Statistic 
+                      title="โควต้าที่ได้ (Limit)" 
+                      value={lineQuota.limit === 'Unlimited' ? 'ไม่จำกัด' : (lineQuota.limit || 0)} 
+                      suffix={lineQuota.limit === 'Unlimited' ? '' : 'ข้อความ'} 
+                      valueStyle={{ fontSize: 16 }}
+                    />
+                  </Col>
+                  <Col xs={8}>
+                    <Statistic 
+                      title="ส่งแล้ว (Used)" 
+                      value={lineQuota.used || 0} 
+                      suffix="ข้อความ" 
+                      valueStyle={{ color: '#d97706', fontSize: 16 }}
+                    />
+                  </Col>
+                  <Col xs={8}>
+                    <Statistic 
+                      title="คงเหลือ (Remaining)" 
+                      value={lineQuota.remaining === 'Unlimited' ? 'ไม่จำกัด' : (lineQuota.remaining || 0)} 
+                      suffix={lineQuota.remaining === 'Unlimited' ? '' : 'ข้อความ'} 
+                      valueStyle={{ 
+                        color: lineQuota.percentRemaining <= 10 ? '#ef4444' : (lineQuota.percentRemaining <= 30 ? '#f59e0b' : '#10b981'), 
+                        fontWeight: 700,
+                        fontSize: 16
+                      }}
+                    />
+                  </Col>
+                </Row>
+
+                {typeof lineQuota.limit === 'number' && (
+                  <div style={{ marginBottom: 16 }}>
+                    <Flex justify="space-between" style={{ marginBottom: 4 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>สัดส่วนคงเหลือ ({lineQuota.percentRemaining}%)</Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{lineQuota.periodText}</Text>
+                    </Flex>
+                    <Progress 
+                      percent={lineQuota.percentRemaining} 
+                      status={lineQuota.percentRemaining <= 10 ? 'exception' : (lineQuota.percentRemaining <= 30 ? 'active' : 'normal')}
+                      strokeColor={lineQuota.percentRemaining <= 10 ? '#ef4444' : (lineQuota.percentRemaining <= 30 ? '#f59e0b' : '#10b981')}
+                    />
+                  </div>
+                )}
+
+                <Alert 
+                  type={lineQuota.percentRemaining <= 10 ? 'error' : (lineQuota.percentRemaining <= 30 ? 'warning' : 'info')} 
+                  showIcon
+                  message="รายละเอียดโควต้าและการอัปเดต"
+                  description="โควต้าข้อความ ยึดตามแพ็กเกจ LINE Official Account (รีเซ็ตทุกวันที่ 1 ของเดือน) หากคุณทำการอัปเกรดแพ็กเกจบน LINE Official Account Manager ระบบจะดึงและอัปเดตข้อมูลโควต้าใหม่ให้อัตโนมัติ"
+                  style={{ marginBottom: 12 }}
+                />
+
+                <Divider style={{ margin: '12px 0' }} />
+                
+                <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+                  <Form.Item name="notify_line_quota_low" label="แจ้งเตือนในระบบเมื่อโควต้า LINE ใกล้เต็ม/หมด" valuePropName="checked" style={{ margin: 0 }}>
+                    <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
+                  </Form.Item>
+                  <Button icon={<SyncOutlined spin={loadingQuota} />} onClick={fetchLineQuota} loading={loadingQuota} size="small">
+                    รีเฟรชโควต้า
+                  </Button>
+                </Flex>
+              </div>
+            ) : (
+              <Flex justify="center" align="center" style={{ padding: 20 }}>
+                <Spin description="กำลังดึงข้อมูลโควต้าจาก LINE..." />
+              </Flex>
+            )}
+          </Card>
+
+          {/* 🛡️ Security Notifications Card */}
+          <Card title={<span><SafetyCertificateOutlined style={{ color: '#10b981' }}/> การแจ้งเตือนภัยคุกคามและความปลอดภัย (Security Alerts)</span>} size="small" style={{ marginBottom: 20 }}>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+              รับข้อมูลการสกัดกั้นการโจมตีและการบล็อก IP อัตโนมัติโดยตรงจากระบบ Security Command Center
+            </Text>
+            <Form.Item name="notify_security_line" label="แจ้งเตือนความปลอดภัยผ่าน LINE" valuePropName="checked">
+              <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
+            </Form.Item>
+            <Form.Item name="notify_security_email" label="แจ้งเตือนความปลอดภัยผ่าน Email" valuePropName="checked">
+              <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
+            </Form.Item>
+          </Card>
+
+          <Title level={5}><BellOutlined /> การแจ้งเตือนใบงานและสำรองข้อมูล</Title>
           <Divider style={{ margin: '12px 0' }} />
           <Form.Item name="notify_backup_status" label="แจ้งเตือนผลการสำรองข้อมูลอัตโนมัติ" valuePropName="checked">
             <Switch checkedChildren="เปิด" unCheckedChildren="ปิด" />
@@ -629,7 +729,7 @@ export default function SystemSettings() {
                             ghost 
                             block 
                             icon={<SyncOutlined />} 
-                            onClick={fetchWebhookStatus}
+                            onClick={() => fetchWebhookStatus(true)}
                             loading={loadingWebhook}
                         >
                             ตรวจสอบสถานะ (Verify)

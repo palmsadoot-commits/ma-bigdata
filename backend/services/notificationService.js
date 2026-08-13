@@ -39,12 +39,16 @@ const sendEmail = async (subject, text, overrideTo = null) => {
 /**
  * Send a notification via LINE Messaging API (To Group)
  */
-const sendLineNotify = async (message) => {
+const sendLineNotify = async (message, throwOnError = false) => {
     try {
         const [rows] = await db.query('SELECT line_notify_token, line_group_id, enable_line FROM system_settings WHERE id = 1');
         const config = rows[0];
 
-        if (!config || config.enable_line !== 1 || !config.line_notify_token || !config.line_group_id) return;
+        if (!config || config.enable_line !== 1 || !config.line_notify_token || !config.line_group_id) {
+            const msg = 'ระบบปิดการส่ง LINE หรือไม่ได้ระบุ Token / Group ID';
+            if (throwOnError) throw new Error(msg);
+            return false;
+        }
 
         await axios.post('https://api.line.me/v2/bot/message/push', {
             to: config.line_group_id,
@@ -56,8 +60,25 @@ const sendLineNotify = async (message) => {
             }
         });
         console.log('✅ LINE Group Notification sent');
+        return true;
     } catch (err) {
+        const errDetail = err.response?.data?.message || err.message;
         console.error('❌ Failed to send LINE Group:', err.response?.data || err.message);
+
+        try {
+            const { sysLog } = require('../utils/logger');
+            await sysLog('ERROR', 'SYSTEM', `การส่งแจ้งเตือน LINE ล้มเหลว: ${errDetail}`, {
+                metadata: { error: err.response?.data || err.message, status: err.response?.status }
+            });
+        } catch (e) {}
+
+        if (throwOnError) {
+            if (err.response?.status === 429 || errDetail.includes('monthly limit')) {
+                throw new Error('โควต้าข้อความรายเดือนของ LINE เต็มแล้ว (You have reached your monthly limit.)');
+            }
+            throw new Error(errDetail);
+        }
+        return false;
     }
 };
 

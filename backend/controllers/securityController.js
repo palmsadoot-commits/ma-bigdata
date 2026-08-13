@@ -44,7 +44,8 @@ exports.getStats = async (req, res, next) => {
 
 exports.getBlockedIps = async (req, res, next) => {
     try {
-        const [rows] = await db.query('SELECT * FROM blocked_ips ORDER BY created_at DESC');
+        const { limit = 200 } = req.query;
+        const [rows] = await db.query('SELECT * FROM blocked_ips ORDER BY created_at DESC LIMIT ?', [parseInt(limit)]);
         res.json(rows);
     } catch (err) { next(err); }
 };

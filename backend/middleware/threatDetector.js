@@ -222,6 +222,36 @@ const threatDetector = async (req, res, next) => {
                         req, metadata: { phase: detectedThreat.phase, type: detectedThreat.type, score, autoBlocked: isBlocked, status: res.statusCode }
                     });
                 }
+
+                // 🛡️ ส่งแจ้งเตือนภัยคุกคามความปลอดภัยผ่าน LINE / Email (ตามค่าที่เปิดไว้ใน System Settings)
+                try {
+                    const [sysRows] = await db.query('SELECT notify_security_line, notify_security_email, admin_email FROM system_settings WHERE id = 1');
+                    const sysConf = sysRows[0] || {};
+                    const notifyLine = Number(sysConf.notify_security_line) === 1;
+                    const notifyEmail = Number(sysConf.notify_security_email) === 1;
+
+                    if (notifyLine || notifyEmail) {
+                        const { sendLineNotify, sendEmail } = require('../services/notificationService');
+                        const secMsg = `🛡️ [แจ้งเตือนความปลอดภัย Security Alert]\n` +
+                                       `📌 สถานะ: ${isBlocked ? '⛔ บล็อก IP อัตโนมัติ (AUTO-BLOCKED)' : '⚠️ สกัดกั้นภัยคุกคาม (REJECTED)'}\n` +
+                                       `🌐 ผู้โจมตี (IP): ${ip}\n` +
+                                       `📍 ตำแหน่ง: ${locationStr}\n` +
+                                       `⚔️ ขั้นตอน (Kill Chain): ${detectedThreat.phase}\n` +
+                                       `🎯 ประเภท: ${detectedThreat.type}\n` +
+                                       `🔗 Target: ${url}\n` +
+                                       `📊 คะแนนความเสี่ยง: ${score}/100\n` +
+                                       `⏰ เวลา: ${new Date().toLocaleString('th-TH')}`;
+
+                        if (notifyLine) {
+                            await sendLineNotify(secMsg);
+                        }
+                        if (notifyEmail && sysConf.admin_email) {
+                            await sendEmail(`🚨 [Security Alert] ${isBlocked ? 'Auto-Blocked IP ' + ip : detectedThreat.type}`, secMsg);
+                        }
+                    }
+                } catch (secErr) {
+                    console.error('❌ Failed sending Security Alert notifications:', secErr.message);
+                }
             } catch (err) {
                 console.error('❌ Threat Logger Error:', err.message);
             }

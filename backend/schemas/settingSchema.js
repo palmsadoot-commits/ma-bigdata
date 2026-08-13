@@ -19,8 +19,11 @@ const updateSettingsSchema = z.object({
     admin_email: z.string().optional().nullable(),
 
     // Notifications
-    notify_new_ticket: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 ? 1 : 0),
-    notify_status_change: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 ? 1 : 0),
+    notify_new_ticket: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 || v === true || v === 'true' ? 1 : 0),
+    notify_status_change: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 || v === true || v === 'true' ? 1 : 0),
+    notify_line_quota_low: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 || v === true || v === 'true' ? 1 : 0),
+    notify_security_line: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 || v === true || v === 'true' ? 1 : 0),
+    notify_security_email: z.string().or(z.number()).optional().transform(v => v === '1' || v === 1 || v === true || v === 'true' ? 1 : 0),
     msg_template_new: z.string().optional().nullable(),
     msg_template_update: z.string().optional().nullable(),
 
