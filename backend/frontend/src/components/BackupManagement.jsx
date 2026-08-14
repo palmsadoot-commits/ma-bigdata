@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Card, Row, Col, Typography, Button, Table, Space, Tag, Form, Radio, Checkbox, 
-  TimePicker, Popconfirm, Divider, Tabs, Select, Empty, Progress, 
-  Input, Calendar, Tooltip, ConfigProvider, App, Badge, Modal 
+import {
+  Card, Row, Col, Typography, Button, Table, Space, Tag, Form, Radio, Checkbox,
+  TimePicker, Popconfirm, Divider, Tabs, Select, Empty, Progress,
+  Input, Calendar, Tooltip, ConfigProvider, App, Badge, Modal
 } from 'antd';
 
-import { 
-  DatabaseOutlined, SettingOutlined, DownloadOutlined, RollbackOutlined, 
-  CloudServerOutlined, SaveOutlined, DeleteOutlined, CheckCircleOutlined, 
-  CloseCircleOutlined, CodeOutlined, FileZipOutlined, GithubOutlined, 
+import {
+  DatabaseOutlined, SettingOutlined, DownloadOutlined, RollbackOutlined,
+  CloudServerOutlined, SaveOutlined, DeleteOutlined, CheckCircleOutlined,
+  CloseCircleOutlined, CodeOutlined, FileZipOutlined, GithubOutlined,
   CalendarOutlined, LeftOutlined, RightOutlined, SyncOutlined, GoogleOutlined,
   SafetyCertificateOutlined, ClearOutlined, EditOutlined, PlusOutlined,
   AreaChartOutlined
 } from '@ant-design/icons';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, 
-  ResponsiveContainer, Legend 
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip,
+  ResponsiveContainer, Legend
 } from 'recharts';
 import dayjs from 'dayjs';
 import axiosInstance from '../services/api/axiosInstance';
@@ -43,16 +43,16 @@ const StorageStatusBar = ({ title, stats, icon, color, isCloud = false }) => {
   if (!stats) return null;
   const isDark = document.body.classList.contains('dark-mode');
   const pct = stats.percentage || 0;
-  
+
   return (
     <Card size="small" variant="borderless" style={{ marginBottom: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <Text strong style={{ color: color, display: 'flex', alignItems: 'center', gap: '8px' }}>{icon} {title}</Text>
         <Text type="secondary" style={{ fontSize: '12px' }}>{formatBytes(stats.used)} / {formatBytes(stats.total)}</Text>
       </div>
-      <Progress 
-        percent={parseFloat(pct.toFixed(1))} 
-        strokeColor={pct >= 90 ? '#ef4444' : color} 
+      <Progress
+        percent={parseFloat(pct.toFixed(1))}
+        strokeColor={pct >= 90 ? '#ef4444' : color}
         railColor={isDark ? '#374151' : '#f1f5f9'}
         status={pct >= 90 ? 'exception' : 'normal'}
         showInfo={false}
@@ -60,7 +60,7 @@ const StorageStatusBar = ({ title, stats, icon, color, isCloud = false }) => {
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
         <Text type="secondary" style={{ fontSize: '11px' }}>
-          ใช้ไป (รวม): {pct.toFixed(1)}% 
+          ใช้ไป (รวม): {pct.toFixed(1)}%
           {stats.categoryUsed > 0 && (
             <span style={{ marginLeft: '8px', color: color, fontWeight: '500' }}>
               (เฉพาะส่วนนี้: {formatBytes(stats.categoryUsed)})
@@ -77,14 +77,14 @@ const StorageStatusBar = ({ title, stats, icon, color, isCloud = false }) => {
 
 export default function BackupManagement() {
   const { message: msg } = App.useApp();
-  
+
   // --- 1. State Declarations ---
   const [logs, setLogs] = useState([]);
   const [sourceLogs, setSourceLogs] = useState([]);
-  const [githubLogs, setGithubLogs] = useState([]); 
-  const [gdriveLogs, setGdriveLogs] = useState([]); 
+  const [githubLogs, setGithubLogs] = useState([]);
+  const [gdriveLogs, setGdriveLogs] = useState([]);
   const [storageStats, setStorageStats] = useState(null);
-  
+
   // ✅ [New] States สำหรับเก็บรายการที่เลือก
   const [selectedDbKeys, setSelectedDbKeys] = useState([]);
   const [selectedSrcKeys, setSelectedSrcKeys] = useState([]);
@@ -100,7 +100,7 @@ export default function BackupManagement() {
   const [dbSetting, setDbSetting] = useState(null);
   const [sourceSettings, setSourceSettings] = useState([]); // ✅ เปลี่ยนเป็น Array รองรับหลาย Profile
   const [githubSetting, setGithubSetting] = useState(null);
-  const [gdriveSetting, setGdriveSetting] = useState(null); 
+  const [gdriveSetting, setGdriveSetting] = useState(null);
   const [cleanupSetting, setCleanupSetting] = useState(null); // ✅ [New] สำหรับ Cleanup
   const [cleanupPreview, setCleanupPreview] = useState(null); // ✅ [New] สำหรับวิเคราะห์ข้อมูลก่อนลบ
   const [detailModalVisible, setDetailModalVisible] = useState(false); // ✅ [New] สำหรับ Drill Down
@@ -111,14 +111,14 @@ export default function BackupManagement() {
   const [calendarModalData, setCalendarModalData] = useState([]); // ✅ [New]
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // ✅ [New]
   const [gdriveFileStatus, setGdriveFileStatus] = useState({}); // { log_id: [ {id, exists} ] }
-  
+
   const [loading, setLoading] = useState(false);
   const [sourceLoading, setSourceLoading] = useState(false);
-  const [githubLoading, setGithubLoading] = useState(false); 
-  const [gdriveLoading, setGdriveLoading] = useState(false); 
+  const [githubLoading, setGithubLoading] = useState(false);
+  const [gdriveLoading, setGdriveLoading] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false); // ✅ [New]
   const [isPreviewLoading, setIsPreviewLoading] = useState(false); // ✅ [New]
-  
+
   const [isZipping, setIsZipping] = useState(false);
   const [zipProgress, setZipProgress] = useState(0);
 
@@ -128,7 +128,7 @@ export default function BackupManagement() {
   const [isGithubPushing, setIsGithubPushing] = useState(false);
   const [githubProgress, setGithubProgress] = useState(0);
 
-  const [isGdrivePushing, setIsGdrivePushing] = useState(false); 
+  const [isGdrivePushing, setIsGdrivePushing] = useState(false);
   const [gdriveProgress, setGdriveProgress] = useState(0);
 
   const [isCleaningUp, setIsCleaningUp] = useState(false); // ✅ [New]
@@ -137,16 +137,16 @@ export default function BackupManagement() {
   // ✅ State สำหรับการจับคู่ Focus Mirroring (เก็บ timestamp และ type)
   const [hoveredMirror, setHoveredMirror] = useState({ timestamp: null, type: null });
 
-  const [form] = Form.useForm(); 
-  const [githubForm] = Form.useForm(); 
-  const [gdriveForm] = Form.useForm(); 
+  const [form] = Form.useForm();
+  const [githubForm] = Form.useForm();
+  const [gdriveForm] = Form.useForm();
   const [cleanupForm] = Form.useForm(); // ✅ [New]
 
   // 📊 [New] Storage Analytics Chart Component
   const StorageAnalyticsChart = ({ data }) => {
     if (!data || data.length === 0) return <Empty description="ไม่พบข้อมูลสถิติพื้นที่ย้อนหลัง" style={{ padding: '40px 0' }} />;
     const isDark = document.body.classList.contains('dark-mode');
-    
+
     const formattedData = data.map(item => ({
       date: dayjs(item.snapshot_date).format('DD/MM'),
       'ฐานข้อมูล': parseFloat((item.db_used / (1024 * 1024)).toFixed(2)),
@@ -160,19 +160,19 @@ export default function BackupManagement() {
         <ResponsiveContainer>
           <AreaChart data={formattedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorDb" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/></linearGradient>
-              <linearGradient id="colorSrc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient>
-              <linearGradient id="colorGit" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#111827" stopOpacity={0.8}/><stop offset="95%" stopColor="#111827" stopOpacity={0}/></linearGradient>
-              <linearGradient id="colorGdrive" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+              <linearGradient id="colorDb" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8} /><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} /></linearGradient>
+              <linearGradient id="colorSrc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} /><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} /></linearGradient>
+              <linearGradient id="colorGit" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#111827" stopOpacity={0.8} /><stop offset="95%" stopColor="#111827" stopOpacity={0} /></linearGradient>
+              <linearGradient id="colorGdrive" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.8} /><stop offset="95%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#e2e8f0'} />
             <XAxis dataKey="date" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
             <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} unit="MB" />
-            <ChartTooltip 
+            <ChartTooltip
               contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: 'var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
               itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
             />
-            <Legend verticalAlign="top" height={36}/>
+            <Legend verticalAlign="top" height={36} />
             <Area type="monotone" dataKey="ฐานข้อมูล" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorDb)" stackId="1" />
             <Area type="monotone" dataKey="ซอร์สโค้ด" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSrc)" stackId="1" />
             <Area type="monotone" dataKey="GitHub" stroke="#111827" fillOpacity={1} fill="url(#colorGit)" stackId="1" />
@@ -250,14 +250,14 @@ export default function BackupManagement() {
       ]);
 
       await fetchTaskHistory(start, end); // ✅ [Fixed] เรียกใช้ประวัติแผนงานจริงจาก DB
-      
+
       setLogs(logRes.data || []);
       setSourceLogs(srcLogRes.data || []);
       setGithubLogs(githubLogRes.data || []);
       setGdriveLogs(gdriveLogRes.data || []);
       setStorageStats(statsRes?.data || null);
       setStorageHistory(historyRes?.data || []);
-      
+
       setDbSetting(settingRes.data);
       setSourceSettings(srcSettingRes.data || []);
       setGithubSetting(githubSettingRes.data);
@@ -270,7 +270,7 @@ export default function BackupManagement() {
 
       // ✅ Fetch Preview เมื่อโหลดข้อมูล
       fetchCleanupPreview();
-      
+
       // ✅ ใช้ setTimeout เพื่อป้องกัน Warning: useForm instance not connected
       setTimeout(() => {
         if (settingRes.data) {
@@ -420,7 +420,7 @@ export default function BackupManagement() {
       };
       await axiosInstance.put('/backup/source/settings', payload);
       alertSuccess('บันทึกสำเร็จ', `อัปเดต ${values.profile_name} เรียบร้อยแล้ว`);
-      fetchData(); 
+      fetchData();
     } catch (error) {
       alertError('ผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้');
     }
@@ -429,165 +429,165 @@ export default function BackupManagement() {
   // Profile Form Component (Internal Helper)
   const ProfileForm = ({ profile }) => {
     const [pForm] = Form.useForm();
-    
+
     useEffect(() => {
-        pForm.setFieldsValue({
-            profile_name: profile.profile_name,
-            target_folders: profile.target_folders ? profile.target_folders.split(',') : [],
-            ignore_extensions: profile.ignore_extensions ? profile.ignore_extensions.split(',').filter(Boolean) : [],
-            ignored_folders: profile.ignored_folders ? profile.ignored_folders.split(',').filter(Boolean) : [],
-            schedule_type: profile.schedule_type,
-            schedule_days: profile.schedule_type === 'weekly' ? profile.schedule_days?.split(',') : profile.schedule_days,
-            schedule_time: profile.schedule_time ? dayjs(profile.schedule_time, 'HH:mm:ss') : dayjs('04:00:00', 'HH:mm:ss'),
-            is_active: profile.is_active === 1
-        });
+      pForm.setFieldsValue({
+        profile_name: profile.profile_name,
+        target_folders: profile.target_folders ? profile.target_folders.split(',') : [],
+        ignore_extensions: profile.ignore_extensions ? profile.ignore_extensions.split(',').filter(Boolean) : [],
+        ignored_folders: profile.ignored_folders ? profile.ignored_folders.split(',').filter(Boolean) : [],
+        schedule_type: profile.schedule_type,
+        schedule_days: profile.schedule_type === 'weekly' ? profile.schedule_days?.split(',') : profile.schedule_days,
+        schedule_time: profile.schedule_time ? dayjs(profile.schedule_time, 'HH:mm:ss') : dayjs('04:00:00', 'HH:mm:ss'),
+        is_active: profile.is_active === 1
+      });
     }, [profile, pForm]);
 
     return (
-        <Form 
-          form={pForm} 
-          layout="vertical" 
-          onFinish={(v) => handleSaveDynamicSourceSettings(profile.id, v)}
-          onValuesChange={(changedValues, allValues) => {
-            // 🔄 จัดการความสัมพันธ์ระหว่างสำรองข้อมูลแบบ Full กับรายการละเว้น
-            if (changedValues.target_folders) {
-              const isFullBackup = changedValues.target_folders.includes('node_modules');
-              if (isFullBackup) {
-                pForm.setFieldsValue({ ignored_folders: [], ignore_extensions: [] });
-              } else {
-                const currentIgnored = pForm.getFieldValue('ignored_folders') || [];
-                const currentExts = pForm.getFieldValue('ignore_extensions') || [];
-                if (currentIgnored.length === 0 && currentExts.length === 0) {
-                  pForm.setFieldsValue({
-                    ignored_folders: ['.git', 'node_modules', 'dist', 'build', 'backups'],
-                    ignore_extensions: ['.sql', '.mp4', '.zip', '.rar', '.log']
-                  });
-                }
+      <Form
+        form={pForm}
+        layout="vertical"
+        onFinish={(v) => handleSaveDynamicSourceSettings(profile.id, v)}
+        onValuesChange={(changedValues, allValues) => {
+          // 🔄 จัดการความสัมพันธ์ระหว่างสำรองข้อมูลแบบ Full กับรายการละเว้น
+          if (changedValues.target_folders) {
+            const isFullBackup = changedValues.target_folders.includes('node_modules');
+            if (isFullBackup) {
+              pForm.setFieldsValue({ ignored_folders: [], ignore_extensions: [] });
+            } else {
+              const currentIgnored = pForm.getFieldValue('ignored_folders') || [];
+              const currentExts = pForm.getFieldValue('ignore_extensions') || [];
+              if (currentIgnored.length === 0 && currentExts.length === 0) {
+                pForm.setFieldsValue({
+                  ignored_folders: ['.git', 'node_modules', 'dist', 'build', 'backups'],
+                  ignore_extensions: ['.sql', '.mp4', '.zip', '.rar', '.log']
+                });
               }
             }
-            // 🔄 ถ้าผู้ใช้ไปยุ่งกับรายการละเว้น -> ต้องเอาเครื่องหมาย Full Backup ออก
-            if (changedValues.ignored_folders || changedValues.ignore_extensions) {
-              const hasExclusions = (allValues.ignored_folders && allValues.ignored_folders.length > 0) || 
-                                  (allValues.ignore_extensions && allValues.ignore_extensions.length > 0);
-              if (hasExclusions) {
-                const currentTargets = allValues.target_folders || [];
-                const filtered = currentTargets.filter(t => t !== 'node_modules');
-                pForm.setFieldsValue({ target_folders: filtered });
-              }
+          }
+          // 🔄 ถ้าผู้ใช้ไปยุ่งกับรายการละเว้น -> ต้องเอาเครื่องหมาย Full Backup ออก
+          if (changedValues.ignored_folders || changedValues.ignore_extensions) {
+            const hasExclusions = (allValues.ignored_folders && allValues.ignored_folders.length > 0) ||
+              (allValues.ignore_extensions && allValues.ignore_extensions.length > 0);
+            if (hasExclusions) {
+              const currentTargets = allValues.target_folders || [];
+              const filtered = currentTargets.filter(t => t !== 'node_modules');
+              pForm.setFieldsValue({ target_folders: filtered });
             }
+          }
+        }}
+      >
+        <Row gutter={16} align="middle">
+          <Col xs={24} sm={16}>
+            <Form.Item name="profile_name" label={<Text strong style={{ color: 'var(--text-main)' }}>ชื่อโปรไฟล์สำรองข้อมูล</Text>} rules={[{ required: true, message: 'กรุณาระบุชื่อโปรไฟล์' }]}>
+              <Input size="large" prefix={<EditOutlined style={{ color: '#8b5cf6' }} />} placeholder="เช่น สำรองรายวัน (Source), Weekly Full..." />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={8} style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px' }}>
+            {profile.id != 1 && (
+              <Popconfirm title="ยืนยันการลบ?" description="การลบโปรไฟล์จะทำให้ตารางเวลาที่ตั้งไว้ถูกยกเลิก" onConfirm={() => handleDeleteProfile(profile.id)}>
+                <Button danger icon={<DeleteOutlined />} type="text">ลบโปรไฟล์นี้</Button>
+              </Popconfirm>
+            )}
+          </Col>
+        </Row>
+
+        <Divider style={{ margin: '12px 0', borderColor: 'var(--border-color)' }} />
+
+        <Form.Item name="target_folders" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกส่วนที่ต้องการบีบอัด (.zip)</Text>}>
+          <Checkbox.Group style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <Checkbox value="frontend"><Text strong style={{ color: 'var(--text-main)' }}>1. Frontend (React)</Text></Checkbox>
+            <Checkbox value="backend"><Text strong style={{ color: 'var(--text-main)' }}>2. Backend (Node.js/Express)</Text></Checkbox>
+            <Checkbox value="node_modules"><Text type="danger" strong>3. สำรองข้อมูลแบบ Full (Backup ทุกอย่างใน Project ไม่ละเว้น)</Text></Checkbox>
+          </Checkbox.Group>
+        </Form.Item>
+
+        <Form.Item noStyle shouldUpdate={(prev, current) => prev.target_folders !== current.target_folders}>
+          {({ getFieldValue }) => {
+            const isFull = getFieldValue('target_folders')?.includes('node_modules');
+            if (isFull) return null;
+            return (
+              <>
+                <Divider style={{ margin: '12px 0', borderColor: 'var(--border-color)', borderStyle: 'dashed' }} />
+                <Row gutter={16}>
+                  <Col span={24}>
+                    <Form.Item
+                      name="ignore_extensions"
+                      label={<Text strong style={{ color: 'var(--text-main)' }}>ละเว้นไฟล์</Text>}
+                      extra={<Text type="secondary" style={{ fontSize: '11px' }}>รายการแนะนำ: .sql, .mp4, .zip, .log - จะถูกข้ามเมื่อเลือกแบบ Full Backup</Text>}
+                    >
+                      <Select
+                        mode="tags"
+                        style={{ width: '100%' }}
+                        placeholder="เพิ่มนามสกุลไฟล์..."
+                        tokenSeparators={[',', ' ']}
+                        options={[
+                          { value: '.sql', label: '.sql' }, { value: '.mp4', label: '.mp4' },
+                          { value: '.zip', label: '.zip' }, { value: '.rar', label: '.rar' },
+                          { value: '.log', label: '.log' }, { value: '.tmp', label: '.tmp' }
+                        ]}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={24}>
+                    <Form.Item
+                      name="ignored_folders"
+                      label={<Text strong style={{ color: 'var(--text-main)' }}>ละเว้นโฟลเดอร์</Text>}
+                      extra={<Text type="secondary" style={{ fontSize: '11px' }}>รายการแนะนำ: .git, node_modules, dist - จะถูกข้ามเมื่อเลือกแบบ Full Backup</Text>}
+                    >
+                      <Select
+                        mode="tags"
+                        style={{ width: '100%' }}
+                        placeholder="เพิ่มชื่อโฟลเดอร์..."
+                        tokenSeparators={[',', ' ']}
+                        options={[
+                          { value: '.git', label: '.git' }, { value: 'node_modules', label: 'node_modules' },
+                          { value: 'dist', label: 'dist' }, { value: 'build', label: 'build' },
+                          { value: 'backups', label: 'backups' }, { value: 'uploads', label: 'uploads' }
+                        ]}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </>
+            );
           }}
-        >
-          <Row gutter={16} align="middle">
-            <Col xs={24} sm={16}>
-              <Form.Item name="profile_name" label={<Text strong style={{ color: 'var(--text-main)' }}>ชื่อโปรไฟล์สำรองข้อมูล</Text>} rules={[{ required: true, message: 'กรุณาระบุชื่อโปรไฟล์' }]}>
-                <Input size="large" prefix={<EditOutlined style={{ color: '#8b5cf6' }} />} placeholder="เช่น สำรองรายวัน (Source), Weekly Full..." />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={8} style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px' }}>
-              {profile.id != 1 && (
-                <Popconfirm title="ยืนยันการลบ?" description="การลบโปรไฟล์จะทำให้ตารางเวลาที่ตั้งไว้ถูกยกเลิก" onConfirm={() => handleDeleteProfile(profile.id)}>
-                    <Button danger icon={<DeleteOutlined />} type="text">ลบโปรไฟล์นี้</Button>
-                </Popconfirm>
-              )}
-            </Col>
-          </Row>
+        </Form.Item>
 
-          <Divider style={{ margin: '12px 0', borderColor: 'var(--border-color)' }} />
+        <Divider style={{ margin: '12px 0', borderColor: 'var(--border-color)' }} />
 
-          <Form.Item name="target_folders" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกส่วนที่ต้องการบีบอัด (.zip)</Text>}>
-            <Checkbox.Group style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Checkbox value="frontend"><Text strong style={{ color: 'var(--text-main)' }}>1. Frontend (React)</Text></Checkbox>
-              <Checkbox value="backend"><Text strong style={{ color: 'var(--text-main)' }}>2. Backend (Node.js/Express)</Text></Checkbox>
-              <Checkbox value="node_modules"><Text type="danger" strong>3. สำรองข้อมูลแบบ Full (Backup ทุกอย่างใน Project ไม่ละเว้น)</Text></Checkbox>
-            </Checkbox.Group>
-          </Form.Item>
+        <Form.Item name="is_active" id="src_profile_is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)', marginBottom: '16px' }}>
+          <Checkbox><Text strong style={{ color: '#8b5cf6' }}>เปิดใช้งาน Auto Backup สำหรับโปรไฟล์นี้</Text></Checkbox>
+        </Form.Item>
 
-          <Form.Item noStyle shouldUpdate={(prev, current) => prev.target_folders !== current.target_folders}>
-            {({ getFieldValue }) => {
-              const isFull = getFieldValue('target_folders')?.includes('node_modules');
-              if (isFull) return null;
-              return (
-                <>
-                  <Divider style={{ margin: '12px 0', borderColor: 'var(--border-color)', borderStyle: 'dashed' }} />
-                  <Row gutter={16}>
-                    <Col span={24}>
-                      <Form.Item 
-                        name="ignore_extensions" 
-                        label={<Text strong style={{ color: 'var(--text-main)' }}>ละเว้นไฟล์</Text>}
-                        extra={<Text type="secondary" style={{ fontSize: '11px' }}>รายการแนะนำ: .sql, .mp4, .zip, .log - จะถูกข้ามเมื่อเลือกแบบ Full Backup</Text>}
-                      >
-                        <Select
-                          mode="tags"
-                          style={{ width: '100%' }}
-                          placeholder="เพิ่มนามสกุลไฟล์..."
-                          tokenSeparators={[',', ' ']}
-                          options={[
-                            { value: '.sql', label: '.sql' }, { value: '.mp4', label: '.mp4' },
-                            { value: '.zip', label: '.zip' }, { value: '.rar', label: '.rar' },
-                            { value: '.log', label: '.log' }, { value: '.tmp', label: '.tmp' }
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Form.Item 
-                        name="ignored_folders" 
-                        label={<Text strong style={{ color: 'var(--text-main)' }}>ละเว้นโฟลเดอร์</Text>}
-                        extra={<Text type="secondary" style={{ fontSize: '11px' }}>รายการแนะนำ: .git, node_modules, dist - จะถูกข้ามเมื่อเลือกแบบ Full Backup</Text>}
-                      >
-                        <Select
-                          mode="tags"
-                          style={{ width: '100%' }}
-                          placeholder="เพิ่มชื่อโฟลเดอร์..."
-                          tokenSeparators={[',', ' ']}
-                          options={[
-                            { value: '.git', label: '.git' }, { value: 'node_modules', label: 'node_modules' },
-                            { value: 'dist', label: 'dist' }, { value: 'build', label: 'build' },
-                            { value: 'backups', label: 'backups' }, { value: 'uploads', label: 'uploads' }
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                </>
-              );
-            }}
-          </Form.Item>
+        <Row gutter={16}>
+          <Col xs={24} sm={12}>
+            <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รูปแบบรอบการทำงาน</Text>}>
+              <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
+                <Radio.Button value="daily" style={{ width: '33.33%', textAlign: 'center' }}>วัน</Radio.Button>
+                <Radio.Button value="weekly" style={{ width: '33.34%', textAlign: 'center' }}>สัปดาห์</Radio.Button>
+                <Radio.Button value="monthly" style={{ width: '33.33%', textAlign: 'center' }}>เดือน</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล</Text>} rules={[{ required: true }]}>
+              <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
+            </Form.Item>
+          </Col>
+        </Row>
 
-          <Divider style={{ margin: '12px 0', borderColor: 'var(--border-color)' }} />
+        <Form.Item noStyle shouldUpdate={(prev, current) => prev.schedule_type !== current.schedule_type}>
+          {({ getFieldValue }) => {
+            const type = getFieldValue('schedule_type');
+            if (type === 'weekly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันในสัปดาห์</Text>}><Checkbox.Group options={weekOptions} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }} /></Form.Item>;
+            if (type === 'monthly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันที่ของเดือน</Text>}><Select options={monthOptions} size="large" /></Form.Item>;
+            return null;
+          }}
+        </Form.Item>
 
-          <Form.Item name="is_active" id="src_profile_is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)', marginBottom: '16px' }}>
-            <Checkbox><Text strong style={{ color: '#8b5cf6' }}>เปิดใช้งาน Auto Backup สำหรับโปรไฟล์นี้</Text></Checkbox>
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รูปแบบรอบการทำงาน</Text>}>
-                <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
-                  <Radio.Button value="daily" style={{ width: '33.33%', textAlign: 'center' }}>วัน</Radio.Button>
-                  <Radio.Button value="weekly" style={{ width: '33.34%', textAlign: 'center' }}>สัปดาห์</Radio.Button>
-                  <Radio.Button value="monthly" style={{ width: '33.33%', textAlign: 'center' }}>เดือน</Radio.Button>
-                </Radio.Group>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล</Text>} rules={[{ required: true }]}>
-                <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item noStyle shouldUpdate={(prev, current) => prev.schedule_type !== current.schedule_type}>
-            {({ getFieldValue }) => {
-              const type = getFieldValue('schedule_type');
-              if (type === 'weekly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันในสัปดาห์</Text>}><Checkbox.Group options={weekOptions} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }} /></Form.Item>;
-              if (type === 'monthly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันที่ของเดือน</Text>}><Select options={monthOptions} size="large" /></Form.Item>;
-              return null;
-            }}
-          </Form.Item>
-
-          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#8b5cf6', height: '45px', borderRadius: '8px', marginTop: '10px' }}>บันทึกการตั้งค่า {profile.profile_name}</Button>
-        </Form>
+        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#8b5cf6', height: '45px', borderRadius: '8px', marginTop: '10px' }}>บันทึกการตั้งค่า {profile.profile_name}</Button>
+      </Form>
     );
   };
 
@@ -650,7 +650,7 @@ export default function BackupManagement() {
   const getListData = (value) => {
     const listData = [];
     const dateString = value.locale('en').format('YYYY-MM-DD'); // ✅ Force Gregorian
-    
+
     // 1. ดึงแผนงานจากฐานข้อมูล (Snapshot ที่บันทึกไว้)
     const dailyTasks = taskHistory.filter(h => h.scheduled_date === dateString);
     const linkedLogIds = { db: new Set(), source: new Set(), github: new Set(), gdrive: new Set() };
@@ -666,15 +666,15 @@ export default function BackupManagement() {
         // หา Log จริงเพื่อเอารายละเอียด (ถ้ามี)
         let logDetail = null;
         if (task.log_id) {
-            linkedLogIds[task.task_type].add(task.log_id); 
-            if (task.task_type === 'db') logDetail = logs.find(l => l.log_id === task.log_id);
-            else if (task.task_type === 'source') logDetail = sourceLogs.find(l => l.log_id === task.log_id);
-            else if (task.task_type === 'github') logDetail = githubLogs.find(l => l.log_id === task.log_id);
-            else if (task.task_type === 'gdrive') logDetail = gdriveLogs.find(l => l.log_id === task.log_id);
+          linkedLogIds[task.task_type].add(task.log_id);
+          if (task.task_type === 'db') logDetail = logs.find(l => l.log_id === task.log_id);
+          else if (task.task_type === 'source') logDetail = sourceLogs.find(l => l.log_id === task.log_id);
+          else if (task.task_type === 'github') logDetail = githubLogs.find(l => l.log_id === task.log_id);
+          else if (task.task_type === 'gdrive') logDetail = gdriveLogs.find(l => l.log_id === task.log_id);
         }
 
         listData.push({
-          id: `task-${task.id}`, 
+          id: `task-${task.id}`,
           type: task.task_type === 'source' ? 'src' : task.task_type,
           status: task.status, // success, error, pending, missed
           time: task.scheduled_time.substring(0, 5),
@@ -688,21 +688,21 @@ export default function BackupManagement() {
 
     // 2. สำหรับกรณี Manual Backup หรือประวัติเก่าที่ไม่ได้อยู่ในแผน (Unlinked Logs)
     const filterUnlinked = (logList, type, contentLabel) => {
-        logList.forEach(log => {
-            const logDate = dayjs(log.created_at).locale('en').format('YYYY-MM-DD');
-            if (logDate === dateString && !linkedLogIds[type].has(log.log_id)) {
-                listData.push({
-                    id: `log-${type}-${log.log_id}`,
-                    type: type === 'source' ? 'src' : type,
-                    status: (log.status?.toLowerCase().includes('success') || log.status?.includes('สำเร็จ')) ? 'success' : 'error',
-                    time: dayjs(log.created_at).format('HH:mm'),
-                    content: contentLabel,
-                    detail: log.file_name || log.remarks,
-                    size: log.file_size,
-                    actual_time: dayjs(log.created_at).format('HH:mm')
-                });
-            }
-        });
+      logList.forEach(log => {
+        const logDate = dayjs(log.created_at).locale('en').format('YYYY-MM-DD');
+        if (logDate === dateString && !linkedLogIds[type].has(log.log_id)) {
+          listData.push({
+            id: `log-${type}-${log.log_id}`,
+            type: type === 'source' ? 'src' : type,
+            status: (log.status?.toLowerCase().includes('success') || log.status?.includes('สำเร็จ')) ? 'success' : 'error',
+            time: dayjs(log.created_at).format('HH:mm'),
+            content: contentLabel,
+            detail: log.file_name || log.remarks,
+            size: log.file_size,
+            actual_time: dayjs(log.created_at).format('HH:mm')
+          });
+        }
+      });
     };
 
     filterUnlinked(logs, 'db', 'DB Backup');
@@ -742,24 +742,24 @@ export default function BackupManagement() {
         {displayItems.map((item, index) => {
           let bgColor = isDark ? '#2d3238' : '#f8fafc', textColor = isDark ? '#ffffff' : '#475569', borderColor = isDark ? '#4b5563' : '#e2e8f0', icon = null;
 
-          if (item.status === 'success') { bgColor = isDark ? 'rgba(64, 192, 87, 0.15)' : '#dcfce7'; textColor = isDark ? '#4ade80' : '#166534'; borderColor = isDark ? '#40c057' : '#bbf7d0'; } 
-          else if (item.status === 'error') { bgColor = isDark ? 'rgba(250, 82, 82, 0.15)' : '#fee2e2'; textColor = isDark ? '#fca5a5' : '#991b1b'; borderColor = isDark ? '#fa5252' : '#fecaca'; } 
+          if (item.status === 'success') { bgColor = isDark ? 'rgba(64, 192, 87, 0.15)' : '#dcfce7'; textColor = isDark ? '#4ade80' : '#166534'; borderColor = isDark ? '#40c057' : '#bbf7d0'; }
+          else if (item.status === 'error') { bgColor = isDark ? 'rgba(250, 82, 82, 0.15)' : '#fee2e2'; textColor = isDark ? '#fca5a5' : '#991b1b'; borderColor = isDark ? '#fa5252' : '#fecaca'; }
           else if (item.status === 'pending') { bgColor = isDark ? 'rgba(250, 176, 5, 0.15)' : '#fef9c3'; textColor = isDark ? '#fde047' : '#854d0e'; borderColor = isDark ? '#fab005' : '#fef08a'; }
           else if (item.status === 'missed') { bgColor = isDark ? 'rgba(239, 68, 68, 0.4)' : '#fee2e2'; textColor = isDark ? '#ff8787' : '#b91c1c'; borderColor = '#ef4444'; }
 
-          if (item.type === 'db') icon = <DatabaseOutlined style={{ marginRight: 4 }}/>;
-          if (item.type === 'src') icon = <FileZipOutlined style={{ marginRight: 4 }}/>;
-          if (item.type === 'github') icon = <GithubOutlined style={{ marginRight: 4 }}/>;
-          if (item.type === 'gdrive') icon = <GoogleOutlined style={{ marginRight: 4 }}/>;
+          if (item.type === 'db') icon = <DatabaseOutlined style={{ marginRight: 4 }} />;
+          if (item.type === 'src') icon = <FileZipOutlined style={{ marginRight: 4 }} />;
+          if (item.type === 'github') icon = <GithubOutlined style={{ marginRight: 4 }} />;
+          if (item.type === 'gdrive') icon = <GoogleOutlined style={{ marginRight: 4 }} />;
 
           return (
             <li key={index} style={{ marginBottom: 6 }}>
               <Tooltip title={
-                item.status === 'missed' ? `ผิดเงื่อนไข: ไม่พบการสำรองข้อมูลในวันที่กำหนด` : 
-                item.status === 'pending' ? `รอดำเนินการ - เวลา ${item.time}` :
-                `รวม ${item.count} รายการ - ล่าสุด ${item.displayTime}`
+                item.status === 'missed' ? `ผิดเงื่อนไข: ไม่พบการสำรองข้อมูลในวันที่กำหนด` :
+                  item.status === 'pending' ? `รอดำเนินการ - เวลา ${item.time}` :
+                    `รวม ${item.count} รายการ - ล่าสุด ${item.displayTime}`
               }>
-                <div 
+                <div
                   onClick={() => {
                     setSelectedCalendarDate(value.format('DD/MM/YYYY'));
                     setCalendarModalData(item.items);
@@ -775,10 +775,10 @@ export default function BackupManagement() {
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
                     {icon} {item.status === 'missed' ? <Text strong style={{ color: 'inherit', fontSize: '10px' }}>MISSED: {item.content}</Text> : item.content}
                     {item.count > 1 && (
-                      <Badge 
-                        count={item.count} 
-                        size="small" 
-                        style={{ backgroundColor: '#ff4d4f', marginLeft: '4px', fontSize: '9px', minWidth: '16px', height: '16px', lineHeight: '16px', boxShadow: 'none' }} 
+                      <Badge
+                        count={item.count}
+                        size="small"
+                        style={{ backgroundColor: '#ff4d4f', marginLeft: '4px', fontSize: '9px', minWidth: '16px', height: '16px', lineHeight: '16px', boxShadow: 'none' }}
                       />
                     )}
                   </span>
@@ -816,10 +816,10 @@ export default function BackupManagement() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: isDark ? 'var(--bg-app)' : '#f8fafc', padding: '6px 16px', borderRadius: '30px', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-          <Button 
-            shape="round" 
-            size="small" 
-            style={{ border: '1px solid var(--border-color)', boxShadow: 'none', fontWeight: '500', padding: '0 12px' }} 
+          <Button
+            shape="round"
+            size="small"
+            style={{ border: '1px solid var(--border-color)', boxShadow: 'none', fontWeight: '500', padding: '0 12px' }}
             onClick={() => {
               const today = dayjs();
               onChange(today);
@@ -828,13 +828,13 @@ export default function BackupManagement() {
           >
             วันนี้
           </Button>
-          
+
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Button type="text" size="small" icon={<LeftOutlined style={{color: 'var(--text-sub)'}}/>} onClick={() => { const newValue = value.clone().subtract(1, 'month'); onChange(newValue); setCalendarValue(newValue); }} />
-            
+            <Button type="text" size="small" icon={<LeftOutlined style={{ color: 'var(--text-sub)' }} />} onClick={() => { const newValue = value.clone().subtract(1, 'month'); onChange(newValue); setCalendarValue(newValue); }} />
+
             <Space size={0} style={{ margin: '0 4px' }}>
-              <Select 
-                value={currentMonth} 
+              <Select
+                value={currentMonth}
                 onChange={(newMonth) => { const newValue = value.clone().month(newMonth); onChange(newValue); setCalendarValue(newValue); }}
                 variant="borderless"
                 popupMatchSelectWidth={false}
@@ -842,8 +842,8 @@ export default function BackupManagement() {
               >
                 {thaiMonths.map((m, i) => <Option key={i} value={i}>{m}</Option>)}
               </Select>
-              <Select 
-                value={currentYear} 
+              <Select
+                value={currentYear}
                 onChange={(newYear) => { const newValue = value.clone().year(newYear); onChange(newValue); setCalendarValue(newValue); }}
                 variant="borderless"
                 popupMatchSelectWidth={false}
@@ -853,7 +853,7 @@ export default function BackupManagement() {
               </Select>
             </Space>
 
-            <Button type="text" size="small" icon={<RightOutlined style={{color: 'var(--text-sub)'}}/>} onClick={() => { const newValue = value.clone().add(1, 'month'); onChange(newValue); setCalendarValue(newValue); }} />
+            <Button type="text" size="small" icon={<RightOutlined style={{ color: 'var(--text-sub)' }} />} onClick={() => { const newValue = value.clone().add(1, 'month'); onChange(newValue); setCalendarValue(newValue); }} />
           </div>
         </div>
 
@@ -875,7 +875,7 @@ export default function BackupManagement() {
 
       // ✅ ตรวจสอบอีกครั้งก่อนส่ง: ถ้าเป็น Full Backup ต้องไม่มีรายการละเว้น
       const isFullBackup = values.target_folders?.includes('node_modules');
-      
+
       const payload = {
         target_folders: values.target_folders ? values.target_folders.join(',') : '',
         ignore_extensions: isFullBackup ? '' : (values.ignore_extensions ? values.ignore_extensions.join(',') : ''),
@@ -887,7 +887,7 @@ export default function BackupManagement() {
       };
       await axiosInstance.put('/backup/source/settings', payload);
       alertSuccess('บันทึกสำเร็จ', 'อัปเดตการตั้งค่าสำรอง Source Code เรียบร้อยแล้ว');
-      fetchData(); 
+      fetchData();
     } catch (error) {
       alertError('ผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้');
     }
@@ -897,10 +897,10 @@ export default function BackupManagement() {
     // ดึงค่าจากโปรไฟล์ที่เลือกอยู่ปัจจุบันใน Tab
     const currentProfile = sourceSettings.find(p => p.id.toString() === activeProfileId);
     if (!currentProfile) return alertError('ผิดพลาด', 'ไม่พบข้อมูลโปรไฟล์');
-    
+
     const folders = currentProfile.target_folders ? currentProfile.target_folders.split(',') : [];
     if (folders.length === 0) return alertError('ผิดพลาด', 'โปรไฟล์นี้ยังไม่ได้เลือกโฟลเดอร์ที่จะสำรองข้อมูล');
-    
+
     setIsZipping(true);
     setZipProgress(0);
     const progressInterval = setInterval(() => {
@@ -908,7 +908,7 @@ export default function BackupManagement() {
     }, 500);
 
     try {
-      await axiosInstance.post('/backup/source/manual', { 
+      await axiosInstance.post('/backup/source/manual', {
         target_folders: folders,
         ignore_extensions: currentProfile.ignore_extensions || '',
         ignored_folders: currentProfile.ignored_folders || ''
@@ -1018,7 +1018,7 @@ export default function BackupManagement() {
         schedule_time: values.schedule_time ? values.schedule_time.format('HH:mm:ss') : '05:00:00',
         is_active: values.is_active ? 1 : 0
       };
-      
+
       await axiosInstance.put('/backup/github/settings', payload);
       alertSuccess('บันทึกสำเร็จ', 'อัปเดตการตั้งค่า GitHub เรียบร้อยแล้ว');
       fetchData();
@@ -1054,7 +1054,7 @@ export default function BackupManagement() {
       setGithubProgress(0);
       const errMsg = error.response?.data?.error || 'เกิดข้อผิดพลาดในการ Push ตรวจสอบ Token และ URL';
       msg.error({ content: errMsg, key: 'githubPush', duration: 5 });
-      fetchData(); 
+      fetchData();
     }
   };
 
@@ -1088,7 +1088,7 @@ export default function BackupManagement() {
         schedule_time: values.schedule_time ? values.schedule_time.format('HH:mm:ss') : '06:00:00',
         is_active: values.is_active ? 1 : 0
       };
-      
+
       await axiosInstance.put('/backup/gdrive/settings', payload);
       alertSuccess('บันทึกสำเร็จ', 'อัปเดตการตั้งค่า Google Drive เรียบร้อยแล้ว');
       fetchData();
@@ -1124,13 +1124,13 @@ export default function BackupManagement() {
       setGdriveProgress(0);
       const errMsg = error.response?.data?.error || 'เกิดข้อผิดพลาดในการอัปโหลด ตรวจสอบ Credentials';
       msg.error({ content: errMsg, key: 'gdrivePush', duration: 5 });
-      fetchData(); 
+      fetchData();
     }
   };
 
   const handleDeleteGdriveLog = async (logId) => {
-    const result = await alertConfirm('ยืนยันการลบประวัติ?', 'คุณต้องการลบไฟล์จริงใน Google Drive ด้วยหรือไม่?', { 
-      confirmButtonText: 'ลบทั้งคู่ (Cloud & DB)', 
+    const result = await alertConfirm('ยืนยันการลบประวัติ?', 'คุณต้องการลบไฟล์จริงใน Google Drive ด้วยหรือไม่?', {
+      confirmButtonText: 'ลบทั้งคู่ (Cloud & DB)',
       cancelButtonText: 'ลบเฉพาะประวัติ',
       showDenyButton: true, denyButtonText: 'ยกเลิก'
     });
@@ -1196,24 +1196,26 @@ export default function BackupManagement() {
 
   const sourceColumns = [
     { title: 'ชื่อไฟล์', dataIndex: 'file_name', key: 'file_name', align: 'center', render: (text) => <Text strong style={{ color: '#8b5cf6' }}><FileZipOutlined /> {text}</Text> },
-    { title: 'เป้าหมาย', dataIndex: 'target_folders', key: 'target_folders', align: 'center', render: folders => (
+    {
+      title: 'เป้าหมาย', dataIndex: 'target_folders', key: 'target_folders', align: 'center', render: folders => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-           {folders === 'Full' ? (
-             <Text strong style={{ color: '#10b981', fontSize: '12px' }}>- ทั้งหมด (ไม่รวม DB)</Text>
-           ) : (
-             <>
-               {folders?.includes('frontend') && <Text type="secondary" style={{fontSize: '12px'}}>- Frontend</Text>}
-               {folders?.includes('backend') && <Text type="secondary" style={{fontSize: '12px'}}>- Backend</Text>}
-               {folders?.includes('node_modules') && <Text type="danger" style={{fontSize: '12px'}}>- node_modules</Text>}
-             </>
-           )}
+          {folders === 'Full' ? (
+            <Text strong style={{ color: '#10b981', fontSize: '12px' }}>- ทั้งหมด (ไม่รวม DB)</Text>
+          ) : (
+            <>
+              {folders?.includes('frontend') && <Text type="secondary" style={{ fontSize: '12px' }}>- Frontend</Text>}
+              {folders?.includes('backend') && <Text type="secondary" style={{ fontSize: '12px' }}>- Backend</Text>}
+              {folders?.includes('node_modules') && <Text type="danger" style={{ fontSize: '12px' }}>- node_modules</Text>}
+            </>
+          )}
         </div>
       )
     },
     { title: 'ขนาดไฟล์', dataIndex: 'file_size', key: 'file_size', align: 'center' },
     { title: 'วันที่ทำรายการ', dataIndex: 'created_at', key: 'created_at', align: 'center', render: date => dayjs(date).format('DD/MM/YYYY HH:mm:ss') },
     { title: 'สถานะ', dataIndex: 'status', key: 'status', align: 'center', render: status => status.includes('Success') ? <Tag color="success" icon={<CheckCircleOutlined />}>สำเร็จ</Tag> : <Tag color="error" icon={<CloseCircleOutlined />}>ล้มเหลว</Tag> },
-    { title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 100, render: (_, record) => (
+    {
+      title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 100, render: (_, record) => (
         <Space>
           <Button size="small" type="dashed" icon={<DownloadOutlined />} href={`${BACKEND_URL}/backups/source/${record.file_name}`} target="_blank">โหลด</Button>
           <Popconfirm title="ยืนยันการลบ?" onConfirm={() => handleDeleteSource(record.file_name)}><Button size="small" type="primary" danger icon={<DeleteOutlined />} /></Popconfirm>
@@ -1227,7 +1229,8 @@ export default function BackupManagement() {
     { title: 'ขนาดไฟล์', dataIndex: 'file_size', key: 'file_size', align: 'center' },
     { title: 'วันที่ทำรายการ', dataIndex: 'created_at', key: 'created_at', align: 'center', render: date => dayjs(date).format('DD/MM/YYYY HH:mm:ss') },
     { title: 'สถานะ', dataIndex: 'status', key: 'status', align: 'center', render: status => status.includes('Success') ? <Tag color="success" icon={<CheckCircleOutlined />}>สำเร็จ</Tag> : <Tag color="error" icon={<CloseCircleOutlined />}>ล้มเหลว</Tag> },
-    { title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 120, render: (_, record) => (
+    {
+      title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 120, render: (_, record) => (
         <Space>
           <Button size="small" type="dashed" icon={<DownloadOutlined />} href={`${BACKEND_URL}/backups/database/${record.file_name}`} target="_blank">โหลด</Button>
           <Button size="small" type="primary" style={{ backgroundColor: '#f59e0b', borderColor: '#f59e0b' }} icon={<RollbackOutlined />} onClick={() => handleRestore(record.file_name)} disabled={!record.status.includes('Success')}>กู้คืน</Button>
@@ -1236,12 +1239,13 @@ export default function BackupManagement() {
       )
     }
   ];
-  
+
   const githubColumns = [
-    { title: 'เป้าหมายที่ Sync', dataIndex: 'sync_targets', key: 'sync_targets', align: 'center', render: folders => (
+    {
+      title: 'เป้าหมายที่ Sync', dataIndex: 'sync_targets', key: 'sync_targets', align: 'center', render: folders => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-           {folders?.includes('database') && <Text type="secondary" style={{fontSize: '12px'}}><DatabaseOutlined/> ล่าสุด (.sql)</Text>}
-           {folders?.includes('source') && <Text type="secondary" style={{fontSize: '12px'}}><FileZipOutlined/> ล่าสุด (.zip)</Text>}
+          {folders?.includes('database') && <Text type="secondary" style={{ fontSize: '12px' }}><DatabaseOutlined /> ล่าสุด (.sql)</Text>}
+          {folders?.includes('source') && <Text type="secondary" style={{ fontSize: '12px' }}><FileZipOutlined /> ล่าสุด (.zip)</Text>}
         </div>
       )
     },
@@ -1249,7 +1253,8 @@ export default function BackupManagement() {
     { title: 'ผู้ทำรายการ', dataIndex: 'created_by', key: 'created_by', align: 'center', render: text => <Tag color="default"><GithubOutlined /> {text}</Tag> },
     { title: 'วันที่ทำรายการ', dataIndex: 'created_at', key: 'created_at', align: 'center', render: date => dayjs(date).format('DD/MM/YYYY HH:mm:ss') },
     { title: 'หมายเหตุ', dataIndex: 'remarks', key: 'remarks', align: 'center', render: text => <Text type="secondary" style={{ fontSize: '12px' }}>{text || '-'}</Text> },
-    { title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 80, render: (_, record) => (
+    {
+      title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 80, render: (_, record) => (
         <Space>
           <Popconfirm title="ยืนยันการลบประวัตินี้?" onConfirm={() => handleDeleteGithubLog(record.log_id)}><Button size="small" type="primary" danger icon={<DeleteOutlined />} /></Popconfirm>
         </Space>
@@ -1258,21 +1263,21 @@ export default function BackupManagement() {
   ];
 
   const gdriveColumns = [
-    { 
-      title: 'สถานะอัปโหลด', 
-      key: 'cloud_status', 
-      align: 'center', 
+    {
+      title: 'สถานะอัปโหลด',
+      key: 'cloud_status',
+      align: 'center',
       width: 130,
       render: (_, record) => {
         const statuses = gdriveFileStatus[record.log_id];
         if (!statuses || statuses.length === 0) return <Tag color="default">ไม่มีข้อมูลไฟล์</Tag>;
-        
+
         const allExist = statuses.every(f => f.exists && !f.trashed);
         const anyTrashed = statuses.some(f => f.trashed);
         const anyMissing = statuses.some(f => !f.exists);
 
         if (allExist) return <Tooltip title="ไฟล์ทั้งหมดอยู่บน Google Drive อย่างปลอดภัย"><Tag color="success" icon={<CheckCircleOutlined />}>ออนไลน์</Tag></Tooltip>;
-        
+
         if (anyTrashed) {
           const trashedNames = statuses.filter(f => f.trashed).map(f => f.type === 'DB' ? 'ไฟล์ Database' : 'ไฟล์ Source Code').join(' และ ');
           return <Tooltip title={`${trashedNames} อยู่ในถังขยะ (กรุณาตรวจสอบในถังขยะ Google Drive)`}><Tag color="error" icon={<DeleteOutlined />}>อยู่ในถังขยะ</Tag></Tooltip>;
@@ -1286,11 +1291,11 @@ export default function BackupManagement() {
         return <Tag color="error" icon={<CloseCircleOutlined />}>ผิดพลาด</Tag>;
       }
     },
-    { 
-      title: 'เป้าหมายที่ Sync', 
-      dataIndex: 'sync_targets', 
-      key: 'sync_targets', 
-      align: 'center', 
+    {
+      title: 'เป้าหมายที่ Sync',
+      dataIndex: 'sync_targets',
+      key: 'sync_targets',
+      align: 'center',
       render: (targets, record) => {
         const statuses = gdriveFileStatus[record.log_id] || [];
         const targetsArr = targets ? targets.split(',') : [];
@@ -1302,18 +1307,18 @@ export default function BackupManagement() {
               const isOk = fileInfo && fileInfo.exists && !fileInfo.trashed;
               const label = t === 'database' ? 'Database' : 'Source Code';
               const icon = t === 'database' ? <DatabaseOutlined /> : <CodeOutlined />;
-              
+
               // ✅ [New] Focus Mirroring Logic
               const type = t === 'database' ? 'DB' : 'Source';
               const isMirrored = hoveredMirror.timestamp && hoveredMirror.type === type && record.remarks?.includes(hoveredMirror.timestamp);
 
               return (
-                <div 
-                  key={t} 
+                <div
+                  key={t}
                   className={isMirrored ? 'mirror-highlight' : ''}
-                  style={{ 
-                    fontSize: '11px', 
-                    padding: '2px 10px', 
+                  style={{
+                    fontSize: '11px',
+                    padding: '2px 10px',
                     borderRadius: '12px',
                     backgroundColor: isOk ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                     color: isOk ? '#16a34a' : '#dc2626',
@@ -1336,11 +1341,11 @@ export default function BackupManagement() {
     },
     { title: 'ผู้ทำรายการ', dataIndex: 'created_by', key: 'created_by', align: 'center', render: text => <Tag color="default"><GoogleOutlined /> {text}</Tag> },
     { title: 'วันที่ทำรายการ', dataIndex: 'created_at', key: 'created_at', align: 'center', render: date => dayjs(date).format('DD/MM/YYYY HH:mm:ss') },
-    { 
-      title: 'หมายเหตุ', 
-      dataIndex: 'remarks', 
-      key: 'remarks', 
-      align: 'center', 
+    {
+      title: 'หมายเหตุ',
+      dataIndex: 'remarks',
+      key: 'remarks',
+      align: 'center',
       render: (text) => {
         if (!text) return <Text type="secondary" style={{ fontSize: '12px' }}>-</Text>;
         const lines = text.split('|').map(l => l.trim());
@@ -1353,7 +1358,7 @@ export default function BackupManagement() {
                 const type = line.toLowerCase().includes('db') || line.toLowerCase().includes('database') ? 'DB' : 'Source';
                 return (
                   <Tooltip title={ts} key={idx}>
-                    <div 
+                    <div
                       style={{ whiteSpace: 'nowrap', cursor: 'help' }}
                       onMouseEnter={() => setHoveredMirror({ timestamp: ts, type })}
                       onMouseLeave={() => setHoveredMirror({ timestamp: null, type: null })}
@@ -1367,9 +1372,10 @@ export default function BackupManagement() {
             })}
           </div>
         );
-      } 
+      }
     },
-    { title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 100, render: (_, record) => (
+    {
+      title: 'จัดการ', key: 'action', align: 'center', fixed: 'right', width: 100, render: (_, record) => (
         <Space>
           <Button size="small" type="primary" danger icon={<DeleteOutlined />} onClick={() => handleDeleteGdriveLog(record.log_id)}>ลบ</Button>
         </Space>
@@ -1389,7 +1395,7 @@ export default function BackupManagement() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <Title level={2} style={{ color: 'var(--text-main)', margin: 0, fontSize: 'clamp(18px, 4vw, 24px)' }}>
-            <SafetyCertificateOutlined style={{ color: '#f97316', marginRight: '8px' }}/> <span className="hide-on-mobile">ระบบจัดการสำรองและล้างข้อมูล</span><span className="show-on-mobile">Backup & Cleanup</span>
+            <SafetyCertificateOutlined style={{ color: '#f97316', marginRight: '8px' }} /> <span className="hide-on-mobile">ระบบจัดการสำรองและล้างข้อมูล</span><span className="show-on-mobile">Backup & Cleanup</span>
           </Title>
         </div>
         <Button icon={<SyncOutlined />} onClick={fetchData} loading={loading} className="mobile-full-width">รีเฟรชข้อมูล</Button>
@@ -1516,8 +1522,8 @@ export default function BackupManagement() {
         }
       `}</style>
 
-      <Tabs 
-        type="card" 
+      <Tabs
+        type="card"
         className="backup-tabs"
         activeKey={activeTab}
         onChange={handleTabChange}
@@ -1542,17 +1548,17 @@ export default function BackupManagement() {
             children: (
               <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
-                  <StorageStatusBar 
-                    title="พื้นที่สำรองข้อมูล (Source)" 
-                    stats={storageStats?.source} 
-                    icon={<CodeOutlined />} 
-                    color="#8b5cf6" 
+                  <StorageStatusBar
+                    title="พื้นที่สำรองข้อมูล (Source)"
+                    stats={storageStats?.source}
+                    icon={<CodeOutlined />}
+                    color="#8b5cf6"
                   />
-                  
-                  <Card 
-                    title={<><SettingOutlined /> จัดการโปรไฟล์สำรอง Source Code</>} 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
+
+                  <Card
+                    title={<><SettingOutlined /> จัดการโปรไฟล์สำรอง Source Code</>}
+                    variant="borderless"
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
                     styles={{ header: { backgroundColor: '#8B5CF6', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}
                     extra={<Button type="default" size="small" icon={<SyncOutlined />} onClick={handleAddProfile} style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.5)', background: 'transparent' }}>เพิ่มโปรไฟล์</Button>}
                   >
@@ -1575,46 +1581,46 @@ export default function BackupManagement() {
                   </Card>
                 </Col>
                 <Col xs={24} lg={14}>
-                  <Card 
+                  <Card
                     title={
-                        <Space>
-                            <CodeOutlined /> 
-                            ประวัติการสำรอง Source Code
-                        </Space>
-                    } 
+                      <Space>
+                        <CodeOutlined />
+                        ประวัติการสำรอง Source Code
+                      </Space>
+                    }
                     extra={
-                        <Space>
-                            {selectedSrcKeys.length > 0 && (
-                                <>
-                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedSrcKeys([])}>ยกเลิก {selectedSrcKeys.length}</Button>
-                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteSource}>
-                                        ลบ {selectedSrcKeys.length}
-                                    </Button>
-                                </>
-                            )}
-                            <Button type="primary" icon={<FileZipOutlined />} onClick={handleManualSourceBackup} disabled={isZipping} style={{ backgroundColor: '#8b5cf6' }}>เริ่มบีบอัดทันที</Button>
-                        </Space>
-                    } 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ 
+                      <Space>
+                        {selectedSrcKeys.length > 0 && (
+                          <>
+                            <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedSrcKeys([])}>ยกเลิก {selectedSrcKeys.length}</Button>
+                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteSource}>
+                              ลบ {selectedSrcKeys.length}
+                            </Button>
+                          </>
+                        )}
+                        <Button type="primary" icon={<FileZipOutlined />} onClick={handleManualSourceBackup} disabled={isZipping} style={{ backgroundColor: '#8b5cf6' }}>เริ่มบีบอัดทันที</Button>
+                      </Space>
+                    }
+                    variant="borderless"
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
+                    styles={{
                       header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
                       body: { padding: 0 }
                     }}
                   >
                     {isZipping && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#8b5cf6' }}>กำลังบีบอัดไฟล์...</Text><Progress percent={zipProgress} status="active" strokeColor="#8b5cf6" /></div>}
-                    <Table 
+                    <Table
                       rowSelection={{
                         selectedRowKeys: selectedSrcKeys,
                         onChange: (keys) => setSelectedSrcKeys(keys),
                       }}
-                      columns={sourceColumns} 
-                      dataSource={sourceLogs} 
-                      rowKey="log_id" 
-                      pagination={{ pageSize: 10 }} 
-                      loading={sourceLoading} 
-                      size="middle" 
-                      scroll={{ x: 'max-content' }} 
+                      columns={sourceColumns}
+                      dataSource={sourceLogs}
+                      rowKey="log_id"
+                      pagination={{ pageSize: 10 }}
+                      loading={sourceLoading}
+                      size="middle"
+                      scroll={{ x: 'max-content' }}
                       rowClassName={(record) => dayjs(record.created_at).format('DD/MM/YYYY HH:mm:ss') === hoveredMirror.timestamp ? 'mirror-highlight' : ''}
                     />
                   </Card>
@@ -1630,16 +1636,16 @@ export default function BackupManagement() {
             children: (
               <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={8}>
-                  <StorageStatusBar 
-                    title="พื้นที่สำรองข้อมูล (DB)" 
-                    stats={storageStats?.db} 
-                    icon={<DatabaseOutlined />} 
-                    color="#0ea5e9" 
+                  <StorageStatusBar
+                    title="พื้นที่สำรองข้อมูล (DB)"
+                    stats={storageStats?.db}
+                    icon={<DatabaseOutlined />}
+                    color="#0ea5e9"
                   />
-                  <Card 
-                    title={<><SettingOutlined /> ตั้งเวลาสำรองข้อมูลอัตโนมัติ</>} 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
+                  <Card
+                    title={<><SettingOutlined /> ตั้งเวลาสำรองข้อมูลอัตโนมัติ</>}
+                    variant="borderless"
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
                     styles={{ header: { backgroundColor: '#0EA5E9', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}
                   >
                     <Form form={form} layout="vertical" onFinish={handleSaveSettings}>
@@ -1664,51 +1670,51 @@ export default function BackupManagement() {
                       <Form.Item name="schedule_time" id="db_schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล (แนะนำ 00:30 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
                         <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
                       </Form.Item>
-                      <Divider style={{ borderColor: 'var(--border-color)' }}/><Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#0EA5E9' }}>บันทึกการตั้งค่า</Button>
+                      <Divider style={{ borderColor: 'var(--border-color)' }} /><Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#0EA5E9' }}>บันทึกการตั้งค่า</Button>
                     </Form>
                   </Card>
                 </Col>
                 <Col xs={24} lg={16}>
-                  <Card 
+                  <Card
                     title={
-                        <Space>
-                            <DatabaseOutlined /> 
-                            ประวัติการสำรองฐานข้อมูล
-                        </Space>
-                    } 
+                      <Space>
+                        <DatabaseOutlined />
+                        ประวัติการสำรองฐานข้อมูล
+                      </Space>
+                    }
                     extra={
-                        <Space>
-                            {selectedDbKeys.length > 0 && (
-                                <>
-                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedDbKeys([])}>ยกเลิก {selectedDbKeys.length}</Button>
-                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteDb}>
-                                        ลบ {selectedDbKeys.length}
-                                    </Button>
-                                </>
-                            )}
-                            <Button type="primary" icon={<DatabaseOutlined />} onClick={handleManualBackup} disabled={isDbBackingUp} style={{ backgroundColor: '#0EA5E9' }}>สำรอง DB ทันที</Button>
-                        </Space>
-                    } 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ 
+                      <Space>
+                        {selectedDbKeys.length > 0 && (
+                          <>
+                            <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedDbKeys([])}>ยกเลิก {selectedDbKeys.length}</Button>
+                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteDb}>
+                              ลบ {selectedDbKeys.length}
+                            </Button>
+                          </>
+                        )}
+                        <Button type="primary" icon={<DatabaseOutlined />} onClick={handleManualBackup} disabled={isDbBackingUp} style={{ backgroundColor: '#0EA5E9' }}>สำรอง DB ทันที</Button>
+                      </Space>
+                    }
+                    variant="borderless"
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
+                    styles={{
                       header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
                       body: { padding: 0 }
                     }}
                   >
                     {isDbBackingUp && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#0EA5E9' }}>กำลังส่งออกไฟล์...</Text><Progress percent={dbProgress} status="active" strokeColor="#0EA5E9" /></div>}
-                    <Table 
+                    <Table
                       rowSelection={{
                         selectedRowKeys: selectedDbKeys,
                         onChange: (keys) => setSelectedDbKeys(keys),
                       }}
-                      columns={columns} 
-                      dataSource={logs} 
-                      rowKey="log_id" 
-                      pagination={{ pageSize: 10 }} 
-                      loading={loading && !isDbBackingUp} 
-                      size="middle" 
-                      scroll={{ x: 'max-content' }} 
+                      columns={columns}
+                      dataSource={logs}
+                      rowKey="log_id"
+                      pagination={{ pageSize: 10 }}
+                      loading={loading && !isDbBackingUp}
+                      size="middle"
+                      scroll={{ x: 'max-content' }}
                       rowClassName={(record) => dayjs(record.created_at).format('DD/MM/YYYY HH:mm:ss') === hoveredMirror.timestamp ? 'mirror-highlight' : ''}
                     />
                   </Card>
@@ -1724,22 +1730,22 @@ export default function BackupManagement() {
             children: (
               <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
-                  <StorageStatusBar 
-                    title="พื้นที่บน GitHub (โควตาจำลอง)" 
-                    stats={storageStats?.github} 
-                    icon={<GithubOutlined />} 
-                    color="#111827" 
+                  <StorageStatusBar
+                    title="พื้นที่บน GitHub (โควตาจำลอง)"
+                    stats={storageStats?.github}
+                    icon={<GithubOutlined />}
+                    color="#111827"
                     isCloud={true}
                   />
-                  <Card title={<><SettingOutlined /> ตั้งค่า GitHub (Auto Push)</>} 
- variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: '#1f2937', color: '#fff', borderBottom: '1px solid var(--border-color)' } }}>
+                  <Card title={<><SettingOutlined /> ตั้งค่า GitHub (Auto Push)</>}
+                    variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: '#454c55ff', color: '#fff', borderBottom: '1px solid var(--border-color)' } }}>
                     <Form form={githubForm} layout="vertical" onFinish={handleSaveGithubSettings}>
                       <Form.Item name="is_active" id="github_is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}><Checkbox><Text strong style={{ color: 'var(--text-main)' }}>เปิดใช้งาน Auto Push</Text></Checkbox></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>GitHub Token (PAT)</Text>} name="github_token" rules={[{ required: true, message: 'กรุณากรอก Token' }]}><Input.Password placeholder="ghp_xxxx" size="large" /></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Repository URL</Text>} name="repo_url" rules={[{ required: true, message: 'กรุณากรอก URL' }]}><Input placeholder="https://github.com/..." size="large" /></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Branch เป้าหมาย</Text>} name="branch_name"><Input placeholder="main" size="large" /></Form.Item>
                       <Form.Item name="sync_targets" label={<Text strong style={{ color: 'var(--text-main)' }}>ข้อมูลที่ต้องการ Push</Text>}><Checkbox.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><Checkbox value="database"><Text strong style={{ color: 'var(--text-main)' }}>ไฟล์ .sql</Text></Checkbox><Checkbox value="source"><Text strong style={{ color: 'var(--text-main)' }}>ไฟล์ Source Code</Text></Checkbox></Checkbox.Group></Form.Item>
-                      <Divider style={{ borderColor: 'var(--border-color)' }}/>
+                      <Divider style={{ borderColor: 'var(--border-color)' }} />
                       <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รอบการทำงาน</Text>}>
                         <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
                           <Radio.Button value="daily" style={{ width: '33.33%', textAlign: 'center' }}>วัน</Radio.Button>
@@ -1763,46 +1769,46 @@ export default function BackupManagement() {
                   </Card>
                 </Col>
                 <Col xs={24} lg={14}>
-                  <Card 
+                  <Card
                     title={
-                        <Space>
-                            <GithubOutlined /> 
-                            ประวัติการ Push
-                        </Space>
-                    } 
+                      <Space>
+                        <GithubOutlined />
+                        ประวัติการ Push
+                      </Space>
+                    }
                     extra={
-                        <Space>
-                            {selectedGitKeys.length > 0 && (
-                                <>
-                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedGitKeys([])}>ยกเลิก {selectedGitKeys.length}</Button>
-                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGithub}>
-                                        ลบ {selectedGitKeys.length}
-                                    </Button>
-                                </>
-                            )}
-                            <Button type="primary" icon={<GithubOutlined />} onClick={handleManualGithubPush} disabled={isGithubPushing} style={{ backgroundColor: '#111827' }}>Push ทันที</Button>
-                        </Space>
-                    } 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ 
+                      <Space>
+                        {selectedGitKeys.length > 0 && (
+                          <>
+                            <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedGitKeys([])}>ยกเลิก {selectedGitKeys.length}</Button>
+                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGithub}>
+                              ลบ {selectedGitKeys.length}
+                            </Button>
+                          </>
+                        )}
+                        <Button type="primary" icon={<GithubOutlined />} onClick={handleManualGithubPush} disabled={isGithubPushing} style={{ backgroundColor: '#111827' }}>Push ทันที</Button>
+                      </Space>
+                    }
+                    variant="borderless"
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
+                    styles={{
                       header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
                       body: { padding: 0 }
                     }}
                   >
                     {isGithubPushing && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#111827' }}>กำลังส่งข้อมูล...</Text><Progress percent={githubProgress} status="active" strokeColor="#111827" /></div>}
-                    <Table 
+                    <Table
                       rowSelection={{
                         selectedRowKeys: selectedGitKeys,
                         onChange: (keys) => setSelectedGitKeys(keys),
                       }}
-                      columns={githubColumns} 
-                      dataSource={githubLogs} 
-                      rowKey="log_id" 
-                      pagination={{ pageSize: 10 }} 
-                      loading={githubLoading} 
-                      size="middle" 
-                      scroll={{ x: 'max-content' }} 
+                      columns={githubColumns}
+                      dataSource={githubLogs}
+                      rowKey="log_id"
+                      pagination={{ pageSize: 10 }}
+                      loading={githubLoading}
+                      size="middle"
+                      scroll={{ x: 'max-content' }}
                     />
                   </Card>
                 </Col>
@@ -1817,15 +1823,15 @@ export default function BackupManagement() {
             children: (
               <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                 <Col xs={24} lg={10}>
-                  <StorageStatusBar 
-                    title="พื้นที่บน Google Drive" 
-                    stats={storageStats?.gdrive} 
-                    icon={<GoogleOutlined />} 
-                    color="#10b981" 
+                  <StorageStatusBar
+                    title="พื้นที่บน Google Drive"
+                    stats={storageStats?.gdrive}
+                    icon={<GoogleOutlined />}
+                    color="#10b981"
                     isCloud={true}
                   />
-                  <Card title={<><SettingOutlined /> ตั้งค่า Google Drive (Auto Upload)</>} 
- variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: '#10b981', color: '#fff', borderBottom: '1px solid var(--border-color)' } }}>
+                  <Card title={<><SettingOutlined /> ตั้งค่า Google Drive (Auto Upload)</>}
+                    variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: '#10b981', color: '#fff', borderBottom: '1px solid var(--border-color)' } }}>
                     <Form form={gdriveForm} layout="vertical" onFinish={handleSaveGdriveSettings}>
                       <Form.Item name="is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}><Checkbox><Text strong style={{ color: 'var(--text-main)' }}>เปิดใช้งาน Auto Upload</Text></Checkbox></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Client ID</Text>} name="client_id" rules={[{ required: true, message: 'กรุณากรอก Client ID' }]}><Input placeholder="xxxxxxxxxx.apps.googleusercontent.com" size="large" /></Form.Item>
@@ -1833,7 +1839,7 @@ export default function BackupManagement() {
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Refresh Token</Text>} name="refresh_token" rules={[{ required: true, message: 'กรุณากรอก Refresh Token' }]}><Input.Password placeholder="1//0xxxxxxxxx" size="large" /></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>Folder ID (ตัวเลือก)</Text>} name="folder_id"><Input placeholder="วาง Folder ID ปลายทางที่นี่ (ถ้ามี)" size="large" /></Form.Item>
                       <Form.Item name="sync_targets" label={<Text strong style={{ color: 'var(--text-main)' }}>ข้อมูลที่ต้องการ Upload</Text>}><Checkbox.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><Checkbox value="database"><Text strong style={{ color: 'var(--text-main)' }}>ไฟล์ .sql</Text></Checkbox><Checkbox value="source"><Text strong style={{ color: 'var(--text-main)' }}>ไฟล์ Source Code</Text></Checkbox></Checkbox.Group></Form.Item>
-                      <Divider style={{ borderColor: 'var(--border-color)' }}/>
+                      <Divider style={{ borderColor: 'var(--border-color)' }} />
                       <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รอบการทำงาน</Text>}>
                         <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
                           <Radio.Button value="daily" style={{ width: '33.33%', textAlign: 'center' }}>วัน</Radio.Button>
@@ -1852,50 +1858,50 @@ export default function BackupManagement() {
                       <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาดำเนินการ (แนะนำ 01:30 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
                         <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
                       </Form.Item>
-                      <Divider style={{ borderColor: 'var(--border-color)' }}/><Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#10b981' }}>บันทึกการตั้งค่า GDrive</Button>
+                      <Divider style={{ borderColor: 'var(--border-color)' }} /><Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#10b981' }}>บันทึกการตั้งค่า GDrive</Button>
                     </Form>
                   </Card>
                 </Col>
                 <Col xs={24} lg={14}>
-                  <Card 
+                  <Card
                     title={
-                        <Space>
-                            <GoogleOutlined /> 
-                            ประวัติการอัปโหลด
-                        </Space>
-                    } 
+                      <Space>
+                        <GoogleOutlined />
+                        ประวัติการอัปโหลด
+                      </Space>
+                    }
                     extra={
-                        <Space>
-                            {selectedGdriveKeys.length > 0 && (
-                                <>
-                                    <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedGdriveKeys([])}>ยกเลิก {selectedGdriveKeys.length}</Button>
-                                    <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGdrive}>
-                                        ลบ {selectedGdriveKeys.length}
-                                    </Button>
-                                </>
-                            )}
-                            <Button type="primary" icon={<GoogleOutlined />} onClick={handleManualGdrivePush} disabled={isGdrivePushing} style={{ backgroundColor: '#10b981' }}>Upload ทันที</Button>
-                        </Space>
-                    } 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
-                    styles={{ 
+                      <Space>
+                        {selectedGdriveKeys.length > 0 && (
+                          <>
+                            <Button size="middle" danger icon={<ClearOutlined />} onClick={() => setSelectedGdriveKeys([])}>ยกเลิก {selectedGdriveKeys.length}</Button>
+                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDeleteGdrive}>
+                              ลบ {selectedGdriveKeys.length}
+                            </Button>
+                          </>
+                        )}
+                        <Button type="primary" icon={<GoogleOutlined />} onClick={handleManualGdrivePush} disabled={isGdrivePushing} style={{ backgroundColor: '#10b981' }}>Upload ทันที</Button>
+                      </Space>
+                    }
+                    variant="borderless"
+                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
+                    styles={{
                       header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' },
                       body: { padding: 0 }
                     }}
                   >
                     {isGdrivePushing && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#10b981' }}>กำลังเชื่อมต่อและอัปโหลดข้อมูล...</Text><Progress percent={gdriveProgress} status="active" strokeColor="#10b981" /></div>}
-                    <Table 
+                    <Table
                       rowSelection={{
                         selectedRowKeys: selectedGdriveKeys,
                         onChange: (keys) => setSelectedGdriveKeys(keys),
                       }}
-                      columns={gdriveColumns} 
-                      dataSource={gdriveLogs} 
-                      rowKey="log_id" 
-                      pagination={{ pageSize: 10 }} 
-                      loading={gdriveLoading} 
-                      size="middle" 
+                      columns={gdriveColumns}
+                      dataSource={gdriveLogs}
+                      rowKey="log_id"
+                      pagination={{ pageSize: 10 }}
+                      loading={gdriveLoading}
+                      size="middle"
                       scroll={{ x: 'max-content' }}
                       rowClassName={(record) => {
                         const isRowHovered = hoveredMirror.timestamp && record.remarks?.includes(hoveredMirror.timestamp);
@@ -1919,7 +1925,7 @@ export default function BackupManagement() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 <Row gutter={[24, 24]} align="top">
                   <Col xs={24} xl={14}>
-                    <Card 
+                    <Card
                       title={<Space><AreaChartOutlined style={{ color: '#6366f1' }} /> สถิติการใช้งานพื้นที่จัดเก็บ (30 วันย้อนหลัง)</Space>}
                       variant="borderless"
                       style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
@@ -1932,7 +1938,7 @@ export default function BackupManagement() {
                     </Card>
                   </Col>
                   <Col xs={24} xl={10}>
-                    <Card 
+                    <Card
                       title={<Space><DatabaseOutlined style={{ color: '#0ea5e9' }} /> สถานะพื้นที่จัดเก็บปัจจุบัน</Space>}
                       variant="borderless"
                       style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }}
@@ -1948,169 +1954,169 @@ export default function BackupManagement() {
 
                 <Row gutter={[24, 24]} style={{ marginTop: '0px' }} align="top">
                   <Col xs={24} lg={10}>
-                    <StorageStatusBar 
-                      title="พื้นที่ที่สามารถล้างข้อมูลได้ (Local)" 
-                      stats={storageStats?.cleanup} 
-                      icon={<ClearOutlined />} 
-                      color="#f97316" 
+                    <StorageStatusBar
+                      title="พื้นที่ที่สามารถล้างข้อมูลได้ (Local)"
+                      stats={storageStats?.cleanup}
+                      icon={<ClearOutlined />}
+                      color="#f97316"
                     />
-                    <Card 
-                      title={<><SettingOutlined /> ตั้งค่า Auto Cleanup (ล้างข้อมูลอัตโนมัติ)</>} 
-                      variant="borderless" 
-                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} 
+                    <Card
+                      title={<><SettingOutlined /> ตั้งค่า Auto Cleanup (ล้างข้อมูลอัตโนมัติ)</>}
+                      variant="borderless"
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}
                       styles={{ header: { backgroundColor: '#f97316', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}
                     >
-                    <Form form={cleanupForm} layout="vertical" onFinish={handleSaveCleanupSettings}>
-                      <Form.Item name="is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                        <Checkbox><Text strong style={{ color: '#f97316' }}>เปิดใช้งานระบบล้างข้อมูลอัตโนมัติ</Text></Checkbox>
-                      </Form.Item>
-                      
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บไฟล์ DB (วัน)</Text>}>
-                            <Space.Compact style={{ width: '100%' }}>
-                              <Form.Item name="db_retention_days" noStyle rules={[{ required: true }]}>
-                                <Input type="number" min={1} size="large" />
-                              </Form.Item>
-                              <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
-                            </Space.Compact>
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บไฟล์ Code (วัน)</Text>}>
-                            <Space.Compact style={{ width: '100%' }}>
-                              <Form.Item name="source_retention_days" noStyle rules={[{ required: true }]}>
-                                <Input type="number" min={1} size="large" />
-                              </Form.Item>
-                              <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
-                            </Space.Compact>
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บ System Log (วัน)</Text>}>
-                            <Space.Compact style={{ width: '100%' }}>
-                              <Form.Item name="system_log_retention_days" noStyle rules={[{ required: true }]}>
-                                <Input type="number" min={1} size="large" />
-                              </Form.Item>
-                              <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
-                            </Space.Compact>
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บ Ticket Log (วัน)</Text>}>
-                            <Space.Compact style={{ width: '100%' }}>
-                              <Form.Item name="ticket_log_retention_days" noStyle rules={[{ required: true }]}>
-                                <Input type="number" min={1} size="large" />
-                              </Form.Item>
-                              <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
-                            </Space.Compact>
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                      <Form form={cleanupForm} layout="vertical" onFinish={handleSaveCleanupSettings}>
+                        <Form.Item name="is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                          <Checkbox><Text strong style={{ color: '#f97316' }}>เปิดใช้งานระบบล้างข้อมูลอัตโนมัติ</Text></Checkbox>
+                        </Form.Item>
 
-                      <Divider style={{ borderColor: 'var(--border-color)' }}/>
-                      
-                      <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รูปแบบรอบการทำงาน</Text>}>
-                        <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
-                          <Radio.Button value="daily" style={{ width: '33.33%', textAlign: 'center' }}>วัน</Radio.Button>
-                          <Radio.Button value="weekly" style={{ width: '33.34%', textAlign: 'center' }}>สัปดาห์</Radio.Button>
-                          <Radio.Button value="monthly" style={{ width: '33.33%', textAlign: 'center' }}>เดือน</Radio.Button>
-                        </Radio.Group>
-                      </Form.Item>
-                      
-                      <Form.Item noStyle shouldUpdate={(prev, current) => prev.schedule_type !== current.schedule_type}>
-                        {({ getFieldValue }) => {
-                          const type = getFieldValue('schedule_type');
-                          if (type === 'weekly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันในสัปดาห์</Text>}><Checkbox.Group options={weekOptions} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }} /></Form.Item>;
-                          if (type === 'monthly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันที่ของทุกเดือน</Text>}><Select placeholder="เลือกวันที่" size="large" options={monthOptions} /></Form.Item>;
-                          return null;
-                        }}
-                      </Form.Item>
-
-                      <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล (แนะนำ 03:00 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
-                      </Form.Item>
-                      
-                      <Divider style={{ borderColor: 'var(--border-color)' }}/>
-                      <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#f97316' }}>บันทึกการตั้งค่า Cleanup</Button>
-                    </Form>
-                  </Card>
-                </Col>
-                
-                <Col xs={24} lg={14}>
-                  <Card 
-                    title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <span><ClearOutlined /> ประมวลผลและวิเคราะห์รายการลบ</span>
-                        <Button size="small" icon={<SyncOutlined spin={isPreviewLoading} />} onClick={fetchCleanupPreview}>วิเคราะห์ใหม่</Button>
-                      </div>
-                    } 
-                    variant="borderless" 
-                    style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }} 
-                    styles={{ header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' } }}
-                  >
-                    <div style={{ padding: '20px' }}>
-                      <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '20px', color: 'var(--text-main)' }}>รายการที่เข้าเกณฑ์การล้างข้อมูล (ตามค่าที่ตั้งไว้)</Text>
-                      
-                      <Row gutter={[16, 16]}>
-                        {[
-                          { title: 'Database', count: cleanupPreview?.dbCount, days: cleanupPreview?.retention?.db, color: '#0ea5e9', icon: <DatabaseOutlined /> },
-                          { title: 'Source Code', count: cleanupPreview?.sourceCount, days: cleanupPreview?.retention?.source, color: '#8b5cf6', icon: <FileZipOutlined /> },
-                          { title: 'System Logs', count: cleanupPreview?.sysLogCount, days: cleanupPreview?.retention?.sys, color: '#f59e0b', icon: <SettingOutlined /> },
-                          { title: 'Ticket Logs', count: cleanupPreview?.ticketLogCount, days: cleanupPreview?.retention?.ticket, color: '#ec4899', icon: <CheckCircleOutlined /> }
-                        ].map((item, idx) => (
-                          <Col xs={12} sm={6} key={idx}>
-                            <Card 
-                              size="small" 
-                              hoverable 
-                              style={{ textAlign: 'center', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', cursor: 'pointer' }}
-                              onClick={() => fetchCleanupDetails(['db', 'source', 'syslog', 'ticketlog'][idx])}
-                            >
-                              <div style={{ color: item.color, fontSize: '24px', marginBottom: '8px' }}>{item.icon}</div>
-                              <Text type="secondary" style={{ fontSize: '12px' }}>{item.title}</Text>
-                              <div style={{ margin: '8px 0' }}>
-                                <Title level={2} style={{ margin: 0, color: item.count > 0 ? '#ef4444' : 'var(--text-sub)' }}>{item.count || 0}</Title>
-                                <Text style={{ fontSize: '11px', color: 'var(--text-sub)' }}>รายการ</Text>
-                              </div>
-                              <Tag color="default" style={{ margin: 0, fontSize: '10px' }}>{'>'} {item.days} วัน</Tag>
-                              <div style={{ marginTop: '8px' }}><Text style={{ fontSize: '10px', color: '#6366f1' }}>คลิกเพื่อดูรายละเอียด</Text></div>
-                            </Card>
+                        <Row gutter={16}>
+                          <Col span={12}>
+                            <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บไฟล์ DB (วัน)</Text>}>
+                              <Space.Compact style={{ width: '100%' }}>
+                                <Form.Item name="db_retention_days" noStyle rules={[{ required: true }]}>
+                                  <Input type="number" min={1} size="large" />
+                                </Form.Item>
+                                <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
+                              </Space.Compact>
+                            </Form.Item>
                           </Col>
-                        ))}
-                      </Row>
+                          <Col span={12}>
+                            <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บไฟล์ Code (วัน)</Text>}>
+                              <Space.Compact style={{ width: '100%' }}>
+                                <Form.Item name="source_retention_days" noStyle rules={[{ required: true }]}>
+                                  <Input type="number" min={1} size="large" />
+                                </Form.Item>
+                                <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
+                              </Space.Compact>
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บ System Log (วัน)</Text>}>
+                              <Space.Compact style={{ width: '100%' }}>
+                                <Form.Item name="system_log_retention_days" noStyle rules={[{ required: true }]}>
+                                  <Input type="number" min={1} size="large" />
+                                </Form.Item>
+                                <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
+                              </Space.Compact>
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>เก็บ Ticket Log (วัน)</Text>}>
+                              <Space.Compact style={{ width: '100%' }}>
+                                <Form.Item name="ticket_log_retention_days" noStyle rules={[{ required: true }]}>
+                                  <Input type="number" min={1} size="large" />
+                                </Form.Item>
+                                <Button size="large" disabled style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-sub)' }}>วัน</Button>
+                              </Space.Compact>
+                            </Form.Item>
+                          </Col>
+                        </Row>
 
-                      <Divider style={{ margin: '32px 0' }}/>
+                        <Divider style={{ borderColor: 'var(--border-color)' }} />
 
-                      <div style={{ textAlign: 'center' }}>
-                        <Title level={4} style={{ color: 'var(--text-main)' }}>ล้างข้อมูลด้วยตนเอง (Manual Cleanup)</Title>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: '24px' }}>
-                          กดปุ่มด้านล่างเพื่อเริ่มการลบรายการทั้งหมดที่ระบุไว้ด้านบน <br/>
-                          <Text type="danger" strong>⚠️ คำเตือน: ข้อมูลที่ถูกลบไปแล้วไม่สามารถกู้คืนได้</Text>
-                        </Text>
-                        
-                        {isCleaningUp && (
-                          <div style={{ maxWidth: '400px', margin: '0 auto 24px' }}>
-                            <Text strong style={{ color: '#f97316' }}>กำลังดำเนินการ...</Text>
-                            <Progress percent={cleanupProgress} status="active" strokeColor="#f97316" />
-                          </div>
-                        )}
-                        
-                        <Button 
-                          type="primary" 
-                          size="large" 
-                          icon={<DeleteOutlined />} 
-                          onClick={handleManualCleanup} 
-                          loading={isCleaningUp}
-                          disabled={!cleanupPreview || (cleanupPreview.dbCount + cleanupPreview.sourceCount + cleanupPreview.sysLogCount + cleanupPreview.ticketLogCount === 0)}
-                          style={{ height: '54px', padding: '0 40px', fontSize: '16px', borderRadius: '27px', backgroundColor: '#f97316' }}
-                        >
-                          เริ่มการล้างข้อมูลทันที
-                        </Button>
+                        <Form.Item name="schedule_type" label={<Text strong style={{ color: 'var(--text-main)' }}>รูปแบบรอบการทำงาน</Text>}>
+                          <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
+                            <Radio.Button value="daily" style={{ width: '33.33%', textAlign: 'center' }}>วัน</Radio.Button>
+                            <Radio.Button value="weekly" style={{ width: '33.34%', textAlign: 'center' }}>สัปดาห์</Radio.Button>
+                            <Radio.Button value="monthly" style={{ width: '33.33%', textAlign: 'center' }}>เดือน</Radio.Button>
+                          </Radio.Group>
+                        </Form.Item>
+
+                        <Form.Item noStyle shouldUpdate={(prev, current) => prev.schedule_type !== current.schedule_type}>
+                          {({ getFieldValue }) => {
+                            const type = getFieldValue('schedule_type');
+                            if (type === 'weekly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันในสัปดาห์</Text>}><Checkbox.Group options={weekOptions} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }} /></Form.Item>;
+                            if (type === 'monthly') return <Form.Item name="schedule_days" label={<Text strong style={{ color: 'var(--text-main)' }}>เลือกวันที่ของทุกเดือน</Text>}><Select placeholder="เลือกวันที่" size="large" options={monthOptions} /></Form.Item>;
+                            return null;
+                          }}
+                        </Form.Item>
+
+                        <Form.Item name="schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาที่ระบบประมวลผล (แนะนำ 03:00 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
+                          <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
+                        </Form.Item>
+
+                        <Divider style={{ borderColor: 'var(--border-color)' }} />
+                        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#f97316' }}>บันทึกการตั้งค่า Cleanup</Button>
+                      </Form>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={14}>
+                    <Card
+                      title={
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                          <span><ClearOutlined /> ประมวลผลและวิเคราะห์รายการลบ</span>
+                          <Button size="small" icon={<SyncOutlined spin={isPreviewLoading} />} onClick={fetchCleanupPreview}>วิเคราะห์ใหม่</Button>
+                        </div>
+                      }
+                      variant="borderless"
+                      style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)', height: '100%' }}
+                      styles={{ header: { backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)' } }}
+                    >
+                      <div style={{ padding: '20px' }}>
+                        <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '20px', color: 'var(--text-main)' }}>รายการที่เข้าเกณฑ์การล้างข้อมูล (ตามค่าที่ตั้งไว้)</Text>
+
+                        <Row gutter={[16, 16]}>
+                          {[
+                            { title: 'Database', count: cleanupPreview?.dbCount, days: cleanupPreview?.retention?.db, color: '#0ea5e9', icon: <DatabaseOutlined /> },
+                            { title: 'Source Code', count: cleanupPreview?.sourceCount, days: cleanupPreview?.retention?.source, color: '#8b5cf6', icon: <FileZipOutlined /> },
+                            { title: 'System Logs', count: cleanupPreview?.sysLogCount, days: cleanupPreview?.retention?.sys, color: '#f59e0b', icon: <SettingOutlined /> },
+                            { title: 'Ticket Logs', count: cleanupPreview?.ticketLogCount, days: cleanupPreview?.retention?.ticket, color: '#ec4899', icon: <CheckCircleOutlined /> }
+                          ].map((item, idx) => (
+                            <Col xs={12} sm={6} key={idx}>
+                              <Card
+                                size="small"
+                                hoverable
+                                style={{ textAlign: 'center', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', cursor: 'pointer' }}
+                                onClick={() => fetchCleanupDetails(['db', 'source', 'syslog', 'ticketlog'][idx])}
+                              >
+                                <div style={{ color: item.color, fontSize: '24px', marginBottom: '8px' }}>{item.icon}</div>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>{item.title}</Text>
+                                <div style={{ margin: '8px 0' }}>
+                                  <Title level={2} style={{ margin: 0, color: item.count > 0 ? '#ef4444' : 'var(--text-sub)' }}>{item.count || 0}</Title>
+                                  <Text style={{ fontSize: '11px', color: 'var(--text-sub)' }}>รายการ</Text>
+                                </div>
+                                <Tag color="default" style={{ margin: 0, fontSize: '10px' }}>{'>'} {item.days} วัน</Tag>
+                                <div style={{ marginTop: '8px' }}><Text style={{ fontSize: '10px', color: '#6366f1' }}>คลิกเพื่อดูรายละเอียด</Text></div>
+                              </Card>
+                            </Col>
+                          ))}
+                        </Row>
+
+                        <Divider style={{ margin: '32px 0' }} />
+
+                        <div style={{ textAlign: 'center' }}>
+                          <Title level={4} style={{ color: 'var(--text-main)' }}>ล้างข้อมูลด้วยตนเอง (Manual Cleanup)</Title>
+                          <Text type="secondary" style={{ display: 'block', marginBottom: '24px' }}>
+                            กดปุ่มด้านล่างเพื่อเริ่มการลบรายการทั้งหมดที่ระบุไว้ด้านบน <br />
+                            <Text type="danger" strong>⚠️ คำเตือน: ข้อมูลที่ถูกลบไปแล้วไม่สามารถกู้คืนได้</Text>
+                          </Text>
+
+                          {isCleaningUp && (
+                            <div style={{ maxWidth: '400px', margin: '0 auto 24px' }}>
+                              <Text strong style={{ color: '#f97316' }}>กำลังดำเนินการ...</Text>
+                              <Progress percent={cleanupProgress} status="active" strokeColor="#f97316" />
+                            </div>
+                          )}
+
+                          <Button
+                            type="primary"
+                            size="large"
+                            icon={<DeleteOutlined />}
+                            onClick={handleManualCleanup}
+                            loading={isCleaningUp}
+                            disabled={!cleanupPreview || (cleanupPreview.dbCount + cleanupPreview.sourceCount + cleanupPreview.sysLogCount + cleanupPreview.ticketLogCount === 0)}
+                            style={{ height: '54px', padding: '0 40px', fontSize: '16px', borderRadius: '27px', backgroundColor: '#f97316' }}
+                          >
+                            เริ่มการล้างข้อมูลทันที
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                </Col>
-              </Row>
+                    </Card>
+                  </Col>
+                </Row>
               </div>
             )
           }
@@ -2124,8 +2130,8 @@ export default function BackupManagement() {
             <ClearOutlined style={{ color: '#f97316' }} />
             <span>รายละเอียดรายการที่จะถูกลบ: <Text strong style={{ color: '#6366f1' }}>{
               detailType === 'db' ? 'ฐานข้อมูล (Database)' :
-              detailType === 'source' ? 'ซอร์สโค้ด (Source Code)' :
-              detailType === 'syslog' ? 'System Logs' : 'Ticket Logs'
+                detailType === 'source' ? 'ซอร์สโค้ด (Source Code)' :
+                  detailType === 'syslog' ? 'System Logs' : 'Ticket Logs'
             }</Text></span>
           </Space>
         }
@@ -2186,9 +2192,9 @@ export default function BackupManagement() {
           pagination={false}
           size="middle"
           columns={[
-            { 
-              title: 'ประเภท', 
-              dataIndex: 'content', 
+            {
+              title: 'ประเภท',
+              dataIndex: 'content',
               key: 'content',
               render: (text, record) => (
                 <Space>
@@ -2201,9 +2207,9 @@ export default function BackupManagement() {
               )
             },
             { title: 'เวลา', dataIndex: 'time', key: 'time', align: 'center', width: 100 },
-            { 
-              title: 'รายละเอียด', 
-              dataIndex: 'detail', 
+            {
+              title: 'รายละเอียด',
+              dataIndex: 'detail',
               key: 'detail',
               render: (text, record) => (
                 <div style={{ maxWidth: '300px' }}>
@@ -2212,10 +2218,10 @@ export default function BackupManagement() {
                 </div>
               )
             },
-            { 
-              title: 'สถานะ', 
-              dataIndex: 'status', 
-              key: 'status', 
+            {
+              title: 'สถานะ',
+              dataIndex: 'status',
+              key: 'status',
               align: 'center',
               render: status => {
                 if (status === 'success') return <Tag color="success">สำเร็จ</Tag>;

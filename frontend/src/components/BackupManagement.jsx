@@ -43,16 +43,17 @@ const StorageStatusBar = ({ title, stats, icon, color, isCloud = false }) => {
   if (!stats) return null;
   const isDark = document.body.classList.contains('dark-mode');
   const pct = stats.percentage || 0;
+  const displayColor = (color === '#111827' && isDark) ? '#f3f4f6' : color;
   
   return (
     <Card size="small" variant="borderless" style={{ marginBottom: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <Text strong style={{ color: color, display: 'flex', alignItems: 'center', gap: '8px' }}>{icon} {title}</Text>
+        <Text strong style={{ color: displayColor, display: 'flex', alignItems: 'center', gap: '8px' }}>{icon} {title}</Text>
         <Text type="secondary" style={{ fontSize: '12px' }}>{formatBytes(stats.used)} / {formatBytes(stats.total)}</Text>
       </div>
       <Progress 
         percent={parseFloat(pct.toFixed(1))} 
-        strokeColor={pct >= 90 ? '#ef4444' : color} 
+        strokeColor={pct >= 90 ? '#ef4444' : displayColor} 
         railColor={isDark ? '#374151' : '#f1f5f9'}
         status={pct >= 90 ? 'exception' : 'normal'}
         showInfo={false}
@@ -1386,6 +1387,8 @@ export default function BackupManagement() {
   const monthOptions = Array.from({ length: 31 }, (_, i) => ({ label: `วันที่ ${i + 1}`, value: `${i + 1}` }));
 
   // --- 5. Render ---
+  const isDark = document.body.classList.contains('dark-mode');
+
   return (
     <div style={{ padding: 'clamp(8px, 3vw, 20px)', backgroundColor: 'var(--bg-app)', minHeight: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '12px' }}>
@@ -1730,11 +1733,11 @@ export default function BackupManagement() {
                     title="พื้นที่บน GitHub (โควตาจำลอง)" 
                     stats={storageStats?.github} 
                     icon={<GithubOutlined />} 
-                    color="#111827" 
+                    color={isDark ? '#e6edf3' : '#111827'} 
                     isCloud={true}
                   />
-                  <Card title={<><SettingOutlined /> ตั้งค่า GitHub (Auto Push)</>} 
- variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: '#1f2937', color: '#fff', borderBottom: '1px solid var(--border-color)' } }}>
+                  <Card title={<span style={{ color: '#ffffff', fontWeight: 600 }}><SettingOutlined style={{ marginRight: 8 }} />ตั้งค่า GitHub (Auto Push)</span>} 
+ variant="borderless" style={{ borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }} styles={{ header: { backgroundColor: isDark ? '#1f2937' : '#111827', color: '#ffffff', borderBottom: '1px solid var(--border-color)' } }}>
                     <Form form={githubForm} layout="vertical" onFinish={handleSaveGithubSettings}>
                       <Form.Item name="is_active" id="github_is_active" valuePropName="checked" style={{ backgroundColor: 'var(--bg-app)', padding: '10px 15px', borderRadius: 8, border: '1px solid var(--border-color)' }}><Checkbox><Text strong style={{ color: 'var(--text-main)' }}>เปิดใช้งาน Auto Push</Text></Checkbox></Form.Item>
                       <Form.Item label={<Text strong style={{ color: 'var(--text-main)' }}>GitHub Token (PAT)</Text>} name="github_token" rules={[{ required: true, message: 'กรุณากรอก Token' }]}><Input.Password placeholder="ghp_xxxx" size="large" /></Form.Item>
@@ -1760,14 +1763,14 @@ export default function BackupManagement() {
                       <Form.Item name="schedule_time" id="github_schedule_time" label={<Text strong style={{ color: 'var(--text-main)' }}>เวลาดำเนินการ (แนะนำ 01:00 น.)</Text>} rules={[{ required: true, message: 'กรุณาเลือกเวลา' }]}>
                         <TimePicker format="HH:mm" style={{ width: '100%' }} size="large" />
                       </Form.Item>
-                      <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: '#111827' }}>บันทึกการตั้งค่า GitHub</Button>
+                      <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{ backgroundColor: isDark ? '#374151' : '#111827', borderColor: isDark ? '#4b5563' : '#111827', color: '#ffffff', fontWeight: 600 }}>บันทึกการตั้งค่า GitHub</Button>
                     </Form>
                   </Card>
                 </Col>
                 <Col xs={24} lg={14}>
                   <Card 
                     title={
-                        <Space>
+                        <Space style={{ color: 'var(--text-main)' }}>
                             <GithubOutlined /> 
                             ประวัติการ Push
                         </Space>
@@ -1782,7 +1785,7 @@ export default function BackupManagement() {
                                     </Button>
                                 </>
                             )}
-                            <Button type="primary" icon={<GithubOutlined />} onClick={handleManualGithubPush} disabled={isGithubPushing} style={{ backgroundColor: '#111827' }}>Push ทันที</Button>
+                            <Button type="primary" icon={<GithubOutlined />} onClick={handleManualGithubPush} disabled={isGithubPushing} style={{ backgroundColor: isDark ? '#374151' : '#111827', borderColor: isDark ? '#4b5563' : '#111827', color: '#ffffff', fontWeight: 600 }}>Push ทันที</Button>
                         </Space>
                     } 
                     variant="borderless" 
@@ -1792,7 +1795,7 @@ export default function BackupManagement() {
                       body: { padding: 0 }
                     }}
                   >
-                    {isGithubPushing && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: '#111827' }}>กำลังส่งข้อมูล...</Text><Progress percent={githubProgress} status="active" strokeColor="#111827" /></div>}
+                    {isGithubPushing && <div style={{ padding: '0 20px 20px' }}><Text strong style={{ color: 'var(--text-main)' }}>กำลังส่งข้อมูล...</Text><Progress percent={githubProgress} status="active" strokeColor={isDark ? '#38bdf8' : '#111827'} /></div>}
                     <Table 
                       rowSelection={{
                         selectedRowKeys: selectedGitKeys,
@@ -2196,7 +2199,7 @@ export default function BackupManagement() {
                 <Space>
                   {record.type === 'db' && <DatabaseOutlined style={{ color: '#0ea5e9' }} />}
                   {record.type === 'src' && <FileZipOutlined style={{ color: '#8b5cf6' }} />}
-                  {record.type === 'github' && <GithubOutlined style={{ color: '#111827' }} />}
+                  {record.type === 'github' && <GithubOutlined style={{ color: isDark ? '#e6edf3' : '#111827' }} />}
                   {record.type === 'gdrive' && <GoogleOutlined style={{ color: '#10b981' }} />}
                   <Text strong>{text}</Text>
                 </Space>
