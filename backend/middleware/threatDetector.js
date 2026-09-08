@@ -246,7 +246,7 @@ const threatDetector = async (req, res, next) => {
                             await sendLineNotify(secMsg);
                         }
                         if (notifyEmail && sysConf.admin_email) {
-                            await sendEmail(`🚨 [Security Alert] ${isBlocked ? 'Auto-Blocked IP ' + ip : detectedThreat.type}`, secMsg);
+                            await sendEmail(`🚨 [Security Alert] ${isBlocked ? 'Auto-Blocked IP ' + ip : detectedThreat.type}`, secMsg, sysConf.admin_email);
                         }
                     }
                 } catch (secErr) {

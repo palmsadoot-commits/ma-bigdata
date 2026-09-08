@@ -377,7 +377,13 @@ export default function SystemSettings() {
       Object.keys(allValues).forEach(key => {
         let val = allValues[key];
         
-        if (['security_strict_mode', 'notify_new_ticket', 'notify_status_change', 'enable_line', 'enable_email', 'maintenance_mode', 'error_404_active', 'error_500_active'].includes(key)) {
+        if ([
+          'security_strict_mode', 'notify_new_ticket', 'notify_status_change', 
+          'enable_line', 'enable_email', 'maintenance_mode', 
+          'error_404_active', 'error_500_active',
+          'notify_security_line', 'notify_security_email',
+          'notify_backup_status', 'notify_line_quota_low'
+        ].includes(key)) {
           val = val ? 1 : 0;
         }
         

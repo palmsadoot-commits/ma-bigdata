@@ -53,8 +53,8 @@ const sysLog = async (level, category, message, options = {}) => {
         // ✅ กระจายสัญญาณไปยังหน้าจอ Admin ทันที (Live Notification)
         broadcastAlert(level, category, message, finalMetadata);
 
-        // ✅ สำหรับ CRITICAL Error ให้ส่ง Alert ทาง Email & LINE
-        if (level === 'CRITICAL') {
+        // ✅ สำหรับ CRITICAL Error ให้ส่ง Alert ทาง Email & LINE (ยกเว้นหมวด SECURITY ที่ถูกควบคุมผ่าน System Settings -> notify_security_line และ notify_security_email โดยเฉพาะ)
+        if (level === 'CRITICAL' && category !== 'SECURITY') {
             try {
                 const { sendEmail, sendLineNotify } = require('../services/notificationService');
                 const alertMessage = `🚨 [CRITICAL ALERT]\nTrace ID: ${activeTraceId || 'N/A'}\nMessage: ${message}\nCategory: ${category}\nPath: ${path || 'N/A'}\nIP: ${ipAddress}`;
