@@ -165,27 +165,7 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// 🚩 [TEMPORARY] Test Routes for Logging Verification
-app.get('/api/test/error', (req, res) => {
-    // จำลอง Error: เรียกใช้ตัวแปรที่ไม่ได้ประกาศไว้ (ReferenceError)
-    const result = someUndefinedVariable + 10; 
-    res.json({ result });
-});
 
-app.get('/api/test/critical', async (req, res) => {
-    const { sysLog } = require('./utils/logger');
-    // จำลองเหตุการณ์วิกฤตระดับสูงสุด
-    await sysLog('CRITICAL', 'SYSTEM', 'CRITICAL: Database connection pool exhausted! System is unable to process new requests.', {
-        req,
-        metadata: {
-            service: 'MySQL Connection Pool',
-            active_connections: 100,
-            max_limit: 100,
-            action_required: 'Immediate server scaling or connection leak investigation'
-        }
-    });
-    res.status(503).json({ error: 'Service Unavailable', message: 'System is under critical load' });
-});
 
 app.use('/api/backup', backupRoutes);
 

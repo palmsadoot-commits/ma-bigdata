@@ -17,7 +17,7 @@ const getPublicIp = async () => {
     const res = await axios.get('https://api.ipify.org?format=json', { timeout: 3000 });
     cachedPublicIp = res.data.ip;
     return cachedPublicIp;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -70,4 +70,3 @@ axiosInstance.interceptors.response.use(response => {
 });
 
 export default axiosInstance;
-;

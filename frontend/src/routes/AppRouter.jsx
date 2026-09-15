@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../utils/config';
 import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Typography, Button, Space, Avatar, Tag, Spin, Drawer, Grid, Dropdown, App, notification as staticNotification } from 'antd';
+import { Layout, Menu, Typography, Button, Space, Avatar, Tag, Spin, Drawer, Grid, Dropdown, App } from 'antd';
 import {
   DashboardOutlined,
   PlusCircleOutlined,
@@ -127,7 +127,9 @@ function MainLayout() {
                 icon: <WarningOutlined style={{ color: '#faad14' }} />
             });
         }
-      } catch (err) {}
+      } catch {
+        // ignore JSON parse error
+      }
     };
 
     return () => eventSource.close();
